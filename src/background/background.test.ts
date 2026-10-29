@@ -7,6 +7,8 @@ import { createServices } from './services';
 
 const BASE = 'chrome-extension://abc/';
 
+const noHost = { sendNativeMessage: () => Promise.reject(new Error('no host')) };
+
 type Listener = Parameters<RuntimeLike['onMessage']['addListener']>[0];
 
 /** A runtime whose `sendMessage` goes to the registered listener, as the browser would deliver it. */
@@ -36,6 +38,7 @@ function build(sender?: SenderLike) {
     session: memoryArea(),
     version: '0.1.0',
     userAgent: 'UA',
+    native: noHost,
   });
   listen(runtime, createHandlers(services));
   return { runtime, services };
@@ -108,6 +111,7 @@ describe('the message bus', () => {
           session: memoryArea(),
           version: '1',
           userAgent: 'u',
+          native: noHost,
         }),
       ),
     );

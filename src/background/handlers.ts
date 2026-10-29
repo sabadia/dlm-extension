@@ -16,6 +16,10 @@ export function createHandlers(services: Services): Handlers {
           log: await services.log.read(),
         }),
     },
+    'pairing.view': { handle: () => services.pairing.view() },
+    'pairing.start': { handle: () => services.pairing.start() },
+    'pairing.poll': { handle: () => services.pairing.poll() },
+    'pairing.cancel': { handle: () => services.pairing.cancel() },
     'log.clear': {
       handle: async () => {
         await services.log.clear();

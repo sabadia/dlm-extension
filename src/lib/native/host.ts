@@ -78,6 +78,46 @@ interface ConnectReply {
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v !== '' ? v : undefined);
 
+export type PairingStatus = 'pending' | 'approved' | 'denied' | 'expired';
+
+export interface PairingReply {
+  pairingId: string;
+  status: PairingStatus;
+  /** The six digits shown here and in the DLM app. */
+  code: string;
+  /** Milliseconds since the epoch. */
+  expiresAt: number;
+  /** Only on the first reply after approval. A secret: store it, never log it. */
+  token?: string;
+}
+
+const STATUSES: readonly string[] = ['pending', 'approved', 'denied', 'expired'];
+
+function readPairing(reply: Record<string, unknown>): PairingReply {
+  if (reply.ok !== true) {
+    const code = str(reply.error);
+    if (code === 'origin_not_allowed')
+      throw new NativeError(
+        'host-not-allowed',
+        str(reply.message) ?? 'The host refuses this extension.',
+      );
+    throw new NativeError('host-failed', str(reply.message) ?? code ?? 'The pairing was refused.');
+  }
+  const status = str(reply.status);
+  const pairingId = str(reply.pairingId);
+  if (!status || !STATUSES.includes(status) || !pairingId)
+    throw new NativeError('host-failed', 'The DLM host sent an unreadable pairing reply.');
+  const expires = typeof reply.expiresAt === 'string' ? Date.parse(reply.expiresAt) : NaN;
+  const token = str(reply.token);
+  return {
+    pairingId,
+    status: status as PairingStatus,
+    code: str(reply.code) ?? '',
+    expiresAt: Number.isFinite(expires) ? expires : 0,
+    ...(token !== undefined ? { token } : {}),
+  };
+}
+
 export interface HostOptions {
   /** Milliseconds to wait for the host. Default 20 000. */
   timeoutMs?: number;
@@ -132,6 +172,16 @@ export class NativeHost {
     } catch {
       return false;
     }
+  }
+
+  /** Asks the daemon, through the host, for a pairing. The user then compares `code` and answers in the DLM app. */
+  async pair(who: { name: string; browser: string; version: string }): Promise<PairingReply> {
+    return readPairing(await this.request({ type: 'pair', ...who }));
+  }
+
+  /** The state of a pairing. The reply to the first call after approval carries the token, once. */
+  async pairStatus(pairingId: string): Promise<PairingReply> {
+    return readPairing(await this.request({ type: 'pair.status', pairingId }));
   }
 
   /**

@@ -10,5 +10,7 @@ export default defineBackground(() => {
     session: browserArea(browser.storage.session),
     version: browser.runtime.getManifest().version,
     userAgent: navigator.userAgent,
+    brave: 'brave' in navigator,
+    native: browser.runtime,
   });
 });
