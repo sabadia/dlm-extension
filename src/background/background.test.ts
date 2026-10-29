@@ -9,6 +9,12 @@ const BASE = 'chrome-extension://abc/';
 
 const noHost = { sendNativeMessage: () => Promise.reject(new Error('no host')) };
 
+const noAction = {
+  setBadgeText: () => undefined,
+  setBadgeBackgroundColor: () => undefined,
+  setTitle: () => undefined,
+};
+
 type Listener = Parameters<RuntimeLike['onMessage']['addListener']>[0];
 
 /** A runtime whose `sendMessage` goes to the registered listener, as the browser would deliver it. */
@@ -39,6 +45,7 @@ function build(sender?: SenderLike) {
     version: '0.1.0',
     userAgent: 'UA',
     native: noHost,
+    action: noAction,
   });
   listen(runtime, createHandlers(services));
   return { runtime, services };
@@ -112,6 +119,7 @@ describe('the message bus', () => {
           version: '1',
           userAgent: 'u',
           native: noHost,
+          action: noAction,
         }),
       ),
     );
@@ -140,5 +148,45 @@ describe('StoredValue', () => {
 
   it('treats rubbish as the default', async () => {
     expect(await new StoredValue(memoryArea({ n: 'x' }), 'n', parse).get()).toBe(0);
+  });
+});
+
+describe('the background lifecycle', () => {
+  it('checks at startup, install and on the alarm, and makes sure the alarm exists', async () => {
+    const { registerBackground, CHECK_ALARM } = await import('./register');
+    const listeners = {
+      startup: [] as (() => void)[],
+      installed: [] as (() => void)[],
+      alarm: [] as ((a: { name: string }) => void)[],
+    };
+    const created: string[] = [];
+    registerBackground(
+      fakeRuntime(),
+      {
+        local: memoryArea(),
+        session: memoryArea(),
+        version: '1',
+        userAgent: 'u',
+        native: noHost,
+        action: noAction,
+      },
+      {
+        onStartup: { addListener: (l) => listeners.startup.push(l) },
+        onInstalled: { addListener: (l) => listeners.installed.push(l) },
+        alarms: {
+          get: () => Promise.resolve(undefined),
+          create: (name) => {
+            created.push(name);
+          },
+          onAlarm: { addListener: (l) => listeners.alarm.push(l) },
+        },
+      },
+    );
+    expect(listeners.startup).toHaveLength(1);
+    expect(listeners.installed).toHaveLength(1);
+    expect(listeners.alarm).toHaveLength(1);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(created).toEqual([CHECK_ALARM]);
+    listeners.alarm[0]?.({ name: 'something-else' }); // ignored
   });
 });

@@ -1,3 +1,4 @@
+import { ConnectionService, type ActionApi } from '../lib/connection/service';
 import { RingLog } from '../lib/log/log';
 import { NativeHost, type NativeRuntime } from '../lib/native/host';
 import { detectBrowser } from '../lib/pairing/browser';
@@ -18,6 +19,10 @@ export interface Environment {
   brave?: boolean;
   /** `browser.runtime`, for the native host. */
   native: NativeRuntime;
+  /** `browser.action`, for the badge. */
+  action: ActionApi;
+  /** Whether the browser lets the extension call an address (`permissions.contains`); yes when omitted. */
+  hasAccess?: (baseUrl: string) => Promise<boolean>;
 }
 
 /**
@@ -32,25 +37,37 @@ export interface Services {
   userAgent: string;
   host: NativeHost;
   pairing: PairingService;
+  connection: ConnectionService;
 }
 
 export function createServices(env: Environment): Services {
   const log = new RingLog(env.session);
   const secrets = new SecretStore(env.local);
   const host = new NativeHost(env.native, { log });
+  const settings = new SettingsStore(env.local);
+  const pairing = new PairingService({
+    host,
+    secrets,
+    area: env.session,
+    browser: detectBrowser(env.userAgent, env.brave ?? false),
+    version: env.version,
+    log,
+  });
   return {
     log,
-    settings: new SettingsStore(env.local),
+    settings,
     secrets,
     version: env.version,
     userAgent: env.userAgent,
     host,
-    pairing: new PairingService({
-      host,
+    pairing,
+    connection: new ConnectionService({
+      settings,
       secrets,
+      host,
+      pairing,
       area: env.session,
-      browser: detectBrowser(env.userAgent, env.brave ?? false),
-      version: env.version,
+      action: env.action,
       log,
     }),
   };

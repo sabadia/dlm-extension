@@ -31,3 +31,12 @@ export function isLoopbackHost(hostname: string): boolean {
     h === 'localhost' || h.endsWith('.localhost') || h === '::1' || /^127(\.\d{1,3}){3}$/.test(h)
   );
 }
+
+/**
+ * The match pattern that grants the extension access to a server (`https://dlm.example.test/*`). Match patterns have no
+ * port, so access is per host name.
+ */
+export function originPattern(baseUrl: string): string {
+  const url = new URL(baseUrl);
+  return `${url.protocol}//${url.hostname}/*`;
+}

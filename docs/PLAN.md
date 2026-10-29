@@ -110,6 +110,10 @@ Made by the author of the plan:
 
 `downloads`, `webRequest`, `cookies`, `storage`, `nativeMessaging`, `contextMenus`, `notifications`, `alarms`,
 `activeTab`, `scripting`, and host access to all sites (needed to see downloads, headers and cookies on any site).
+In E1 the manifest declares `storage`, `nativeMessaging` (find and pair with the local DLM), `alarms` (the once-a-minute
+connection check) and host access to the loopback addresses of the daemon (`http://127.0.0.1/*`, `http://localhost/*`);
+remote servers are optional host permissions, asked for one server at a time when the person adds it (E1.7). The
+remaining permissions arrive with the features that need them.
 No remote code, no analytics, no data leaves the computer except to the user's own DLM server.
 
 ## Order of work
@@ -139,7 +143,7 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 - [x] E1.3 MV3-safe background architecture — State that survives worker restarts, typed message bus between background, popup, options and content scripts, one place that registers listeners synchronously, no globals.
 - [x] E1.4 Native messaging transport and local discovery — Connect to host `dev.sabadia.dlm`: `connect`, `ping`, live address and version; detect 'host not installed', 'app not running', 'incompatible version'. Needs backend: sabadia/dlm-server#139 (P14.3)
 - [x] E1.5 Pairing flow and token storage — Extension asks to pair, shows the code, waits for Allow/Deny in the app, stores the scoped token; re-pair after revoke; never logs the token. Needs backend: sabadia/dlm-server#137 (P14.1), sabadia/dlm-server#139 (P14.3) Needs app: sabadia/dlm-app#113 (F9.1)
-- [ ] E1.6 Connection state machine, badge and version compatibility — States (not installed, not running, pairing, connected, incompatible, token revoked, remote unreachable); badge and tooltip; check `apiVersion` against `minClientApi`.
+- [x] E1.6 Connection state machine, badge and version compatibility — States (not installed, not running, pairing, connected, incompatible, token revoked, remote unreachable); badge and tooltip; check `apiVersion` against `minClientApi`.
 - [ ] E1.7 Remote targets (URL and token) — Add, test and remove remote servers; HTTPS recommended with a clear warning for plain HTTP and self-signed certificates (cannot be pinned from a browser).
 - [x] E1.8 Logging and diagnostics without secrets — Ring-buffer log, redaction of tokens, cookies and credentials in URLs, 'copy diagnostics'.
 

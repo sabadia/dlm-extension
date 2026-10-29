@@ -205,3 +205,13 @@ describe('SecretStore', () => {
     expect(await secrets.get('local')).toBe('t1');
   });
 });
+
+describe('originPattern', () => {
+  it('has no port and no path', async () => {
+    const { originPattern } = await import('./url');
+    expect(originPattern('http://127.0.0.1:50123')).toBe('http://127.0.0.1/*');
+    expect(originPattern('https://dlm.example.test:8443/prefix')).toBe(
+      'https://dlm.example.test/*',
+    );
+  });
+});

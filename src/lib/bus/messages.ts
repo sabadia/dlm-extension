@@ -1,3 +1,4 @@
+import type { ConnectionState } from '../connection/state';
 import type { PairingView } from '../pairing/service';
 
 /**
@@ -9,6 +10,10 @@ export interface MessageMap {
   'ext.info': { request: undefined; response: { version: string } };
   /** The text to paste into a bug report. Never contains a token, cookie or credential. */
   'diagnostics.get': { request: undefined; response: string };
+  /** The last known state of the connection to DLM, and the text for it. */
+  'connection.get': { request: undefined; response: { state: ConnectionState; text: string } };
+  /** Looks again now (the popup does this when it opens). */
+  'connection.refresh': { request: undefined; response: { state: ConnectionState; text: string } };
   /** Empties the log. */
   'log.clear': { request: undefined; response: null };
   /** Where pairing with the DLM on this computer stands. */

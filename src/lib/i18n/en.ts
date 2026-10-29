@@ -11,6 +11,26 @@ export const en = {
   'options.diagnostics.copied': 'Copied.',
   'options.diagnostics.failed': 'Could not copy: {reason}',
   'popup.notConnected': 'Not connected yet.',
+  'state.checking': 'Checking the connection to DLM…',
+  'state.hostNotInstalled':
+    'DLM is not set up for this browser. Install DLM and choose Install under Manage ▸ Access.',
+  'state.hostNotAllowed':
+    'DLM does not accept this extension. Reinstall the DLM host from the DLM app.',
+  'state.hostFailed': 'The DLM host failed: {message}',
+  'state.appNotRunning': 'DLM is not running. Start the DLM app.',
+  'state.localUnreachable':
+    'DLM is running but this browser cannot reach it. Check the address and certificate.',
+  'state.accessNeeded': 'Allow this extension to talk to DLM at {origin}.',
+  'state.accessAllow': 'Allow access',
+  'state.needsPairing': 'Connect this browser to DLM.',
+  'state.pairing': 'Waiting for you to allow this browser in the DLM app…',
+  'state.tokenRevoked': 'DLM no longer accepts this browser. Connect again.',
+  'state.incompatible': 'This extension and DLM do not match. Update the older one.',
+  'state.remoteNeedsToken': 'Enter the token of this DLM server.',
+  'state.remoteUnreachable': 'The DLM server cannot be reached: {message}',
+  'state.connected': 'Connected to DLM {version}.',
+  'state.daemonTooOld': 'DLM {minVersion} or newer is needed. Update the DLM app.',
+  'state.extensionTooOld': 'DLM needs a newer version of this extension. Update the extension.',
   'pairing.title': 'Connect to DLM',
   'pairing.intro':
     'DLM asks you to allow this browser the first time. Nothing is sent before you do.',
