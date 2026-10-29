@@ -1,0 +1,26 @@
+schema_version: 1
+id: 01a189f9-a345-7cfb-b16c-2cb23b7809c3
+status: draft
+created_at: '2026-10-29T23:23:21Z'
+updated_at: '2026-10-29T23:23:21Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: Typed settings in storage.local with versioned migrations and secret-free import/export; tokens live in a separate store
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: src/lib/settings/store.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

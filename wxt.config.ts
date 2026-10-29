@@ -21,7 +21,11 @@ export default defineConfig({
     name: 'DLM',
     description: 'Send downloads, media, magnet links and torrents from your browser to DLM.',
     // The permission set grows with the features (docs/PLAN.md, "Permissions"); each addition is a plan change.
-    permissions: ['storage'],
+    permissions: ['storage', 'nativeMessaging', 'alarms'],
+    // The daemon of this computer. Remote servers are asked for one by one (optional host permissions), when the person
+    // adds them.
+    host_permissions: ['http://127.0.0.1/*', 'http://localhost/*'],
+    optional_host_permissions: ['https://*/*', 'http://*/*'],
     ...(browser === 'firefox' ? {} : { key: CHROME_PUBLIC_KEY }),
     ...(browser === 'firefox'
       ? {

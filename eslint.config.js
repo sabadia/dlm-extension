@@ -2,7 +2,16 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['.output/**', '.wxt/**', 'node_modules/**', 'coverage/**', 'spikes/**'] },
+  {
+    ignores: [
+      '.output/**',
+      '.wxt/**',
+      'node_modules/**',
+      'coverage/**',
+      'spikes/**',
+      'src/lib/api/schema.d.ts',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

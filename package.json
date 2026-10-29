@@ -24,13 +24,16 @@
     "test": "vitest run",
     "postinstall": "wxt prepare",
     "check:licenses": "node tools/check-licenses.mjs",
-    "make:sbom": "pnpm sbom --sbom-format cyclonedx --prod --out dist/sbom.cdx.json"
+    "make:sbom": "pnpm sbom --sbom-format cyclonedx --prod --out dist/sbom.cdx.json",
+    "generate:api": "node tools/generate-api.mjs",
+    "check:api": "node tools/generate-api.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@preact/preset-vite": "^2.10.6",
     "eslint": "^10.13.0",
     "happy-dom": "^21.0.4",
+    "openapi-typescript": "^7.13.0",
     "prettier": "^3.9.10",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1",

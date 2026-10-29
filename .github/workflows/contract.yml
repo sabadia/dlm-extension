@@ -1,0 +1,27 @@
+name: Contract
+
+# Every night: would the newest dlm-server release break this extension? The pinned OpenAPI document
+# (spec/openapi-3.0.json) is compared with the newest release's, for the operations the client uses.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: newest daemon API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Download the newest release's API document
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release view --repo sabadia/dlm-server --json tagName -q .tagName)"
+          gh release download "$tag" --repo sabadia/dlm-server --pattern '*_openapi-3.0.json' --output "$RUNNER_TEMP/latest.json"
+          echo "newest release: $tag"
+      - run: node tools/check-contract.mjs spec/openapi-3.0.json "$RUNNER_TEMP/latest.json"

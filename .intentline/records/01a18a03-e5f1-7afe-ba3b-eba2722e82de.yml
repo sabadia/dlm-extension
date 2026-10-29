@@ -1,0 +1,26 @@
+schema_version: 1
+id: 01a18a03-e5f1-7afe-ba3b-eba2722e82de
+status: draft
+created_at: '2026-10-29T23:34:33Z'
+updated_at: '2026-10-29T23:34:33Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: Add, test and remove remote DLM servers by URL and token, warn about plain http, ask the browser for access per server
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: src/lib/remote/service.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null
