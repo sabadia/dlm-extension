@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['.output/**', '.wxt/**', 'node_modules/**', 'coverage/**'] },
+  { ignores: ['.output/**', '.wxt/**', 'node_modules/**', 'coverage/**', 'spikes/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
@@ -18,7 +18,7 @@ export default tseslint.config(
   { files: ['**/*.{js,mjs}', '*.config.ts'], ...tseslint.configs.disableTypeChecked },
   {
     // Node scripts: plain JavaScript, not part of the extension.
-    files: ['tools/**/*.mjs', 'spikes/**/*.mjs'],
+    files: ['tools/**/*.mjs'],
     languageOptions: {
       globals: { process: 'readonly', console: 'readonly', URL: 'readonly', fetch: 'readonly' },
     },

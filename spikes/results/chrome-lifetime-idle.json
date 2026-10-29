@@ -1,0 +1,120 @@
+{
+  "browser": "chrome",
+  "mode": "lifetime",
+  "options": {
+    "phase": "idle",
+    "seconds": "130"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "daemonUrl": "http://127.0.0.1:61446",
+  "reports": [
+    {
+      "t": 1793306872492,
+      "boot": "0a80ud",
+      "name": "lifetime_start",
+      "phase": "idle"
+    }
+  ],
+  "console": [
+    {
+      "t": 1793306872492,
+      "boot": "0a80ud",
+      "name": "lifetime_start",
+      "phase": "idle"
+    }
+  ],
+  "collectorRequests": [],
+  "beats": [
+    {
+      "t": 1648,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 3655,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 5650,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 7647,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 9649,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 11647,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 13651,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 15647,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 17652,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 19650,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 21646,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 23651,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 25650,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 27647,
+      "boot": "0a80ud",
+      "phase": "idle"
+    },
+    {
+      "t": 29651,
+      "boot": "0a80ud",
+      "phase": "idle"
+    }
+  ],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T02:47:50.76796+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":695166}",
+    "{\"time\":\"2026-10-30T02:47:50.768196+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":254333}",
+    "{\"time\":\"2026-10-30T02:47:50.76821+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":227292}",
+    "{\"time\":\"2026-10-30T02:47:50.768219+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":342042}",
+    "{\"time\":\"2026-10-30T02:47:50.768225+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":170958}",
+    "{\"time\":\"2026-10-30T02:47:50.768238+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":201625}",
+    "{\"time\":\"2026-10-30T02:47:50.768245+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":147583}",
+    "{\"time\":\"2026-10-30T02:47:50.768251+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":127291}",
+    "{\"time\":\"2026-10-30T02:47:50.768256+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":170041}",
+    "{\"time\":\"2026-10-30T02:47:50.770359+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T02:47:50.783569+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:61446\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-ctWAjZ/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-ctWAjZ/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-ctWAjZ/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-ctWAjZ/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-ctWAjZ/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-ctWAjZ/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T02:47:50.783771+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:61446\",\"tls\":false}"
+  ]
+}

@@ -1,0 +1,356 @@
+{
+  "browser": "chrome",
+  "mode": "api",
+  "options": {
+    "nogrant": true,
+    "seconds": "60",
+    "out": "chrome-api"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "daemonUrl": "http://127.0.0.1:61960",
+  "reports": [
+    {
+      "t": 1793307603732,
+      "boot": "6nk8oo",
+      "name": "env",
+      "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+      "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "id": "jccbdeehnoappdbnnbhmmmhjappoacjm"
+    },
+    {
+      "t": 1793307603741,
+      "boot": "6nk8oo",
+      "name": "permissions",
+      "ok": true,
+      "all": {
+        "origins": ["<all_urls>"],
+        "permissions": ["alarms", "downloads", "nativeMessaging", "storage", "tabs", "webRequest"]
+      },
+      "containsAllUrls": true,
+      "containsLoopback": true
+    },
+    {
+      "t": 1793307605792,
+      "boot": "6nk8oo",
+      "name": "webrequest_toplevel",
+      "ok": true,
+      "eventsSeen": 4
+    },
+    {
+      "t": 1793307605801,
+      "boot": "6nk8oo",
+      "name": "loopback_simple",
+      "ok": true,
+      "status": 200,
+      "echo": {
+        "method": "GET",
+        "path": "/echo",
+        "origin": null,
+        "secFetchSite": "none",
+        "secFetchMode": "cors",
+        "secFetchDest": "empty",
+        "host": "127.0.0.1:18080",
+        "acrPn": null,
+        "acrMethod": null,
+        "acrHeaders": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+      }
+    },
+    {
+      "t": 1793307605806,
+      "boot": "6nk8oo",
+      "name": "loopback_post_json_auth",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "t": 1793307605808,
+      "boot": "6nk8oo",
+      "name": "loopback_targetAddressSpace_loopback",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "t": 1793307605811,
+      "boot": "6nk8oo",
+      "name": "loopback_targetAddressSpace_local",
+      "ok": false,
+      "error": "TypeError: Failed to fetch",
+      "errName": "TypeError"
+    },
+    {
+      "t": 1793307605814,
+      "boot": "6nk8oo",
+      "name": "daemon_health",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61960/schemas/HealthOutputBody.json\",\"status\":\"ok\",\"version\":\"0.5.0\",\"apiVersion\":1,\"minClientApi\":1,\"authenticated\":false}\n"
+    },
+    {
+      "t": 1793307605817,
+      "boot": "6nk8oo",
+      "name": "daemon_no_token",
+      "ok": true,
+      "status": 401,
+      "text": "{\"type\":\"urn:dlm:problem:unauthorized\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"missing or invalid bearer token\",\"code\":\"unauthorized\"}\n"
+    },
+    {
+      "t": 1793307605819,
+      "boot": "6nk8oo",
+      "name": "daemon_get_authed",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61960/schemas/TaskList.json\",\"tasks\":[]}\n"
+    },
+    {
+      "t": 1793307605821,
+      "boot": "6nk8oo",
+      "name": "daemon_post_json_authed",
+      "ok": true,
+      "status": 201,
+      "text": "{\"$schema\":\"http://127.0.0.1:61960/schemas/CaptureOutput.json\",\"task\":{\"id\":\"01a18976-7b3c-7d46-97e9-74a3c71db290\",\"queueId\":\"main\",\"status\":\"paused\",\"priority\":\"normal\",\"position\":0,\"engine\":\"http\",\"size\":-1,\"downloaded\":0,\"source\":{\"currentUrl\":\"http://127.0.0.1:18080/file/inline.txt\",\"originalUrl"
+    },
+    {
+      "t": 1793307605823,
+      "boot": "6nk8oo",
+      "name": "daemon_if_match",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61960/schemas/TaskList.json\",\"tasks\":[{\"id\":\"01a18976-7b3c-7d46-97e9-74a3c71db290\",\"queueId\":\"main\",\"status\":\"paused\",\"priority\":\"normal\",\"position\":0,\"engine\":\"http\",\"size\":-1,\"downloaded\":0,\"source\":{\"currentUrl\":\"http://127.0.0.1:18080/file/inline.txt\",\"originalUrl\":\""
+    },
+    {
+      "t": 1793307608834,
+      "boot": "6nk8oo",
+      "name": "daemon_sse_headers",
+      "ok": true,
+      "status": 200,
+      "ct": "text/event-stream",
+      "gotChunk": false
+    },
+    {
+      "t": 1793307608839,
+      "boot": "6nk8oo",
+      "name": "done"
+    }
+  ],
+  "console": [
+    {
+      "t": 1793307603732,
+      "boot": "6nk8oo",
+      "name": "env",
+      "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+      "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "id": "jccbdeehnoappdbnnbhmmmhjappoacjm"
+    },
+    {
+      "t": 1793307603741,
+      "boot": "6nk8oo",
+      "name": "permissions",
+      "ok": true,
+      "all": {
+        "origins": ["<all_urls>"],
+        "permissions": ["alarms", "downloads", "nativeMessaging", "storage", "tabs", "webRequest"]
+      },
+      "containsAllUrls": true,
+      "containsLoopback": true
+    },
+    {
+      "t": 1793307605792,
+      "boot": "6nk8oo",
+      "name": "webrequest_toplevel",
+      "ok": true,
+      "eventsSeen": 4
+    },
+    {
+      "t": 1793307605801,
+      "boot": "6nk8oo",
+      "name": "loopback_simple",
+      "ok": true,
+      "status": 200,
+      "echo": {
+        "method": "GET",
+        "path": "/echo",
+        "origin": null,
+        "secFetchSite": "none",
+        "secFetchMode": "cors",
+        "secFetchDest": "empty",
+        "host": "127.0.0.1:18080",
+        "acrPn": null,
+        "acrMethod": null,
+        "acrHeaders": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+      }
+    },
+    {
+      "t": 1793307605806,
+      "boot": "6nk8oo",
+      "name": "loopback_post_json_auth",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "t": 1793307605808,
+      "boot": "6nk8oo",
+      "name": "loopback_targetAddressSpace_loopback",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "t": 1793307605811,
+      "boot": "6nk8oo",
+      "name": "loopback_targetAddressSpace_local",
+      "ok": false,
+      "error": "TypeError: Failed to fetch",
+      "errName": "TypeError"
+    },
+    {
+      "t": 1793307605814,
+      "boot": "6nk8oo",
+      "name": "daemon_health",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61960/schemas/HealthOutputBody.json\",\"status\":\"ok\",\"version\":\"0.5.0\",\"apiVersion\":1,\"minClientApi\":1,\"authenticated\":false}\n"
+    },
+    {
+      "t": 1793307605817,
+      "boot": "6nk8oo",
+      "name": "daemon_no_token",
+      "ok": true,
+      "status": 401,
+      "text": "{\"type\":\"urn:dlm:problem:unauthorized\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"missing or invalid bearer token\",\"code\":\"unauthorized\"}\n"
+    },
+    {
+      "t": 1793307605819,
+      "boot": "6nk8oo",
+      "name": "daemon_get_authed",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61960/schemas/TaskList.json\",\"tasks\":[]}\n"
+    },
+    {
+      "t": 1793307605821,
+      "boot": "6nk8oo",
+      "name": "daemon_post_json_authed",
+      "ok": true,
+      "status": 201,
+      "text": "{\"$schema\":\"http://127.0.0.1:61960/schemas/CaptureOutput.json\",\"task\":{\"id\":\"01a18976-7b3c-7d46-97e9-74a3c71db290\",\"queueId\":\"main\",\"status\":\"paused\",\"priority\":\"normal\",\"position\":0,\"engine\":\"http\",\"size\":-1,\"downloaded\":0,\"source\":{\"currentUrl\":\"http://127.0.0.1:18080/file/inline.txt\",\"originalUrl"
+    },
+    {
+      "t": 1793307605823,
+      "boot": "6nk8oo",
+      "name": "daemon_if_match",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61960/schemas/TaskList.json\",\"tasks\":[{\"id\":\"01a18976-7b3c-7d46-97e9-74a3c71db290\",\"queueId\":\"main\",\"status\":\"paused\",\"priority\":\"normal\",\"position\":0,\"engine\":\"http\",\"size\":-1,\"downloaded\":0,\"source\":{\"currentUrl\":\"http://127.0.0.1:18080/file/inline.txt\",\"originalUrl\":\""
+    },
+    {
+      "t": 1793307608834,
+      "boot": "6nk8oo",
+      "name": "daemon_sse_headers",
+      "ok": true,
+      "status": 200,
+      "ct": "text/event-stream",
+      "gotChunk": false
+    },
+    {
+      "t": 1793307608839,
+      "boot": "6nk8oo",
+      "name": "done"
+    }
+  ],
+  "collectorRequests": [
+    {
+      "t": 1793307603774,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/inline.txt",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793307603800,
+      "kind": "request",
+      "method": "GET",
+      "path": "/favicon.ico",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "no-cors",
+      "secFetchDest": "image",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793307605799,
+      "kind": "request",
+      "method": "GET",
+      "path": "/echo",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "cors",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793307605805,
+      "kind": "request",
+      "method": "POST",
+      "path": "/echo",
+      "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+      "secFetchSite": "none",
+      "secFetchMode": "cors",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793307605808,
+      "kind": "request",
+      "method": "GET",
+      "path": "/echo",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "cors",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    }
+  ],
+  "beats": [],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T03:00:02.424321+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":662708}",
+    "{\"time\":\"2026-10-30T03:00:02.424525+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":359125}",
+    "{\"time\":\"2026-10-30T03:00:02.424534+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":226708}",
+    "{\"time\":\"2026-10-30T03:00:02.424541+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":312458}",
+    "{\"time\":\"2026-10-30T03:00:02.424546+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":152459}",
+    "{\"time\":\"2026-10-30T03:00:02.424552+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":240541}",
+    "{\"time\":\"2026-10-30T03:00:02.424558+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":157125}",
+    "{\"time\":\"2026-10-30T03:00:02.424575+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":115125}",
+    "{\"time\":\"2026-10-30T03:00:02.42458+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":156917}",
+    "{\"time\":\"2026-10-30T03:00:02.42504+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T03:00:02.435414+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:61960\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-gANQTi/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-gANQTi/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-gANQTi/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-gANQTi/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-gANQTi/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-gANQTi/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T03:00:02.435503+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:61960\",\"tls\":false}",
+    "{\"time\":\"2026-10-30T03:00:05.815973+06:00\",\"level\":\"INFO\",\"msg\":\"http request\",\"method\":\"GET\",\"path\":\"/v1/tasks\",\"status\":401,\"bytes\":141,\"duration\":58417,\"remote\":\"127.0.0.1:61964\"}"
+  ]
+}

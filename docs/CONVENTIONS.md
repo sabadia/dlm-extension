@@ -19,6 +19,10 @@
 - **Manifest V3 everywhere.** All listeners are registered synchronously at the top level of the background entry. The
   background keeps no state in memory that matters: it lives in `storage.session` or `storage.local` and survives a
   restart of the worker.
+- **Event pages need listeners at load.** In Firefox a `webRequest` listener registered after an `await` receives
+  nothing (spike E0.7). Register every listener at the top level and let it read state from storage.
+- **Never intercept our own downloads.** Fallback downloads the extension starts are recognised (`byExtensionId`, a set of
+  released URLs) and left alone.
 - **Secrets.** Tokens live only in `storage.local` (never `sync`), are never logged, never put in a URL, never sent to
   a content script or page. Errors shown to the user and written to the log pass through the redactor.
 - **Pages are untrusted.** Content scripts only report what they saw; they cannot ask the background to do anything

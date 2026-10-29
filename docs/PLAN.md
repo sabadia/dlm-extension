@@ -45,8 +45,8 @@ Made by the author of the plan:
   Firefox uses a non-persistent event page.
 - Firefox needs a fixed add-on id and (new add-ons) `data_collection_permissions` (we declare `"none"`). Firefox MV3
   does not grant host permissions at install; ask during onboarding.
-- Chrome's Local Network Access (Chrome 142 and later) may affect requests to `127.0.0.1` from an extension worker;
-  not documented, so spike E0.5 decides. Fallback: the native host proxies requests.
+- Chrome's Local Network Access (Chrome 142 and later) was a worry for requests to `127.0.0.1` from an extension
+  worker. **Spike E0.5: it does not apply**; loopback `fetch` works in Chrome 156 and Firefox 159 with host access.
 - Native Messaging: per-browser, per-OS host manifest; `allowed_origins` (Chrome, exact ids) and
   `allowed_extensions` (Firefox); 1 MB host-to-browser limit; Chrome needs a stable id (manifest `key`).
 - Chrome and Edge warn about developer-mode extensions for unpacked builds. **GitHub-only works well on Firefox
@@ -59,7 +59,9 @@ Made by the author of the plan:
 **Gaps (each is a backend or app task)**
 
 1. The extension would get the primary admin token; no pairing, no scoped or revocable token (P14.1, F9.1).
-2. Firefox's `moz-extension://<uuid>` origin cannot be listed; `If-Match` is blocked and `ETag` hidden (P14.2).
+2. ~~Firefox's `moz-extension://<uuid>` origin cannot be listed.~~ **Not a gap** (spike E0.6): extension requests carry
+   `Sec-Fetch-Site: none` or `same-origin` and no preflight, and the daemon accepts them. P14.2 is closed. The only
+   origin gate is the native host's `allowed_origins` check, solved by P14.3.
 3. The native-host launcher bakes in an address that goes stale because the app uses a random port (P14.3).
 4. The launcher path moves with the app and is not removed on uninstall (F9.2).
 5. Capture forces the direct engine, lacks checksum, mirrors, name, method, body and cookie partition key, and puts
@@ -88,17 +90,21 @@ Made by the author of the plan:
   Allow or Deny; on Allow the daemon issues an `extension`-scoped token, returned once through the host and kept in
   `storage.local` (never synced, never logged). Revocable in the app.
 - **Token scope:** capture, task create/list/pause/resume, resolve, browser-resolve, cookie import, events, health,
-  limits. Not allowed: settings, token management, cookie export, native-host, deleting data. Extension origins are
-  accepted only with such a token.
-- **Interception:** Chrome `downloads.onCreated`, rules, cancel and erase, capture. Firefox blocking
-  `webRequest.onHeadersReceived`, cancel, capture. If DLM cannot take the download, restart it in the browser and say
-  why. GET only in v1.
+  limits. Not allowed: settings, token management, cookie export, native-host, deleting data. Authentication is the
+  only gate for REST (spike E0.6), so this scope and per-token rate limits carry the weight.
+- **Interception (both browsers, spike E0.7):** `downloads.onCreated`, rules, `cancel`, `erase`, capture. Response
+  headers from `webRequest` (which arrive 1 to 9 ms earlier) enrich the item. Firefox may additionally cancel in a
+  blocking `webRequest` to avoid the download entry; optional. Our own fallback downloads are exempt. Only `http`,
+  `https` and `ftp` URLs; `blob:` and `data:` stay with the browser. If DLM cannot take the download, restart it in
+  the browser and say why. GET only in v1.
 - **Metadata:** URL, final URL, page URL, referrer, mime, size, file name, user agent, selected request headers, and
   cookies for the download's own domain, in a per-task jar.
 - **Media detection:** network classifier plus page scan; per-tab store drives the badge and popup; HLS and DASH
   variants parsed for a quality picker; blob and MSE pages offered through yt-dlp or the daemon's browser; DRM labelled.
 - **Magnet and torrent:** user-gesture clicks are captured and sent directly; `.torrent` downloads are sent by URL.
-- **Link refresh:** watch for `awaiting_link`, notify, open the stored page, capture the next matching download.
+- **Link refresh:** an alarm every 30 s polls for `awaiting_link` (the worker lives about 30 s idle and a stream does not
+  keep it alive, spike E0.8); notify, open the stored page, capture the next matching download. Live progress uses SSE
+  only while the popup is open.
 
 ## Permissions (to justify in the store listing)
 
@@ -119,12 +125,12 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 - [x] E0.1 Create the repository, board, labels and milestones — Public repo `sabadia/dlm-extension` (Apache-2.0), board #5, labels, milestones E0 to E9.
 - [x] E0.2 Plan, conventions, ADRs, threat-model stub, contribution docs — `docs/PLAN.md` (authoritative), CONVENTIONS, ADR for stack and transport, threat-model stub, README, CONTRIBUTING, issue and PR templates.
 - [x] E0.3 WXT + TypeScript + Preact scaffold and tooling — WXT project (MV3 for Chrome and Firefox), strict TypeScript, ESLint, Prettier, Vitest, `web-ext lint`; empty background, popup and options entries; pnpm workspace pinned (`.nvmrc`, `packageManager`).
-- [ ] E0.4 CI, release workflow, licences, SBOM, Dependabot — CI: frozen install, lint, typecheck, unit tests, `web-ext lint`, build both targets, npm licence allow-list, CycloneDX SBOM, intentline. Release workflow on tag: Chrome zip, Firefox zip and sources zip, SHA256SUMS, provenance attestation, GitHub release. Dependabot for npm and actions.
-- [ ] E0.5 Spike: loopback fetch from an MV3 service worker (Local Network Access) — Write down, per browser and version, whether `fetch('http://127.0.0.1:PORT')` from the background works without a prompt, with `host_permissions`, and with `targetAddressSpace`. If not, decide the fallback (native host proxies requests) and file the backend task. Result in `docs/spikes/e0-5.md`.
-- [ ] E0.6 Spike: daemon origin checks with real extension requests — Run a daemon and call it from Chrome and Firefox extensions: what `Origin`, `Sec-Fetch-Site` and preflight arrive, what `CrossOriginProtection` and CORS do. Result drives P14.2. Needs backend: sabadia/dlm-server#138 (P14.2)
-- [ ] E0.7 Spike: download cancel and hand-off behaviour — Chrome `downloads.onCreated` cancel+erase and Firefox blocking `webRequest`: timing, UI flash, leftover temp files, redirects, `Content-Disposition`, blob and data URLs, downloads started by other extensions. Result in `docs/spikes/e0-7.md`.
-- [ ] E0.8 Spike: service-worker lifetime with a native port and SSE — How long a worker lives with `connectNative` open, with `fetch` streaming SSE, with alarms; what wakes it; what breaks. Decide how live updates and `awaiting_link` watching work.
-- [ ] E0.9 Spike: fixed ids and Firefox permission model — Generate the Chrome manifest `key` (stable id) and choose the Firefox gecko id; check Firefox MV3 host-permission prompts and `data_collection_permissions`; list the minimum permission set with a justification for each. Result feeds P14.3. Needs backend: sabadia/dlm-server#139 (P14.3)
+- [x] E0.4 CI, release workflow, licences, SBOM, Dependabot — CI: frozen install, lint, typecheck, unit tests, `web-ext lint`, build both targets, npm licence allow-list, CycloneDX SBOM, intentline. Release workflow on tag: Chrome zip, Firefox zip and sources zip, SHA256SUMS, provenance attestation, GitHub release. Dependabot for npm and actions.
+- [x] E0.5 Spike: loopback fetch from an MV3 service worker (Local Network Access) — Write down, per browser and version, whether `fetch('http://127.0.0.1:PORT')` from the background works without a prompt, with `host_permissions`, and with `targetAddressSpace`. If not, decide the fallback (native host proxies requests) and file the backend task. Result in `docs/spikes/e0-5.md`. **Result:** works, no fallback needed (docs/spikes/e0-5.md).
+- [x] E0.6 Spike: daemon origin checks with real extension requests — Run a daemon and call it from Chrome and Firefox extensions: what `Origin`, `Sec-Fetch-Site` and preflight arrive, what `CrossOriginProtection` and CORS do. Result drives P14.2. Needs backend: sabadia/dlm-server#138 (P14.2) **Result:** the daemon already accepts extension requests; P14.2 is not needed (docs/spikes/e0-6.md).
+- [x] E0.7 Spike: download cancel and hand-off behaviour — Chrome `downloads.onCreated` cancel+erase and Firefox blocking `webRequest`: timing, UI flash, leftover temp files, redirects, `Content-Disposition`, blob and data URLs, downloads started by other extensions. Result in `docs/spikes/e0-7.md`. **Result:** cancel and erase on `onCreated` works on both browsers (docs/spikes/e0-7.md).
+- [x] E0.8 Spike: service-worker lifetime with a native port and SSE — How long a worker lives with `connectNative` open, with `fetch` streaming SSE, with alarms; what wakes it; what breaks. Decide how live updates and `awaiting_link` watching work. **Result:** about 30 s idle; alarms or a native port keep it alive, a stream does not (docs/spikes/e0-8.md).
+- [x] E0.9 Spike: fixed ids and Firefox permission model — Generate the Chrome manifest `key` (stable id) and choose the Firefox gecko id; check Firefox MV3 host-permission prompts and `data_collection_permissions`; list the minimum permission set with a justification for each. Result feeds P14.3. Needs backend: sabadia/dlm-server#139 (P14.3) **Result:** ids fixed, permissions listed (docs/spikes/e0-9.md).
 
 ### E1 Core
 
@@ -141,7 +147,7 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 - [ ] E2.1 Rules engine — Per-site allow/deny, minimum size, file types and mime lists, modifier-key bypass (Alt), private-window rule, global on/off; pure functions with table tests.
 - [ ] E2.2 Chrome hand-off (onCreated, cancel, erase, capture) — Intercept browser downloads, cancel and erase them, hand off to DLM; guard against re-intercepting our own fallback download. Needs the result of: E0.7
-- [ ] E2.3 Firefox hand-off (blocking webRequest) — Cancel attachment and non-renderable responses before a download appears and hand off to DLM. Needs the result of: E0.7
+- [ ] E2.3 Firefox hand-off details — The common path (E2.2) works on Firefox. Handle what differs: the item has no `finalUrl` or `referrer` (take the page from the `webRequest` data), an optional blocking `webRequest` cancel to avoid the download entry, and exempt our own fallback downloads. Needs the result of: E0.7
 - [ ] E2.4 Request metadata and cookies — Cache request headers per request, read cookies for the download's own domain only (Chrome partition key, Firefox container store), user agent, referrer, page URL; nothing from private windows unless allowed. Needs backend: sabadia/dlm-server#140 (P14.4)
 - [ ] E2.5 Capture, fallback to the browser and feedback — Send `POST /v1/capture`; if DLM is unreachable or rejects, restart the download in the browser and say why; handle duplicates (409); badge and notification feedback. Needs backend: sabadia/dlm-server#140 (P14.4)
 - [ ] E2.6 Optional 'ask first' mode — Small prompt 'Download with DLM / with the browser / always for this site'; remembered choices.
@@ -198,8 +204,8 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 ## Risks
 
-- Loopback access from the Chrome worker (E0.5); fallback is the native host as a proxy.
-- Cancel-then-hand-off may flash the download bar or leave a temp file (E0.7).
+- ~~Loopback access from the Chrome worker~~: measured, fine (E0.5). Re-check on branded Chrome in the manual list.
+- Cancel-then-hand-off: measured clean on both browsers (E0.7); a very large download cancelled late is untested.
 - Chrome install friction until a store listing exists.
 - Firefox host-permission prompt; declining must leave a clear "grant access" state.
 - DRM, signed expiring URLs and POST-only downloads: detect and explain, never fail silently.

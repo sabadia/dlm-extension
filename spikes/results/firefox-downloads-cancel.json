@@ -1,0 +1,403 @@
+{
+  "browser": "firefox",
+  "mode": "downloads",
+  "options": {
+    "nogrant": true,
+    "action": "cancel",
+    "seconds": "90"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "moz-extension://11111111-2222-4333-8444-555555555555",
+  "daemonUrl": "http://127.0.0.1:62380",
+  "reports": [
+    {
+      "t": 1793307909727,
+      "boot": "zbtgvv",
+      "name": "download_attachment",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 141,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 150,
+          "type": "created",
+          "id": 1,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": null,
+          "referrer": null,
+          "mime": "application/octet-stream",
+          "state": "in_progress",
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 151,
+          "type": "changed",
+          "id": 1,
+          "state": "interrupted"
+        },
+        {
+          "ms": 151,
+          "type": "changed",
+          "id": 1,
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 152,
+          "type": "changed",
+          "id": 1
+        },
+        {
+          "ms": 152,
+          "type": "cancelled",
+          "id": 1
+        },
+        {
+          "ms": 185,
+          "type": "erased",
+          "erased": [1]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793307915758,
+      "boot": "zbtgvv",
+      "name": "download_redirect_to_attachment",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 19,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "status": 302
+        },
+        {
+          "ms": 42,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 46,
+          "type": "created",
+          "id": 2,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": null,
+          "referrer": null,
+          "mime": "application/octet-stream",
+          "state": "in_progress",
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 61,
+          "type": "changed",
+          "id": 2,
+          "state": "interrupted"
+        },
+        {
+          "ms": 70,
+          "type": "changed",
+          "id": 2,
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 83,
+          "type": "changed",
+          "id": 2
+        },
+        {
+          "ms": 83,
+          "type": "cancelled",
+          "id": 2
+        },
+        {
+          "ms": 87,
+          "type": "erased",
+          "erased": [2]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793307921778,
+      "boot": "zbtgvv",
+      "name": "download_octet_no_disposition",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 13,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "status": 200,
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 21,
+          "type": "created",
+          "id": 3,
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "finalUrl": null,
+          "referrer": null,
+          "mime": "application/octet-stream",
+          "state": "in_progress",
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 24,
+          "type": "changed",
+          "id": 3,
+          "state": "interrupted"
+        },
+        {
+          "ms": 25,
+          "type": "changed",
+          "id": 3,
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 29,
+          "type": "changed",
+          "id": 3
+        },
+        {
+          "ms": 29,
+          "type": "cancelled",
+          "id": 3
+        },
+        {
+          "ms": 31,
+          "type": "erased",
+          "erased": [3]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793307927809,
+      "boot": "zbtgvv",
+      "name": "download_inline_text",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 17,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/inline.txt",
+          "status": 200,
+          "ct": "text/plain"
+        },
+        {
+          "ms": 37,
+          "type": "image",
+          "url": "http://127.0.0.1:18080/favicon.ico",
+          "status": 404
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793307933841,
+      "boot": "zbtgvv",
+      "name": "download_blob_download",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 20,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/page/blob",
+          "status": 200,
+          "ct": "text/html"
+        },
+        {
+          "ms": 34,
+          "type": "image",
+          "url": "http://127.0.0.1:18080/favicon.ico",
+          "status": 404
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793307939856,
+      "boot": "zbtgvv",
+      "name": "download_extension_download",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 4,
+          "type": "created",
+          "id": 4,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": null,
+          "referrer": null,
+          "mime": null,
+          "state": "in_progress",
+          "byExt": "dlm-spike@example.org",
+          "incognito": false
+        },
+        {
+          "ms": 5,
+          "type": "changed",
+          "id": 4,
+          "state": "interrupted"
+        },
+        {
+          "ms": 6,
+          "type": "changed",
+          "id": 4,
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 6,
+          "type": "cancelled",
+          "id": 4
+        },
+        {
+          "ms": 6,
+          "type": "erased",
+          "erased": [4]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793307939873,
+      "boot": "zbtgvv",
+      "name": "done"
+    }
+  ],
+  "console": [],
+  "collectorRequests": [
+    {
+      "t": 1793307903767,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/attachment.bin",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307909761,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/redirect",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307909763,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/attachment.bin",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307915780,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/octet-no-disposition.bin",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307921811,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/inline.txt",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307921828,
+      "kind": "request",
+      "method": "GET",
+      "path": "/favicon.ico",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "no-cors",
+      "secFetchDest": "image",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307927845,
+      "kind": "request",
+      "method": "GET",
+      "path": "/page/blob",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    }
+  ],
+  "beats": [],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T03:05:02.252419+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":687042}",
+    "{\"time\":\"2026-10-30T03:05:02.25262+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":226625}",
+    "{\"time\":\"2026-10-30T03:05:02.252629+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":196375}",
+    "{\"time\":\"2026-10-30T03:05:02.252635+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":315334}",
+    "{\"time\":\"2026-10-30T03:05:02.25264+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":211750}",
+    "{\"time\":\"2026-10-30T03:05:02.252647+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":194209}",
+    "{\"time\":\"2026-10-30T03:05:02.252652+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":167083}",
+    "{\"time\":\"2026-10-30T03:05:02.252657+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":162750}",
+    "{\"time\":\"2026-10-30T03:05:02.252662+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":175583}",
+    "{\"time\":\"2026-10-30T03:05:02.253145+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T03:05:02.263789+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:62380\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-WxTEQH/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-WxTEQH/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-WxTEQH/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-WxTEQH/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-WxTEQH/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-WxTEQH/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T03:05:02.263887+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:62380\",\"tls\":false}"
+  ]
+}

@@ -8,3 +8,4 @@ web-ext-artifacts
 .env
 .env.*
 dist
+spikes/results/*.tmp

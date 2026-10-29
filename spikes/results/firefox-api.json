@@ -1,0 +1,255 @@
+{
+  "browser": "firefox",
+  "mode": "api",
+  "options": {
+    "nogrant": true,
+    "seconds": "60",
+    "out": "firefox-api"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "moz-extension://11111111-2222-4333-8444-555555555555",
+  "daemonUrl": "http://127.0.0.1:61902",
+  "reports": [
+    {
+      "t": 1793307582363,
+      "boot": "e5vki5",
+      "name": "env",
+      "origin": "moz-extension://b27f5b84-7ea1-43b9-abcd-2d302088ebb9",
+      "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0",
+      "id": "dlm-spike@example.org"
+    },
+    {
+      "t": 1793307582383,
+      "boot": "e5vki5",
+      "name": "permissions",
+      "ok": true,
+      "all": {
+        "origins": ["<all_urls>"],
+        "data_collection": [],
+        "permissions": [
+          "downloads",
+          "webRequest",
+          "webRequestBlocking",
+          "storage",
+          "nativeMessaging",
+          "tabs",
+          "alarms"
+        ]
+      },
+      "containsAllUrls": true,
+      "containsLoopback": true
+    },
+    {
+      "t": 1793307584499,
+      "boot": "e5vki5",
+      "name": "webrequest_toplevel",
+      "ok": true,
+      "eventsSeen": 8
+    },
+    {
+      "t": 1793307584512,
+      "boot": "e5vki5",
+      "name": "loopback_simple",
+      "ok": true,
+      "status": 200,
+      "echo": {
+        "method": "GET",
+        "path": "/echo",
+        "origin": null,
+        "secFetchSite": "same-origin",
+        "secFetchMode": "cors",
+        "secFetchDest": "empty",
+        "host": "127.0.0.1:18080",
+        "acrPn": null,
+        "acrMethod": null,
+        "acrHeaders": null,
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+      }
+    },
+    {
+      "t": 1793307584515,
+      "boot": "e5vki5",
+      "name": "loopback_post_json_auth",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "t": 1793307584519,
+      "boot": "e5vki5",
+      "name": "loopback_targetAddressSpace_loopback",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "t": 1793307584522,
+      "boot": "e5vki5",
+      "name": "loopback_targetAddressSpace_local",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "t": 1793307584524,
+      "boot": "e5vki5",
+      "name": "daemon_health",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61902/schemas/HealthOutputBody.json\",\"status\":\"ok\",\"version\":\"0.5.0\",\"apiVersion\":1,\"minClientApi\":1,\"authenticated\":false}\n"
+    },
+    {
+      "t": 1793307584526,
+      "boot": "e5vki5",
+      "name": "daemon_no_token",
+      "ok": true,
+      "status": 401,
+      "text": "{\"type\":\"urn:dlm:problem:unauthorized\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"missing or invalid bearer token\",\"code\":\"unauthorized\"}\n"
+    },
+    {
+      "t": 1793307584528,
+      "boot": "e5vki5",
+      "name": "daemon_get_authed",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61902/schemas/TaskList.json\",\"tasks\":[]}\n"
+    },
+    {
+      "t": 1793307584530,
+      "boot": "e5vki5",
+      "name": "daemon_post_json_authed",
+      "ok": true,
+      "status": 201,
+      "text": "{\"$schema\":\"http://127.0.0.1:61902/schemas/CaptureOutput.json\",\"task\":{\"id\":\"01a18976-2811-79fa-a85f-cb83ff5fbbf2\",\"queueId\":\"main\",\"status\":\"paused\",\"priority\":\"normal\",\"position\":0,\"engine\":\"http\",\"size\":-1,\"downloaded\":0,\"source\":{\"currentUrl\":\"http://127.0.0.1:18080/file/inline.txt\",\"originalUrl"
+    },
+    {
+      "t": 1793307584532,
+      "boot": "e5vki5",
+      "name": "daemon_if_match",
+      "ok": true,
+      "status": 200,
+      "text": "{\"$schema\":\"http://127.0.0.1:61902/schemas/TaskList.json\",\"tasks\":[{\"id\":\"01a18976-2811-79fa-a85f-cb83ff5fbbf2\",\"queueId\":\"main\",\"status\":\"paused\",\"priority\":\"normal\",\"position\":0,\"engine\":\"http\",\"size\":-1,\"downloaded\":0,\"source\":{\"currentUrl\":\"http://127.0.0.1:18080/file/inline.txt\",\"originalUrl\":\""
+    },
+    {
+      "t": 1793307599540,
+      "boot": "e5vki5",
+      "name": "daemon_sse_headers",
+      "ok": true,
+      "status": 200,
+      "ct": "text/event-stream",
+      "gotChunk": true
+    },
+    {
+      "t": 1793307599543,
+      "boot": "e5vki5",
+      "name": "done"
+    }
+  ],
+  "console": [],
+  "collectorRequests": [
+    {
+      "t": 1793307582560,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/inline.txt",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307582579,
+      "kind": "request",
+      "method": "GET",
+      "path": "/favicon.ico",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "no-cors",
+      "secFetchDest": "image",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307584510,
+      "kind": "request",
+      "method": "GET",
+      "path": "/echo",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "cors",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307584514,
+      "kind": "request",
+      "method": "POST",
+      "path": "/echo",
+      "origin": "moz-extension://b27f5b84-7ea1-43b9-abcd-2d302088ebb9",
+      "secFetchSite": "same-origin",
+      "secFetchMode": "cors",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307584518,
+      "kind": "request",
+      "method": "GET",
+      "path": "/echo",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "cors",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    },
+    {
+      "t": 1793307584520,
+      "kind": "request",
+      "method": "GET",
+      "path": "/echo",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "cors",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:159.0) Gecko/20100101 Firefox/159.0"
+    }
+  ],
+  "beats": [],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T02:59:40.100932+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":530458}",
+    "{\"time\":\"2026-10-30T02:59:40.101076+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":200625}",
+    "{\"time\":\"2026-10-30T02:59:40.101085+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":206708}",
+    "{\"time\":\"2026-10-30T02:59:40.101092+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":296583}",
+    "{\"time\":\"2026-10-30T02:59:40.101097+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":141542}",
+    "{\"time\":\"2026-10-30T02:59:40.101103+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":157708}",
+    "{\"time\":\"2026-10-30T02:59:40.101109+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":124916}",
+    "{\"time\":\"2026-10-30T02:59:40.101115+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":108292}",
+    "{\"time\":\"2026-10-30T02:59:40.10112+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":141333}",
+    "{\"time\":\"2026-10-30T02:59:40.101567+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T02:59:40.11279+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:61902\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-FR9T2w/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-FR9T2w/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-FR9T2w/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-FR9T2w/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-FR9T2w/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-FR9T2w/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T02:59:40.112854+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:61902\",\"tls\":false}",
+    "{\"time\":\"2026-10-30T02:59:44.525509+06:00\",\"level\":\"INFO\",\"msg\":\"http request\",\"method\":\"GET\",\"path\":\"/v1/tasks\",\"status\":401,\"bytes\":141,\"duration\":77584,\"remote\":\"127.0.0.1:61952\"}"
+  ]
+}
