@@ -21,7 +21,7 @@ export default defineConfig({
     name: 'DLM',
     description: 'Send downloads, media, magnet links and torrents from your browser to DLM.',
     // The permission set grows with the features (docs/PLAN.md, "Permissions"); each addition is a plan change.
-    permissions: ['storage'],
+    permissions: ['storage', 'nativeMessaging'],
     ...(browser === 'firefox' ? {} : { key: CHROME_PUBLIC_KEY }),
     ...(browser === 'firefox'
       ? {
