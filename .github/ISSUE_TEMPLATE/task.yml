@@ -1,6 +1,6 @@
 name: Task
 description: A planned piece of work from docs/PLAN.md
-labels: ["type/feature"]
+labels: ['type/feature']
 body:
   - type: input
     id: plan

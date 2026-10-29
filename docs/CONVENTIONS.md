@@ -1,11 +1,13 @@
 # Engineering conventions
 
 ## Toolchain
+
 - Node and pnpm are pinned (`.nvmrc`, `packageManager`); CI uses the same. Bumping a pin is its own pull request.
 - Before adding a dependency check its licence (MIT, BSD, Apache-2.0, MPL-2.0, ISC only), its maintenance and that it
   runs in a service worker or event page. Prefer none: the extension is small.
 
 ## TypeScript
+
 - `strict` plus `noUncheckedIndexedAccess`; no `any` outside the generated client's edge; no non-null `!` on values
   that can legitimately be missing.
 - Pure logic (rules, classifier, playlist parsing, redaction) is in plain functions with table tests and no browser
@@ -13,6 +15,7 @@
 - Lint and format are enforced; do not silence a rule without a comment saying why.
 
 ## Extension rules
+
 - **Manifest V3 everywhere.** All listeners are registered synchronously at the top level of the background entry. The
   background keeps no state in memory that matters: it lives in `storage.session` or `storage.local` and survives a
   restart of the worker.
@@ -28,13 +31,16 @@
   adapter file and listed in `docs/browser-differences.md`.
 
 ## UI
+
 - Preact, small components, no business logic in render. Every string is in the message catalogue.
 - Everything is keyboard operable and labelled; respects light and dark, high contrast and text scaling.
 
 ## Testing
+
 - Vitest for logic; Playwright for the real extension in Chromium against a real daemon and a local fixture site;
   Firefox through `web-ext` where possible. No network except to the fixture and the local daemon.
 - A bug fix comes with the test that failed.
 
 ## Git
+
 - Conventional Commits; squash merge; one phase per branch and pull request; commits end with the attribution lines.

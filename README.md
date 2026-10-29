@@ -29,7 +29,7 @@ pnpm test           # unit tests
 pnpm build          # both browsers into .output/
 ```
 
-(The scaffold arrives with task E0.3; until then this section is the target.) See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Related
 

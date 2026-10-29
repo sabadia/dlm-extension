@@ -3,10 +3,12 @@
 Status: accepted (2026-10-30). Revisit after spike E0.5.
 
 ## Context
+
 The extension must run on Chrome (MV3 service worker) and Firefox (MV3 event page), find and pair with a local daemon
 that listens on a random loopback port, and optionally talk to remote daemons.
 
 ## Decision
+
 - **WXT + TypeScript (strict) + Preact.** WXT targets both browsers from one codebase and builds the zips and the
   Firefox sources archive; Preact keeps popup and options small.
 - **Local discovery and pairing through Native Messaging** (`dev.sabadia.dlm`, the `dlm native-host` shim). After
@@ -19,6 +21,7 @@ that listens on a random loopback port, and optionally talk to remote daemons.
   requests; the client has a transport interface so this is a swap, not a rewrite.
 
 ## Consequences
+
 - The daemon needs a pairing flow, a scoped token, extension-origin handling and a stable native host (Phase 14).
 - The app needs a pairing dialog and a paired-extensions list (M9).
 - Two transports to keep in step if the fallback is needed.
