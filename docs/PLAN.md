@@ -144,7 +144,7 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 - [x] E1.4 Native messaging transport and local discovery — Connect to host `dev.sabadia.dlm`: `connect`, `ping`, live address and version; detect 'host not installed', 'app not running', 'incompatible version'. Needs backend: sabadia/dlm-server#139 (P14.3)
 - [x] E1.5 Pairing flow and token storage — Extension asks to pair, shows the code, waits for Allow/Deny in the app, stores the scoped token; re-pair after revoke; never logs the token. Needs backend: sabadia/dlm-server#137 (P14.1), sabadia/dlm-server#139 (P14.3) Needs app: sabadia/dlm-app#113 (F9.1)
 - [x] E1.6 Connection state machine, badge and version compatibility — States (not installed, not running, pairing, connected, incompatible, token revoked, remote unreachable); badge and tooltip; check `apiVersion` against `minClientApi`.
-- [ ] E1.7 Remote targets (URL and token) — Add, test and remove remote servers; HTTPS recommended with a clear warning for plain HTTP and self-signed certificates (cannot be pinned from a browser).
+- [x] E1.7 Remote targets (URL and token) — Add, test and remove remote servers; HTTPS recommended with a clear warning for plain HTTP and self-signed certificates (cannot be pinned from a browser).
 - [x] E1.8 Logging and diagnostics without secrets — Ring-buffer log, redaction of tokens, cookies and credentials in URLs, 'copy diagnostics'.
 
 ### E2 Interception

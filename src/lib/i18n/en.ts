@@ -31,6 +31,36 @@ export const en = {
   'state.connected': 'Connected to DLM {version}.',
   'state.daemonTooOld': 'DLM {minVersion} or newer is needed. Update the DLM app.',
   'state.extensionTooOld': 'DLM needs a newer version of this extension. Update the extension.',
+  'remote.title': 'DLM servers',
+  'remote.help':
+    'Send downloads to DLM on another computer. Use https:// where you can; the token is stored in this browser only.',
+  'remote.local': 'DLM on this computer',
+  'remote.active': 'Active',
+  'remote.makeActive': 'Use this one',
+  'remote.remove': 'Remove',
+  'remote.noToken': 'No token',
+  'remote.name': 'Name',
+  'remote.url': 'Address',
+  'remote.urlHint': 'For example https://dlm.example.test:17171',
+  'remote.token': 'Token',
+  'remote.test': 'Test',
+  'remote.add': 'Add server',
+  'remote.warnPlainHttp':
+    'This address is not encrypted: the token and the addresses of your downloads can be read on the way. Use https:// if the server offers it.',
+  'remote.selfSigned':
+    'If the server uses a certificate it made itself, the browser must trust it: add it to the system, because an extension cannot accept it for you.',
+  'remote.ok': 'Connected to DLM {version}.',
+  'remote.added': 'Added.',
+  'remote.accessDenied':
+    'The browser did not allow access to this address, so the server was not added.',
+  'remote.invalid.empty': 'Enter the address of the server.',
+  'remote.invalid.invalid': 'That is not a valid address.',
+  'remote.invalid.scheme': 'The address must start with https:// or http://.',
+  'remote.invalid.credentials':
+    'Leave the user name and password out of the address; use the token field.',
+  'remote.unauthorized': 'The server did not accept this token.',
+  'remote.unreachable': 'The server cannot be reached: {message}',
+  'remote.failed': 'The test failed: {message}',
   'pairing.title': 'Connect to DLM',
   'pairing.intro':
     'DLM asks you to allow this browser the first time. Nothing is sent before you do.',

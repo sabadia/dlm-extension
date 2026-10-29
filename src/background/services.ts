@@ -1,5 +1,7 @@
 import { ConnectionService, type ActionApi } from '../lib/connection/service';
+import { DlmClient } from '../lib/api/client';
 import { RingLog } from '../lib/log/log';
+import { RemoteService } from '../lib/remote/service';
 import { NativeHost, type NativeRuntime } from '../lib/native/host';
 import { detectBrowser } from '../lib/pairing/browser';
 import { PairingService } from '../lib/pairing/service';
@@ -38,6 +40,7 @@ export interface Services {
   host: NativeHost;
   pairing: PairingService;
   connection: ConnectionService;
+  remote: RemoteService;
 }
 
 export function createServices(env: Environment): Services {
@@ -53,6 +56,23 @@ export function createServices(env: Environment): Services {
     version: env.version,
     log,
   });
+  const connection = new ConnectionService({
+    settings,
+    secrets,
+    host,
+    pairing,
+    area: env.session,
+    action: env.action,
+    log,
+    ...(env.hasAccess ? { hasAccess: env.hasAccess } : {}),
+  });
+  const remote = new RemoteService({
+    settings,
+    secrets,
+    client: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
+    log,
+    changed: () => void connection.refresh(),
+  });
   return {
     log,
     settings,
@@ -61,14 +81,7 @@ export function createServices(env: Environment): Services {
     userAgent: env.userAgent,
     host,
     pairing,
-    connection: new ConnectionService({
-      settings,
-      secrets,
-      host,
-      pairing,
-      area: env.session,
-      action: env.action,
-      log,
-    }),
+    connection,
+    remote,
   };
 }

@@ -40,6 +40,22 @@ export function createHandlers(services: Services): Handlers {
       },
     },
     'pairing.cancel': { handle: () => services.pairing.cancel() },
+    'remote.list': { handle: () => services.remote.list() },
+    'remote.test': { handle: (input) => services.remote.test(input) },
+    'remote.add': { handle: (input) => services.remote.add(input) },
+    'remote.replaceToken': { handle: ({ id, token }) => services.remote.replaceToken(id, token) },
+    'remote.remove': {
+      handle: async ({ id }) => {
+        await services.remote.remove(id);
+        return null;
+      },
+    },
+    'remote.setActive': {
+      handle: async ({ id }) => {
+        await services.remote.setActive(id);
+        return null;
+      },
+    },
     'log.clear': {
       handle: async () => {
         await services.log.clear();

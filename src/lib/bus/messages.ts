@@ -1,5 +1,6 @@
 import type { ConnectionState } from '../connection/state';
 import type { PairingView } from '../pairing/service';
+import type { AddResult, RemoteTestResult, RemoteView } from '../remote/service';
 
 /**
  * Every message between the parts of the extension (background, popup, options, content scripts), with the type of its
@@ -14,6 +15,15 @@ export interface MessageMap {
   'connection.get': { request: undefined; response: { state: ConnectionState; text: string } };
   /** Looks again now (the popup does this when it opens). */
   'connection.refresh': { request: undefined; response: { state: ConnectionState; text: string } };
+  /** The targets (the local DLM and the servers added by hand), without tokens. */
+  'remote.list': { request: undefined; response: RemoteView[] };
+  /** Calls a server with a token and says what it found. Stores nothing. */
+  'remote.test': { request: { url: string; token: string }; response: RemoteTestResult };
+  /** Tests a server and saves it. The browser's access to it must already be granted (asked in the page, on a click). */
+  'remote.add': { request: { name: string; url: string; token: string }; response: AddResult };
+  'remote.replaceToken': { request: { id: string; token: string }; response: RemoteTestResult };
+  'remote.remove': { request: { id: string }; response: null };
+  'remote.setActive': { request: { id: string }; response: null };
   /** Empties the log. */
   'log.clear': { request: undefined; response: null };
   /** Where pairing with the DLM on this computer stands. */
