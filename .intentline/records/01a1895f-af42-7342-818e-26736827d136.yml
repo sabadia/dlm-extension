@@ -1,0 +1,32 @@
+schema_version: 1
+id: 01a1895f-af42-7342-818e-26736827d136
+status: draft
+created_at: '2026-10-29T20:35:11Z'
+updated_at: '2026-10-29T20:35:11Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: 'CI and release workflows for the extension: checks, both browser builds, licence allow-list, SBOM, provenance, GitHub release'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: .github/workflows/ci.yml
+  start_line: null
+  end_line: null
+- path: .github/workflows/release.yml
+  start_line: null
+  end_line: null
+- path: tools/check-licenses.mjs
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

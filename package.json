@@ -22,7 +22,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "check:licenses": "node tools/check-licenses.mjs",
+    "make:sbom": "pnpm sbom --sbom-format cyclonedx --prod --out dist/sbom.cdx.json"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

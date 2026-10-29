@@ -1,0 +1,2 @@
+# Dependency build scripts do not run unless allowed here.
+allowBuilds: {}
