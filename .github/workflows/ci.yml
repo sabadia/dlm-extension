@@ -21,6 +21,7 @@ jobs:
       - uses: ./.github/actions/setup-node-pnpm
       - run: pnpm format:check
       - run: pnpm lint
+      - run: pnpm check:api
       - run: pnpm typecheck
       - run: pnpm test
 

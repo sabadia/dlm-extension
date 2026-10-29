@@ -4,3 +4,5 @@ node_modules
 coverage
 pnpm-lock.yaml
 .intentline
+src/lib/api/schema.d.ts
+spec/openapi-3.0.json

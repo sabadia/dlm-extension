@@ -134,7 +134,7 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 ### E1 Core
 
-- [ ] E1.1 Typed daemon client generated from the pinned OpenAPI — Generate types from a copy of the pinned OpenAPI document; small `DlmClient` (capture, tasks, resolve, events via fetch streaming, health); contract check against the newest daemon release like dlm-app's nightly job.
+- [x] E1.1 Typed daemon client generated from the pinned OpenAPI — Generate types from a copy of the pinned OpenAPI document; small `DlmClient` (capture, tasks, resolve, events via fetch streaming, health); contract check against the newest daemon release like dlm-app's nightly job.
 - [x] E1.2 Settings schema, storage and migrations — Typed settings in `storage.local` (never synced): targets, rules, preferences; versioned migrations; import/export without secrets.
 - [ ] E1.3 MV3-safe background architecture — State that survives worker restarts, typed message bus between background, popup, options and content scripts, one place that registers listeners synchronously, no globals.
 - [ ] E1.4 Native messaging transport and local discovery — Connect to host `dev.sabadia.dlm`: `connect`, `ping`, live address and version; detect 'host not installed', 'app not running', 'incompatible version'. Needs backend: sabadia/dlm-server#139 (P14.3)

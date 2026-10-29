@@ -1,0 +1,13 @@
+{
+  "get-health": { "reads": ["status", "version", "apiVersion", "minClientApi", "authenticated"] },
+  "whoami": { "reads": ["name", "scope", "primary"] },
+  "capture-download": { "reads": ["task", "refreshed"] },
+  "list-tasks": { "reads": ["tasks", "nextCursor"] },
+  "get-task": { "reads": ["id", "status", "name", "source"] },
+  "create-task": { "reads": ["id", "status"] },
+  "pause-tasks": { "reads": [] },
+  "resume-tasks": { "reads": [] },
+  "resolve-task": { "reads": [] },
+  "resolve-page": { "reads": [] },
+  "stream-events": { "reads": [] }
+}
