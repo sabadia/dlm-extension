@@ -7,6 +7,11 @@ updates:
     groups:
       npm-deps:
         patterns: ['*']
+    ignore:
+      # typescript-eslint does not support TypeScript 7 yet (lint fails with "does not support TS 7.0").
+      # Remove this when it does; bumping the compiler is its own pull request (docs/CONVENTIONS.md).
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: 'build(deps)'
   - package-ecosystem: github-actions
