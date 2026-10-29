@@ -207,6 +207,8 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 - ~~Loopback access from the Chrome worker~~: measured, fine (E0.5). Re-check on branded Chrome in the manual list.
 - Cancel-then-hand-off: measured clean on both browsers (E0.7); a very large download cancelled late is untested.
 - Chrome install friction until a store listing exists.
+- macOS may ask the user to allow the native host the first time a browser starts it (seen in E0.8); until they answer, the
+  connection waits. Onboarding explains it and the extension shows "waiting for your Mac", not an error.
 - Firefox host-permission prompt; declining must leave a clear "grant access" state.
 - DRM, signed expiring URLs and POST-only downloads: detect and explain, never fail silently.
 - Remote servers with self-signed certificates cannot be pinned from a browser; require a trusted certificate.
