@@ -1,0 +1,20 @@
+{
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "skipLibCheck": true
+  },
+  "include": [
+    "entrypoints",
+    "src",
+    "wxt.config.ts",
+    "vitest.config.ts",
+    "eslint.config.js",
+    ".wxt/wxt.d.ts"
+  ]
+}

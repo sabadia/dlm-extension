@@ -1,0 +1,132 @@
+{
+  "browser": "chrome",
+  "mode": "lifetime",
+  "options": {
+    "phase": "sse",
+    "seconds": "130"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "daemonUrl": "http://127.0.0.1:61691",
+  "reports": [
+    {
+      "t": 1793307136478,
+      "boot": "ewi2zj",
+      "name": "lifetime_start",
+      "phase": "sse"
+    },
+    {
+      "t": 1793307151489,
+      "boot": "ewi2zj",
+      "name": "sse_chunk",
+      "n": 8
+    }
+  ],
+  "console": [
+    {
+      "t": 1793307136478,
+      "boot": "ewi2zj",
+      "name": "lifetime_start",
+      "phase": "sse"
+    },
+    {
+      "t": 1793307151489,
+      "boot": "ewi2zj",
+      "name": "sse_chunk",
+      "n": 8
+    }
+  ],
+  "collectorRequests": [],
+  "beats": [
+    {
+      "t": 703,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 2708,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 4709,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 6711,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 8712,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 10704,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 12708,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 14711,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 16711,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 18710,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 20707,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 22706,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 24708,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 26707,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    },
+    {
+      "t": 28706,
+      "boot": "ewi2zj",
+      "phase": "sse"
+    }
+  ],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T02:52:15.691516+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":498250}",
+    "{\"time\":\"2026-10-30T02:52:15.691664+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":210291}",
+    "{\"time\":\"2026-10-30T02:52:15.691673+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":171083}",
+    "{\"time\":\"2026-10-30T02:52:15.691679+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":287750}",
+    "{\"time\":\"2026-10-30T02:52:15.691685+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":144042}",
+    "{\"time\":\"2026-10-30T02:52:15.691694+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":168125}",
+    "{\"time\":\"2026-10-30T02:52:15.691699+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":118958}",
+    "{\"time\":\"2026-10-30T02:52:15.691704+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":105459}",
+    "{\"time\":\"2026-10-30T02:52:15.691709+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":166750}",
+    "{\"time\":\"2026-10-30T02:52:15.69215+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T02:52:15.702167+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:61691\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-OLzq95/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-OLzq95/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-OLzq95/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-OLzq95/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-OLzq95/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-OLzq95/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T02:52:15.70224+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:61691\",\"tls\":false}"
+  ]
+}

@@ -1,0 +1,641 @@
+{
+  "browser": "chrome",
+  "mode": "downloads",
+  "options": {
+    "action": "cancel",
+    "seconds": "90"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "daemonUrl": "http://127.0.0.1:60688",
+  "reports": [
+    {
+      "t": 1793306516553,
+      "boot": "og9emz",
+      "name": "download_attachment",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 47,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 48,
+          "type": "created",
+          "id": 1,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 64,
+          "type": "determiningFilename",
+          "id": 1,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 64,
+          "type": "changed",
+          "id": 1,
+          "state": "interrupted",
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 71,
+          "type": "cancelled",
+          "id": 1
+        },
+        {
+          "ms": 73,
+          "type": "erased",
+          "erased": [1]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306522594,
+      "boot": "og9emz",
+      "name": "download_redirect_to_attachment",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 36,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "status": 302
+        },
+        {
+          "ms": 59,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 62,
+          "type": "created",
+          "id": 2,
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 64,
+          "type": "changed",
+          "id": 2,
+          "state": "interrupted",
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 74,
+          "type": "cancelled",
+          "id": 2
+        },
+        {
+          "ms": 77,
+          "type": "erased",
+          "erased": [2]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306528625,
+      "boot": "og9emz",
+      "name": "download_octet_no_disposition",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 34,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "status": 200,
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 35,
+          "type": "created",
+          "id": 3,
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 0,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 38,
+          "type": "changed",
+          "id": 3,
+          "state": "interrupted",
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 46,
+          "type": "cancelled",
+          "id": 3
+        },
+        {
+          "ms": 51,
+          "type": "erased",
+          "erased": [3]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306534652,
+      "boot": "og9emz",
+      "name": "download_inline_text",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 25,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/inline.txt",
+          "status": 200,
+          "ct": "text/plain"
+        },
+        {
+          "ms": 40,
+          "type": "image",
+          "url": "http://127.0.0.1:18080/favicon.ico",
+          "status": 404
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306540695,
+      "boot": "og9emz",
+      "name": "download_blob_download",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 27,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/page/blob",
+          "status": 200,
+          "ct": "text/html"
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306546744,
+      "boot": "og9emz",
+      "name": "download_extension_download",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 25,
+          "type": "created",
+          "id": 4,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 28,
+          "type": "determiningFilename",
+          "id": 4,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 28,
+          "type": "changed",
+          "id": 4,
+          "state": "interrupted",
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 29,
+          "type": "cancelled",
+          "id": 4
+        },
+        {
+          "ms": 29,
+          "type": "erased",
+          "erased": [4]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306546750,
+      "boot": "og9emz",
+      "name": "done"
+    }
+  ],
+  "console": [
+    {
+      "t": 1793306516553,
+      "boot": "og9emz",
+      "name": "download_attachment",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 47,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 48,
+          "type": "created",
+          "id": 1,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 64,
+          "type": "determiningFilename",
+          "id": 1,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 64,
+          "type": "changed",
+          "id": 1,
+          "state": "interrupted",
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 71,
+          "type": "cancelled",
+          "id": 1
+        },
+        {
+          "ms": 73,
+          "type": "erased",
+          "erased": [1]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306522594,
+      "boot": "og9emz",
+      "name": "download_redirect_to_attachment",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 36,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "status": 302
+        },
+        {
+          "ms": 59,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 62,
+          "type": "created",
+          "id": 2,
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 64,
+          "type": "changed",
+          "id": 2,
+          "state": "interrupted",
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 74,
+          "type": "cancelled",
+          "id": 2
+        },
+        {
+          "ms": 77,
+          "type": "erased",
+          "erased": [2]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306528625,
+      "boot": "og9emz",
+      "name": "download_octet_no_disposition",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 34,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "status": 200,
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 35,
+          "type": "created",
+          "id": 3,
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 0,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 38,
+          "type": "changed",
+          "id": 3,
+          "state": "interrupted",
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 46,
+          "type": "cancelled",
+          "id": 3
+        },
+        {
+          "ms": 51,
+          "type": "erased",
+          "erased": [3]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306534652,
+      "boot": "og9emz",
+      "name": "download_inline_text",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 25,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/inline.txt",
+          "status": 200,
+          "ct": "text/plain"
+        },
+        {
+          "ms": 40,
+          "type": "image",
+          "url": "http://127.0.0.1:18080/favicon.ico",
+          "status": 404
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306540695,
+      "boot": "og9emz",
+      "name": "download_blob_download",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 27,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/page/blob",
+          "status": 200,
+          "ct": "text/html"
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306546744,
+      "boot": "og9emz",
+      "name": "download_extension_download",
+      "action": "cancel",
+      "events": [
+        {
+          "ms": 25,
+          "type": "created",
+          "id": 4,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 28,
+          "type": "determiningFilename",
+          "id": 4,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 28,
+          "type": "changed",
+          "id": 4,
+          "state": "interrupted",
+          "error": "USER_CANCELED"
+        },
+        {
+          "ms": 29,
+          "type": "cancelled",
+          "id": 4
+        },
+        {
+          "ms": 29,
+          "type": "erased",
+          "erased": [4]
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306546750,
+      "boot": "og9emz",
+      "name": "done"
+    }
+  ],
+  "collectorRequests": [
+    {
+      "t": 1793306510550,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/attachment.bin",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306516594,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/redirect",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306516599,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/attachment.bin",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306522629,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/octet-no-disposition.bin",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306528652,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/inline.txt",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306528669,
+      "kind": "request",
+      "method": "GET",
+      "path": "/favicon.ico",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "no-cors",
+      "secFetchDest": "image",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306534693,
+      "kind": "request",
+      "method": "GET",
+      "path": "/page/blob",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306540714,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/attachment.bin",
+      "origin": null,
+      "secFetchSite": "cross-site",
+      "secFetchMode": "navigate",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    }
+  ],
+  "beats": [],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T02:41:49.7622+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":520625}",
+    "{\"time\":\"2026-10-30T02:41:49.762358+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":204959}",
+    "{\"time\":\"2026-10-30T02:41:49.762367+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":172250}",
+    "{\"time\":\"2026-10-30T02:41:49.762374+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":294750}",
+    "{\"time\":\"2026-10-30T02:41:49.762379+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":148209}",
+    "{\"time\":\"2026-10-30T02:41:49.762385+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":164166}",
+    "{\"time\":\"2026-10-30T02:41:49.762391+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":120584}",
+    "{\"time\":\"2026-10-30T02:41:49.762396+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":108875}",
+    "{\"time\":\"2026-10-30T02:41:49.762401+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":144542}",
+    "{\"time\":\"2026-10-30T02:41:49.762841+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T02:41:49.771546+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:60688\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-lVOAKo/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-lVOAKo/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-lVOAKo/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-lVOAKo/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-lVOAKo/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-lVOAKo/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T02:41:49.771598+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:60688\",\"tls\":false}"
+  ]
+}

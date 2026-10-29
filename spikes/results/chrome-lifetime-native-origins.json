@@ -1,0 +1,461 @@
+{
+  "browser": "chrome",
+  "mode": "lifetime",
+  "options": {
+    "phase": "native",
+    "origins": true,
+    "seconds": "130",
+    "out": "chrome-lifetime-native-origins"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "daemonUrl": "http://127.0.0.1:61798",
+  "reports": [
+    {
+      "t": 1793307427148,
+      "boot": "sltys3",
+      "name": "lifetime_start",
+      "phase": "native"
+    },
+    {
+      "t": 1793307493873,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"connect\",\"ok\":true,\"baseUrl\":\"http://127.0.0.1:61798\",\"token\":\"…\",\"running\":true,\"version\":\"0.5.0\"}"
+    },
+    {
+      "t": 1793307493884,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307493885,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307493885,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307507159,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307527159,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307547159,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    }
+  ],
+  "console": [
+    {
+      "t": 1793307427148,
+      "boot": "sltys3",
+      "name": "lifetime_start",
+      "phase": "native"
+    },
+    {
+      "t": 1793307493873,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"connect\",\"ok\":true,\"baseUrl\":\"http://127.0.0.1:61798\",\"token\":\"…\",\"running\":true,\"version\":\"0.5.0\"}"
+    },
+    {
+      "t": 1793307493884,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307493885,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307493885,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307507159,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307527159,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    },
+    {
+      "t": 1793307547159,
+      "boot": "sltys3",
+      "name": "native_msg",
+      "m": "{\"type\":\"ping\",\"ok\":true}"
+    }
+  ],
+  "collectorRequests": [],
+  "beats": [
+    {
+      "t": 1201,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 3204,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 5213,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 7209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 9210,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 11202,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 13205,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 15202,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 17203,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 19209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 21209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 23209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 25203,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 27204,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 29210,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 31213,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 33209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 35207,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 37206,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 39209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 41206,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 43208,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 45211,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 47212,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 49211,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 51204,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 53209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 55210,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 57203,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 59204,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 61208,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 63217,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 65207,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 67206,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 69205,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 71207,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 73205,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 75207,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 77208,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 79208,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 81209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 83204,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 85204,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 87202,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 89209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 91206,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 93206,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 95207,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 97205,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 99207,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 101207,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 103208,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 105209,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 107203,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 109204,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 111206,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 113202,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 115203,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 117208,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 119206,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 121208,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 123205,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 125205,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 127203,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 129206,
+      "boot": "sltys3",
+      "phase": "native"
+    },
+    {
+      "t": 131206,
+      "boot": "sltys3",
+      "phase": "native"
+    }
+  ],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T02:57:05.873107+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":809542}",
+    "{\"time\":\"2026-10-30T02:57:05.873296+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":743083}",
+    "{\"time\":\"2026-10-30T02:57:05.873308+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":461750}",
+    "{\"time\":\"2026-10-30T02:57:05.873314+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":312708}",
+    "{\"time\":\"2026-10-30T02:57:05.87332+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":145375}",
+    "{\"time\":\"2026-10-30T02:57:05.873327+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":178667}",
+    "{\"time\":\"2026-10-30T02:57:05.873332+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":133000}",
+    "{\"time\":\"2026-10-30T02:57:05.873339+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":113959}",
+    "{\"time\":\"2026-10-30T02:57:05.873343+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":147208}",
+    "{\"time\":\"2026-10-30T02:57:05.873856+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T02:57:05.885706+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:61798\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-6AYF1V/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-6AYF1V/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-6AYF1V/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-6AYF1V/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-6AYF1V/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-6AYF1V/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T02:57:05.885769+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:61798\",\"tls\":false}"
+  ]
+}

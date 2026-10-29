@@ -1,0 +1,11 @@
+node_modules
+.output
+.wxt
+coverage
+web-ext-artifacts
+*.zip
+.DS_Store
+.env
+.env.*
+dist
+spikes/results/*.tmp

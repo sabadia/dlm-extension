@@ -1,0 +1,699 @@
+{
+  "browser": "chrome",
+  "mode": "downloads",
+  "options": {
+    "action": "observe",
+    "seconds": "90"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "daemonUrl": "http://127.0.0.1:60637",
+  "reports": [
+    {
+      "t": 1793306477168,
+      "boot": "9c3i68",
+      "name": "download_attachment",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 60,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 66,
+          "type": "created",
+          "id": 1,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 83,
+          "type": "determiningFilename",
+          "id": 1,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 88,
+          "type": "changed",
+          "id": 1
+        },
+        {
+          "ms": 4492,
+          "type": "changed",
+          "id": 1,
+          "state": "complete",
+          "endTime": "2026-10-29T20:41:15.623Z"
+        }
+      ],
+      "remaining": [
+        {
+          "id": 1,
+          "state": "complete",
+          "bytes": 3145728,
+          "exists": true,
+          "filename": "$SPIKE_TMP/spike-gF2IBa/downloads/spike.bin"
+        }
+      ]
+    },
+    {
+      "t": 1793306483206,
+      "boot": "9c3i68",
+      "name": "download_redirect_to_attachment",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 26,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "status": 302
+        },
+        {
+          "ms": 72,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 73,
+          "type": "created",
+          "id": 2,
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 75,
+          "type": "determiningFilename",
+          "id": 2,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 78,
+          "type": "changed",
+          "id": 2
+        },
+        {
+          "ms": 4308,
+          "type": "changed",
+          "id": 2,
+          "state": "complete",
+          "endTime": "2026-10-29T20:41:21.486Z"
+        }
+      ],
+      "remaining": [
+        {
+          "id": 2,
+          "state": "complete",
+          "bytes": 3145728,
+          "exists": true,
+          "filename": "$SPIKE_TMP/spike-gF2IBa/downloads/spike (1).bin"
+        }
+      ]
+    },
+    {
+      "t": 1793306489234,
+      "boot": "9c3i68",
+      "name": "download_octet_no_disposition",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 21,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "status": 200,
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 23,
+          "type": "created",
+          "id": 3,
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 0,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 24,
+          "type": "determiningFilename",
+          "id": 3,
+          "filename": "octet-no-disposition.bin"
+        },
+        {
+          "ms": 24,
+          "type": "changed",
+          "id": 3
+        },
+        {
+          "ms": 29,
+          "type": "changed",
+          "id": 3
+        },
+        {
+          "ms": 278,
+          "type": "changed",
+          "id": 3,
+          "state": "complete",
+          "endTime": "2026-10-29T20:41:23.489Z"
+        }
+      ],
+      "remaining": [
+        {
+          "id": 3,
+          "state": "complete",
+          "bytes": 200000,
+          "exists": true,
+          "filename": "$SPIKE_TMP/spike-gF2IBa/downloads/octet-no-disposition.bin"
+        }
+      ]
+    },
+    {
+      "t": 1793306495269,
+      "boot": "9c3i68",
+      "name": "download_inline_text",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 37,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/inline.txt",
+          "status": 200,
+          "ct": "text/plain"
+        },
+        {
+          "ms": 68,
+          "type": "image",
+          "url": "http://127.0.0.1:18080/favicon.ico",
+          "status": 404
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306501298,
+      "boot": "9c3i68",
+      "name": "download_blob_download",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 21,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/page/blob",
+          "status": 200,
+          "ct": "text/html"
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306507348,
+      "boot": "9c3i68",
+      "name": "download_extension_download",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 28,
+          "type": "created",
+          "id": 4,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 29,
+          "type": "determiningFilename",
+          "id": 4,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 31,
+          "type": "changed",
+          "id": 4
+        },
+        {
+          "ms": 4322,
+          "type": "changed",
+          "id": 4,
+          "state": "complete",
+          "endTime": "2026-10-29T20:41:45.633Z"
+        }
+      ],
+      "remaining": [
+        {
+          "id": 4,
+          "state": "complete",
+          "bytes": 3145728,
+          "exists": true,
+          "filename": "$SPIKE_TMP/spike-gF2IBa/downloads/spike (2).bin"
+        }
+      ]
+    },
+    {
+      "t": 1793306507355,
+      "boot": "9c3i68",
+      "name": "done"
+    }
+  ],
+  "console": [
+    {
+      "t": 1793306477168,
+      "boot": "9c3i68",
+      "name": "download_attachment",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 60,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 66,
+          "type": "created",
+          "id": 1,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 83,
+          "type": "determiningFilename",
+          "id": 1,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 88,
+          "type": "changed",
+          "id": 1
+        },
+        {
+          "ms": 4492,
+          "type": "changed",
+          "id": 1,
+          "state": "complete",
+          "endTime": "2026-10-29T20:41:15.623Z"
+        }
+      ],
+      "remaining": [
+        {
+          "id": 1,
+          "state": "complete",
+          "bytes": 3145728,
+          "exists": true,
+          "filename": "$SPIKE_TMP/spike-gF2IBa/downloads/spike.bin"
+        }
+      ]
+    },
+    {
+      "t": 1793306483206,
+      "boot": "9c3i68",
+      "name": "download_redirect_to_attachment",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 26,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "status": 302
+        },
+        {
+          "ms": 72,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "status": 200,
+          "disp": "attachment; filename=\"spike.bin\"",
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 73,
+          "type": "created",
+          "id": 2,
+          "url": "http://127.0.0.1:18080/file/redirect",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 75,
+          "type": "determiningFilename",
+          "id": 2,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 78,
+          "type": "changed",
+          "id": 2
+        },
+        {
+          "ms": 4308,
+          "type": "changed",
+          "id": 2,
+          "state": "complete",
+          "endTime": "2026-10-29T20:41:21.486Z"
+        }
+      ],
+      "remaining": [
+        {
+          "id": 2,
+          "state": "complete",
+          "bytes": 3145728,
+          "exists": true,
+          "filename": "$SPIKE_TMP/spike-gF2IBa/downloads/spike (1).bin"
+        }
+      ]
+    },
+    {
+      "t": 1793306489234,
+      "boot": "9c3i68",
+      "name": "download_octet_no_disposition",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 21,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "status": 200,
+          "ct": "application/octet-stream"
+        },
+        {
+          "ms": 23,
+          "type": "created",
+          "id": 3,
+          "url": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/octet-no-disposition.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 0,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 24,
+          "type": "determiningFilename",
+          "id": 3,
+          "filename": "octet-no-disposition.bin"
+        },
+        {
+          "ms": 24,
+          "type": "changed",
+          "id": 3
+        },
+        {
+          "ms": 29,
+          "type": "changed",
+          "id": 3
+        },
+        {
+          "ms": 278,
+          "type": "changed",
+          "id": 3,
+          "state": "complete",
+          "endTime": "2026-10-29T20:41:23.489Z"
+        }
+      ],
+      "remaining": [
+        {
+          "id": 3,
+          "state": "complete",
+          "bytes": 200000,
+          "exists": true,
+          "filename": "$SPIKE_TMP/spike-gF2IBa/downloads/octet-no-disposition.bin"
+        }
+      ]
+    },
+    {
+      "t": 1793306495269,
+      "boot": "9c3i68",
+      "name": "download_inline_text",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 37,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/file/inline.txt",
+          "status": 200,
+          "ct": "text/plain"
+        },
+        {
+          "ms": 68,
+          "type": "image",
+          "url": "http://127.0.0.1:18080/favicon.ico",
+          "status": 404
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306501298,
+      "boot": "9c3i68",
+      "name": "download_blob_download",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 21,
+          "type": "main_frame",
+          "url": "http://127.0.0.1:18080/page/blob",
+          "status": 200,
+          "ct": "text/html"
+        }
+      ],
+      "remaining": []
+    },
+    {
+      "t": 1793306507348,
+      "boot": "9c3i68",
+      "name": "download_extension_download",
+      "action": "observe",
+      "events": [
+        {
+          "ms": 28,
+          "type": "created",
+          "id": 4,
+          "url": "http://127.0.0.1:18080/file/attachment.bin",
+          "finalUrl": "http://127.0.0.1:18080/file/attachment.bin",
+          "referrer": "",
+          "mime": "application/octet-stream",
+          "filename": "",
+          "state": "in_progress",
+          "totalBytes": 3145728,
+          "byExt": null,
+          "incognito": false
+        },
+        {
+          "ms": 29,
+          "type": "determiningFilename",
+          "id": 4,
+          "filename": "spike.bin"
+        },
+        {
+          "ms": 31,
+          "type": "changed",
+          "id": 4
+        },
+        {
+          "ms": 4322,
+          "type": "changed",
+          "id": 4,
+          "state": "complete",
+          "endTime": "2026-10-29T20:41:45.633Z"
+        }
+      ],
+      "remaining": [
+        {
+          "id": 4,
+          "state": "complete",
+          "bytes": 3145728,
+          "exists": true,
+          "filename": "$SPIKE_TMP/spike-gF2IBa/downloads/spike (2).bin"
+        }
+      ]
+    },
+    {
+      "t": 1793306507355,
+      "boot": "9c3i68",
+      "name": "done"
+    }
+  ],
+  "collectorRequests": [
+    {
+      "t": 1793306471167,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/attachment.bin",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306477202,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/redirect",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306477228,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/attachment.bin",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306483228,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/octet-no-disposition.bin",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306489275,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/inline.txt",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306489307,
+      "kind": "request",
+      "method": "GET",
+      "path": "/favicon.ico",
+      "origin": null,
+      "secFetchSite": "same-origin",
+      "secFetchMode": "no-cors",
+      "secFetchDest": "image",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306495298,
+      "kind": "request",
+      "method": "GET",
+      "path": "/page/blob",
+      "origin": null,
+      "secFetchSite": "none",
+      "secFetchMode": "navigate",
+      "secFetchDest": "document",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    },
+    {
+      "t": 1793306501318,
+      "kind": "request",
+      "method": "GET",
+      "path": "/file/attachment.bin",
+      "origin": null,
+      "secFetchSite": "cross-site",
+      "secFetchMode": "navigate",
+      "secFetchDest": "empty",
+      "host": "127.0.0.1:18080",
+      "acrPn": null,
+      "acrMethod": null,
+      "acrHeaders": null,
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    }
+  ],
+  "beats": [],
+  "downloadDirFiles": ["octet-no-disposition.bin", "spike (1).bin", "spike (2).bin", "spike.bin"],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T02:41:10.412619+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":691167}",
+    "{\"time\":\"2026-10-30T02:41:10.412848+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":230000}",
+    "{\"time\":\"2026-10-30T02:41:10.412857+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":194250}",
+    "{\"time\":\"2026-10-30T02:41:10.412863+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":296375}",
+    "{\"time\":\"2026-10-30T02:41:10.41287+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":146250}",
+    "{\"time\":\"2026-10-30T02:41:10.41288+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":174875}",
+    "{\"time\":\"2026-10-30T02:41:10.412885+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":122333}",
+    "{\"time\":\"2026-10-30T02:41:10.412891+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":108333}",
+    "{\"time\":\"2026-10-30T02:41:10.412896+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":153125}",
+    "{\"time\":\"2026-10-30T02:41:10.413381+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T02:41:10.425239+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:60637\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-gF2IBa/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-gF2IBa/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-gF2IBa/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-gF2IBa/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-gF2IBa/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-gF2IBa/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T02:41:10.425324+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:60637\",\"tls\":false}"
+  ]
+}

@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: lint, types, tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-node-pnpm
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  build:
+    name: build (Chrome and Firefox)
+    needs: [check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Build both browsers
+        run: |
+          pnpm build
+          pnpm build:firefox
+      - name: Lint the Firefox build
+        # Errors fail the job. The two known warnings (Preact's internal innerHTML, Android minimum
+        # version) are accepted.
+        run: pnpm lint:ext
+      - name: Package
+        run: |
+          pnpm zip
+          pnpm zip:firefox
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: extension-zips
+          path: .output/*.zip
+
+  licences:
+    name: licences and SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Dependency licences are allowed
+        run: pnpm check:licenses
+      - name: SBOM (CycloneDX)
+        run: pnpm make:sbom
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: sbom
+          path: dist/sbom.cdx.json
+
+  intent:
+    name: intent record
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.3.3
+      - name: intentline check
+        run: uvx intentline==0.1.0 check --range "origin/${{ github.base_ref }}..HEAD"

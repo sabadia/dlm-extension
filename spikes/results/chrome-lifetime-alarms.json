@@ -1,0 +1,415 @@
+{
+  "browser": "chrome",
+  "mode": "lifetime",
+  "options": {
+    "phase": "alarms",
+    "seconds": "130"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "daemonUrl": "http://127.0.0.1:61741",
+  "reports": [
+    {
+      "t": 1793307268910,
+      "boot": "zdlvrj",
+      "name": "lifetime_start",
+      "phase": "alarms"
+    },
+    {
+      "t": 1793307298919,
+      "boot": "zdlvrj",
+      "name": "alarm"
+    },
+    {
+      "t": 1793307328922,
+      "boot": "zdlvrj",
+      "name": "alarm"
+    },
+    {
+      "t": 1793307358925,
+      "boot": "zdlvrj",
+      "name": "alarm"
+    },
+    {
+      "t": 1793307388923,
+      "boot": "zdlvrj",
+      "name": "alarm"
+    }
+  ],
+  "console": [
+    {
+      "t": 1793307268910,
+      "boot": "zdlvrj",
+      "name": "lifetime_start",
+      "phase": "alarms"
+    },
+    {
+      "t": 1793307298919,
+      "boot": "zdlvrj",
+      "name": "alarm"
+    },
+    {
+      "t": 1793307328922,
+      "boot": "zdlvrj",
+      "name": "alarm"
+    },
+    {
+      "t": 1793307358925,
+      "boot": "zdlvrj",
+      "name": "alarm"
+    },
+    {
+      "t": 1793307388923,
+      "boot": "zdlvrj",
+      "name": "alarm"
+    }
+  ],
+  "collectorRequests": [],
+  "beats": [
+    {
+      "t": 701,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 2702,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 4706,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 6702,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 8704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 10700,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 12707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 14703,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 16706,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 18704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 20704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 22706,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 24707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 26707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 28706,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 30701,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 32707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 34707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 36707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 38707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 40704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 42702,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 44701,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 46705,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 48704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 50707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 52705,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 54704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 56707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 58704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 60707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 62708,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 64704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 66702,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 68707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 70700,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 72703,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 74703,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 76707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 78701,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 80702,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 82703,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 84707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 86702,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 88704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 90703,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 92707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 94707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 96706,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 98707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 100700,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 102706,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 104699,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 106708,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 108706,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 110712,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 112702,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 114713,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 116707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 118702,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 120715,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 122704,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 124709,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 126708,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 128711,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    },
+    {
+      "t": 130707,
+      "boot": "zdlvrj",
+      "phase": "alarms"
+    }
+  ],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T02:54:28.127649+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":568167}",
+    "{\"time\":\"2026-10-30T02:54:28.127865+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":274875}",
+    "{\"time\":\"2026-10-30T02:54:28.127881+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":199416}",
+    "{\"time\":\"2026-10-30T02:54:28.127889+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":311125}",
+    "{\"time\":\"2026-10-30T02:54:28.127895+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":156375}",
+    "{\"time\":\"2026-10-30T02:54:28.127902+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":176875}",
+    "{\"time\":\"2026-10-30T02:54:28.127907+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":134667}",
+    "{\"time\":\"2026-10-30T02:54:28.127914+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":116375}",
+    "{\"time\":\"2026-10-30T02:54:28.127919+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":151042}",
+    "{\"time\":\"2026-10-30T02:54:28.128436+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T02:54:28.138798+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:61741\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-6LC2QI/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-6LC2QI/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-6LC2QI/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-6LC2QI/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-6LC2QI/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-6LC2QI/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T02:54:28.138871+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:61741\",\"tls\":false}"
+  ]
+}

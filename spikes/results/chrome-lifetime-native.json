@@ -1,0 +1,147 @@
+{
+  "browser": "chrome",
+  "mode": "lifetime",
+  "options": {
+    "phase": "native",
+    "seconds": "130"
+  },
+  "extId": "jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "origin": "chrome-extension://jccbdeehnoappdbnnbhmmmhjappoacjm",
+  "daemonUrl": "http://127.0.0.1:61530",
+  "reports": [
+    {
+      "t": 1793307004609,
+      "boot": "6jmrlb",
+      "name": "lifetime_start",
+      "phase": "native"
+    },
+    {
+      "t": 1793307010258,
+      "boot": "6jmrlb",
+      "name": "native_disconnect",
+      "err": "Native host has exited."
+    }
+  ],
+  "console": [
+    {
+      "t": 1793307004609,
+      "boot": "6jmrlb",
+      "name": "lifetime_start",
+      "phase": "native"
+    },
+    {
+      "t": 1793307010258,
+      "boot": "6jmrlb",
+      "name": "native_disconnect",
+      "err": "Native host has exited."
+    }
+  ],
+  "collectorRequests": [],
+  "beats": [
+    {
+      "t": 1301,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 3306,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 5307,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 7304,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 9306,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 11305,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 13303,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 15308,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 17302,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 19305,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 21302,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 23305,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 25306,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 27306,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 29306,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 31304,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 33309,
+      "boot": "6jmrlb",
+      "phase": "native"
+    },
+    {
+      "t": 35302,
+      "boot": "6jmrlb",
+      "phase": "native"
+    }
+  ],
+  "downloadDirFiles": [],
+  "daemonStderrTail": [
+    "{\"time\":\"2026-10-30T02:50:03.273612+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":1,\"duration\":528125}",
+    "{\"time\":\"2026-10-30T02:50:03.273785+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":2,\"duration\":217791}",
+    "{\"time\":\"2026-10-30T02:50:03.273798+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":3,\"duration\":183500}",
+    "{\"time\":\"2026-10-30T02:50:03.273807+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":4,\"duration\":305459}",
+    "{\"time\":\"2026-10-30T02:50:03.273815+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":5,\"duration\":157667}",
+    "{\"time\":\"2026-10-30T02:50:03.273823+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":6,\"duration\":166708}",
+    "{\"time\":\"2026-10-30T02:50:03.273831+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":7,\"duration\":129709}",
+    "{\"time\":\"2026-10-30T02:50:03.273838+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":8,\"duration\":121500}",
+    "{\"time\":\"2026-10-30T02:50:03.273846+06:00\",\"level\":\"INFO\",\"msg\":\"storage: migration applied\",\"version\":9,\"duration\":144000}",
+    "{\"time\":\"2026-10-30T02:50:03.274492+06:00\",\"level\":\"INFO\",\"msg\":\"storage: created default queue\",\"queue_id\":\"main\"}",
+    "{\"time\":\"2026-10-30T02:50:03.290163+06:00\",\"level\":\"INFO\",\"msg\":\"dlm daemon starting\",\"version\":\"0.5.0\",\"address\":\"127.0.0.1:61530\",\"tls\":false,\"config_dir\":\"$SPIKE_TMP/spike-UnKfwN/daemon/config\",\"data_dir\":\"$SPIKE_TMP/spike-UnKfwN/daemon/data\",\"cache_dir\":\"$SPIKE_TMP/spike-UnKfwN/daemon/cache\",\"log_dir\":\"$SPIKE_TMP/spike-UnKfwN/daemon/data/logs\",\"database\":\"$SPIKE_TMP/spike-UnKfwN/daemon/data/dlm.db\",\"token_file\":\"$SPIKE_TMP/spike-UnKfwN/daemon/config/token\",\"recovered_tasks\":0,\"engines\":[\"browser\",\"hls\",\"dash\",\"ftp\",\"bt\",\"ed2k\",\"ytdlp\",\"http\"]}",
+    "{\"time\":\"2026-10-30T02:50:03.290236+06:00\",\"level\":\"INFO\",\"msg\":\"api server listening\",\"address\":\"127.0.0.1:61530\",\"tls\":false}"
+  ]
+}
