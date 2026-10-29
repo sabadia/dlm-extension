@@ -15,5 +15,12 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
     },
   },
-  { files: ['*.js', '*.config.ts'], ...tseslint.configs.disableTypeChecked },
+  { files: ['**/*.{js,mjs}', '*.config.ts'], ...tseslint.configs.disableTypeChecked },
+  {
+    // Node scripts: plain JavaScript, not part of the extension.
+    files: ['tools/**/*.mjs', 'spikes/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly', URL: 'readonly', fetch: 'readonly' },
+    },
+  },
 );
