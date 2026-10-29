@@ -1,0 +1,46 @@
+name: Bug report
+description: Something does not work
+labels: ["type/bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Extension, DLM app and daemon versions
+      description: Extension options page, About
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options: [Chrome, Edge, Brave, Opera, Vivaldi, Chromium, Firefox]
+    validations:
+      required: true
+  - type: input
+    id: browserversion
+    attributes:
+      label: Browser version
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Windows 10, Windows 11, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce (a link that fails, if you can share it)
+  - type: textarea
+    id: diag
+    attributes:
+      label: Diagnostics
+      description: Options, About, Copy diagnostics (tokens and cookies are removed)

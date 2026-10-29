@@ -1,0 +1,32 @@
+schema_version: 1
+id: 01a1895c-82d9-7603-9060-cad3e3a9c367
+status: draft
+created_at: '2026-10-29T20:31:43Z'
+updated_at: '2026-10-29T20:31:43Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: 'Bootstrap dlm-extension: authoritative plan, conventions, ADR, threat-model stub, templates, intentline'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: docs/PLAN.md
+  start_line: null
+  end_line: null
+- path: docs/CONVENTIONS.md
+  start_line: null
+  end_line: null
+- path: docs/adr/0001-stack-and-transport.md
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null
