@@ -1,6 +1,7 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
 import type { LiveSnapshot } from '../lib/downloads/service';
 import { contentLength, headerValue } from '../lib/intercept/metadata';
+import { responseSize } from '../lib/media/classify';
 import { postBodyFrom } from '../lib/intercept/post';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
 import type { LinksService } from '../lib/links/service';
@@ -27,11 +28,20 @@ export function registerBackground(
 
   const check = (why: string) => {
     services.log.debug('connection', `check: ${why}`);
-    void services.connection.refresh();
+    void (async () => {
+      const before = await services.connection.get();
+      const after = await services.connection.refresh();
+      // The menus list the queues of DLM: build them again when DLM becomes reachable.
+      if (after.kind === 'connected' && before.kind !== 'connected') void services.links?.install();
+    })();
   };
-  lifecycle.onStartup.addListener(() => check('startup'));
+  lifecycle.onStartup.addListener(() => {
+    void services.links?.install();
+    check('startup');
+  });
   lifecycle.onInstalled.addListener(() => {
     ensureAlarm(lifecycle.alarms);
+    void services.links?.install();
     check('installed');
   });
   lifecycle.alarms.onAlarm.addListener((alarm) => {
@@ -44,11 +54,12 @@ export function registerBackground(
     lifecycle.intercept.attach(services.intercept);
     void services.intercept.sweep();
   }
-  if (services.links && lifecycle.menus) {
-    lifecycle.menus.attach(services.links);
-    void services.links.install();
-  }
+  // The menus are built when the extension is installed or the browser starts, not each time the worker wakes.
+  if (services.links && lifecycle.menus) lifecycle.menus.attach(services.links);
   if (services.media && lifecycle.media) lifecycle.media.attach(services.media);
+  lifecycle.tabs?.onRemoved.addListener((tabId) => {
+    void services.media?.closed(tabId);
+  });
   lifecycle.live?.onConnect.addListener((port) => {
     if (port.name !== 'downloads') return;
     // Only the extension's own pages (the popup) may open the stream; a content script or another extension may not.
@@ -106,6 +117,10 @@ export interface Lifecycle {
     onConnect: {
       addListener(listener: (port: LivePort) => void): void;
     };
+  };
+  /** A closed tab's media list is forgotten. */
+  tabs?: {
+    onRemoved: { addListener(listener: (tabId: number) => void): void };
   };
   commands?: {
     onCommand: { addListener(listener: (command: string) => void): void };
@@ -176,6 +191,9 @@ export interface RawRequest {
   url: string;
   method: string;
   tabId: number;
+  /** `main_frame`, `sub_frame`, `xmlhttprequest`, `media`, … */
+  type?: string | undefined;
+  statusCode?: number | undefined;
   documentUrl?: string | undefined;
   initiator?: string | undefined;
   originUrl?: string | undefined;
@@ -225,19 +243,30 @@ export function attachMenus(browser: MenuBrowser, links: LinksService): void {
   });
 }
 
-/** Registers the media listener on the same webRequest events. It never cancels a request. */
+/**
+ * Registers the media listener on the same webRequest events. It never cancels a request. A top-level navigation clears
+ * the tab's list (Chrome does not tell a request which document made it, so the navigation itself is the signal); every
+ * other response is offered to the classifier.
+ */
 export function attachMedia(browser: InterceptBrowser, media: MediaService): void {
   browser.webRequest.onHeadersReceived.addListener(
     (details) => {
       const request = toRequest(details);
+      if (details.type === 'main_frame') {
+        void media.navigated(request.tabId, request.url);
+        return;
+      }
       const mime = headerValue(request.responseHeaders, 'content-type');
-      const sizeBytes = contentLength(headerValue(request.responseHeaders, 'content-length'));
+      const sizeBytes = responseSize({
+        status: details.statusCode,
+        contentLength: contentLength(headerValue(request.responseHeaders, 'content-length')),
+        contentRange: headerValue(request.responseHeaders, 'content-range'),
+      });
       void media.observe({
         url: request.url,
         tabId: request.tabId,
         ...(mime ? { mime } : {}),
         ...(sizeBytes !== undefined ? { sizeBytes } : {}),
-        ...(request.documentUrl ? { pageUrl: request.documentUrl } : {}),
       });
     },
     { urls: [...INTERCEPT_URLS] },

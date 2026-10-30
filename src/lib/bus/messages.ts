@@ -50,6 +50,7 @@ export interface MessageMap {
       host: string;
       purpose: AskPurpose;
       checksum?: { algorithm: string; expected: string };
+      mirrors?: string[];
     } | null;
   };
   /** Checksums and mirror links a content script saw. It does not start a download. */
@@ -63,7 +64,9 @@ export interface MessageMap {
   /** The media list of one tab. */
   'media.list': { request: { tabId: number }; response: TabView };
   /** A content script reporting what it found on its document. */
-  'media.scan': { request: { snapshot: PageSnapshot; visible: boolean }; response: null };
+  'media.scan': { request: { snapshot: PageSnapshot }; response: null };
+  /** An iframe of the tab plays protected (DRM) media. */
+  'media.protected': { request: undefined; response: null };
   /** Sends one item, a chosen quality, or the page via yt-dlp or the daemon's browser. */
   'media.download': { request: DownloadRequest; response: { ok: boolean; error?: string } };
   /** Qualities of an HLS master playlist or a DASH manifest. */

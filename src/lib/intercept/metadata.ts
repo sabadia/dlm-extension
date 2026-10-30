@@ -227,10 +227,11 @@ export function buildCaptureBody(draft: CaptureDraft): CaptureBody {
   return body;
 }
 
-/** The same capture without the checksum the user chose not to send. */
-export function withoutChecksum(body: CaptureBody): CaptureBody {
+/** The same capture without the checksum and mirrors the user chose not to send. */
+export function withoutHints(body: CaptureBody): CaptureBody {
   const rest = { ...body };
   delete rest.checksum;
+  delete rest.mirrors;
   return rest;
 }
 

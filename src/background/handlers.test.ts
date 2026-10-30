@@ -220,9 +220,9 @@ describe('what a content script may ask', () => {
       openGraph: [],
       jsonLd: [],
     };
-    await sendMessage(from(TOP), 'media.scan', { snapshot, visible: true });
-    await sendMessage(from(FRAME), 'media.scan', { snapshot, visible: true });
-    await sendMessage(from(TOP), 'media.scan', { snapshot: 'nonsense' as never, visible: true });
+    await sendMessage(from(TOP), 'media.scan', { snapshot });
+    await sendMessage(from(FRAME), 'media.scan', { snapshot });
+    await sendMessage(from(TOP), 'media.scan', { snapshot: 'nonsense' as never });
     expect(seen).toEqual([{ tabId: 7, pageUrl: 'https://example.test/page', links: 1000 }]);
   });
 });

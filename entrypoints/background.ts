@@ -127,6 +127,9 @@ export default defineBackground(() => {
               : {}),
           });
         },
+        update: async (id, change) => {
+          await browser.contextMenus.update(id, change);
+        },
         open: async (url) => {
           await browser.tabs.create({ url });
         },
@@ -153,6 +156,7 @@ export default defineBackground(() => {
       media: {
         attach: (media) => attachMedia(browser as unknown as InterceptBrowser, media),
       },
+      tabs: { onRemoved: browser.tabs.onRemoved },
       live: { onConnect: browser.runtime.onConnect },
       commands: {
         onCommand: browser.commands.onCommand,

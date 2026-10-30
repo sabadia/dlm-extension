@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   attachIntercept,
+  attachMedia,
   INTERCEPT_TYPES,
   type InterceptBrowser,
   type RawDownload,
   type RawRequest,
 } from './register';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
+import type { MediaService } from '../lib/media/service';
 
 type Extra = readonly string[];
 
@@ -138,5 +140,71 @@ describe('attachIntercept', () => {
     );
     const bodies = seen.map((entry) => (entry.arg as RequestEvent).postBody);
     expect(bodies).toEqual([btoa('id=7'), undefined]);
+  });
+});
+
+describe('attachMedia', () => {
+  function media() {
+    const calls: { name: string; arg: unknown }[] = [];
+    const service = {
+      navigated: (tabId: number, url: string) => {
+        calls.push({ name: 'navigated', arg: [tabId, url] });
+        return Promise.resolve();
+      },
+      observe: (hit: unknown) => {
+        calls.push({ name: 'observe', arg: hit });
+        return Promise.resolve();
+      },
+    } as unknown as MediaService;
+    return { service, calls };
+  }
+  const headers = (...pairs: [string, string][]) => pairs.map(([name, value]) => ({ name, value }));
+
+  it('starts a tab again on a top-level navigation and offers every other response to the classifier', () => {
+    const { browser, listeners } = fakeBrowser();
+    const { service, calls } = media();
+    attachMedia(browser, service);
+    listeners.response?.listener(details({ type: 'main_frame', url: 'https://example.test/next' }));
+    listeners.response?.listener(
+      details({
+        type: 'media',
+        url: 'https://cdn.test/a.mp4',
+        responseHeaders: headers(['Content-Type', 'video/mp4'], ['Content-Length', '9000000']),
+      }),
+    );
+    expect(calls).toEqual([
+      { name: 'navigated', arg: [3, 'https://example.test/next'] },
+      {
+        name: 'observe',
+        arg: { url: 'https://cdn.test/a.mp4', tabId: 3, mime: 'video/mp4', sizeBytes: 9_000_000 },
+      },
+    ]);
+  });
+
+  it('sizes a partial response by the whole file, not by the piece', () => {
+    const { browser, listeners } = fakeBrowser();
+    const { service, calls } = media();
+    attachMedia(browser, service);
+    listeners.response?.listener(
+      details({
+        type: 'media',
+        statusCode: 206,
+        url: 'https://cdn.test/a.mp4',
+        responseHeaders: headers(
+          ['Content-Length', '65536'],
+          ['Content-Range', 'bytes 0-65535/9000000'],
+        ),
+      }),
+    );
+    listeners.response?.listener(
+      details({
+        type: 'media',
+        statusCode: 206,
+        url: 'https://cdn.test/b.mp4',
+        responseHeaders: headers(['Content-Length', '65536']),
+      }),
+    );
+    const sizes = calls.map((call) => (call.arg as { sizeBytes?: number }).sizeBytes);
+    expect(sizes).toEqual([9_000_000, undefined]);
   });
 });

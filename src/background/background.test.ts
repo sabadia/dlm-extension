@@ -237,4 +237,52 @@ describe('the background lifecycle', () => {
     expect(content.state).toEqual({ disconnected: true, handlers: 0 });
     expect(page.state).toEqual({ disconnected: false, handlers: 1 });
   });
+
+  it('forgets the media list of a closed tab, and builds the menus on install and start, not on every wake', async () => {
+    const { registerBackground } = await import('./register');
+    let installs = 0;
+    const session = memoryArea();
+    await session.set('media.tabs', {
+      '5': { pageUrl: 'x', items: [], at: 1 },
+      '6': { pageUrl: 'y', items: [], at: 1 },
+    });
+    let removedTab: ((id: number) => void) | undefined;
+    const listeners = { startup: [] as (() => void)[], installed: [] as (() => void)[] };
+    registerBackground(
+      fakeRuntime(),
+      {
+        local: memoryArea(),
+        session,
+        version: '1',
+        userAgent: 'u',
+        native: noHost,
+        action: noAction,
+        menus: {
+          removeAll: () => ((installs += 1), Promise.resolve()),
+          create: () => undefined,
+          open: () => Promise.resolve(),
+        },
+        linksUrl: () => 'links.html',
+      },
+      {
+        onStartup: { addListener: (l) => listeners.startup.push(l) },
+        onInstalled: { addListener: (l) => listeners.installed.push(l) },
+        alarms: {
+          get: () => Promise.resolve({}),
+          create: () => undefined,
+          onAlarm: { addListener: () => undefined },
+        },
+        menus: { attach: () => undefined },
+        tabs: { onRemoved: { addListener: (l) => (removedTab = l) } },
+      },
+    );
+    await new Promise((r) => setTimeout(r, 10));
+    expect(installs).toBe(0); // loading the background alone builds nothing
+    listeners.startup[0]?.();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(installs).toBe(1);
+    removedTab?.(5);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(Object.keys((await session.get('media.tabs')) as object)).toEqual(['6']);
+  });
 });

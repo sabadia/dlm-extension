@@ -24,6 +24,7 @@ if (root) {
       host={view?.host ?? ''}
       purpose={view?.purpose ?? 'ask'}
       checksum={view?.checksum}
+      mirrors={view?.mirrors}
       onChoose={(choice) => {
         void choose(choice).catch(() => undefined);
       }}

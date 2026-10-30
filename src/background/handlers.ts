@@ -16,6 +16,15 @@ function tabIdOf(sender: SenderLike): number | undefined {
 }
 
 const MAX_URL = 8192;
+
+function originOfSender(sender: SenderLike): string | undefined {
+  try {
+    const { origin } = new URL(sender.url ?? '');
+    return origin === 'null' ? undefined : origin;
+  } catch {
+    return undefined;
+  }
+}
 /** The most addresses one links-page send may carry. */
 const MAX_SEND = 500;
 
@@ -120,7 +129,10 @@ export function createHandlers(services: Services): Handlers {
       fromContent: true,
       handle: async (input, sender) => {
         if (!isTopFrame(sender)) return null;
-        await services.intercept?.noteHints(acceptedHints(input?.hints));
+        // The page the hints came from is the sender's, never what the content script says.
+        const origin = originOfSender(sender);
+        if (origin === undefined) return null;
+        await services.intercept?.noteHints(acceptedHints(input?.hints), origin);
         return null;
       },
     },
@@ -160,9 +172,15 @@ export function createHandlers(services: Services): Handlers {
         // The address of the page is the sender's, not the one the content script claims.
         const snapshot = parseSnapshot(input?.snapshot, sender.url);
         if (!snapshot) return null;
-        return (
-          services.media?.scan(tabId, snapshot, input.visible === true).then(() => null) ?? null
-        );
+        return services.media?.scan(tabId, snapshot).then(() => null) ?? null;
+      },
+    },
+    'media.protected': {
+      fromContent: true,
+      handle: (_input, sender) => {
+        const tabId = tabIdOf(sender);
+        if (tabId === undefined) return null;
+        return services.media?.markProtected(tabId).then(() => null) ?? null;
       },
     },
     'media.download': {

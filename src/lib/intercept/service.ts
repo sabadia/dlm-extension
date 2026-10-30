@@ -1,4 +1,4 @@
-import type { CaptureBody, CaptureCookie } from '../api/client';
+import type { CaptureBody } from '../api/client';
 import { ApiError, NetworkError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
 import { t } from '../i18n';
@@ -12,7 +12,7 @@ import {
   basename,
   buildCaptureBody,
   contentLength,
-  withoutChecksum,
+  withoutHints,
   displayName,
   filenameFromDisposition,
   headerValue,
@@ -20,8 +20,6 @@ import {
   isDownloadType,
   pickRequestHeaders,
   sameOrigin,
-  toCaptureCookie,
-  type BrowserCookieLike,
   type CaptureDraft,
   type RawHeader,
 } from './metadata';
@@ -37,6 +35,7 @@ import {
 import { isTorrent } from '../links/classify';
 import type { HintStore } from '../page/store';
 import { targetFor } from '../settings/routing';
+import { CookieReader, type CookiesPort } from './cookies';
 import { decodeBase64Text, isMultipart } from './post';
 import { decide, downloadHost, type DownloadFacts } from './rules';
 
@@ -87,18 +86,6 @@ export interface DownloadsPort {
   cancel(id: number): Promise<void>;
   erase(query: { id: number }): Promise<number[]>;
   download(options: DownloadOptions): Promise<number>;
-}
-
-export interface CookieQuery {
-  url: string;
-  storeId?: string | undefined;
-  partitionKey?: { topLevelSite: string } | undefined;
-}
-
-export interface CookiesPort {
-  getAll(query: CookieQuery): Promise<BrowserCookieLike[]>;
-  /** Chrome: the cookie stores and the tabs in each, to find the private window's store. Absent on Firefox. */
-  stores?(): Promise<{ id: string; tabIds: number[] }[]>;
 }
 
 export interface NotificationsPort {
@@ -396,6 +383,16 @@ interface Prepared {
   defaultStore: boolean;
 }
 
+function originOf(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const { origin } = new URL(url);
+    return origin === 'null' ? undefined : origin;
+  } catch {
+    return undefined;
+  }
+}
+
 /** A multipart form cannot be rebuilt from its parsed fields: such a POST stays with the browser. */
 function withReplayableBody(observation: Observation): Observation {
   if (
@@ -424,6 +421,7 @@ export class InterceptService {
   private readonly asks: StoredValue<PendingAsk[]>;
   private readonly duplicates: StoredValue<Duplicate[]>;
   private readonly requests = new Map<string, Observation>();
+  private readonly cookieReader: CookieReader;
   /** Every write of an observation, in order. `onCreated` waits for it so it never reads before the response is in. */
   private writes: Promise<unknown> = Promise.resolve();
   private readonly now: () => number;
@@ -436,13 +434,14 @@ export class InterceptService {
     this.claims = new StoredValue(deps.session, CLAIM_KEY, parseClaims);
     this.asks = new StoredValue(deps.session, ASK_KEY, parseAsks);
     this.duplicates = new StoredValue(deps.session, DUPLICATE_KEY, parseDuplicates);
+    this.cookieReader = new CookieReader(deps.cookies, deps.log);
     this.now = deps.now ?? (() => Date.now());
     this.id = deps.id ?? (() => crypto.randomUUID());
   }
 
   /** A content script reporting checksums and mirror links it saw. It cannot ask for a download. */
-  noteHints(hints: Parameters<HintStore['note']>[0]): Promise<void> {
-    return this.deps.hints?.note(hints, this.now()) ?? Promise.resolve();
+  noteHints(hints: Parameters<HintStore['note']>[0], origin: string): Promise<void> {
+    return this.deps.hints?.note(hints, origin, this.now()) ?? Promise.resolve();
   }
 
   /** A content script saw Alt or Shift. The tab id comes from the sender, not from the page. */
@@ -485,8 +484,9 @@ export class InterceptService {
 
   private async captureBlocking(current: Observation): Promise<{ cancel: true } | void> {
     const prepared = await this.prepare(current);
-    // A checksum is reviewed on the download item, so the request is not cancelled here.
-    if (!prepared || prepared.decision.action !== 'take' || prepared.draft.checksum) return;
+    // A checksum or a mirror list is reviewed on the download item, so the request is not cancelled here.
+    if (!prepared || prepared.decision.action !== 'take') return;
+    if (prepared.draft.checksum || (prepared.draft.mirrors?.length ?? 0) > 0) return;
     const key = current.requestId;
     if ((await this.claim(key)) !== 'won') return;
     let result: SendResult = 'failed';
@@ -540,7 +540,7 @@ export class InterceptService {
         await this.ask(prepared, 'ask');
         return;
       }
-      if (prepared.draft.checksum) {
+      if (prepared.draft.checksum || (prepared.draft.mirrors?.length ?? 0) > 0) {
         await this.ask(prepared, 'checksum');
         return;
       }
@@ -574,10 +574,20 @@ export class InterceptService {
     host: string;
     purpose: AskPurpose;
     checksum?: { algorithm: string; expected: string };
+    /** The hosts of the mirror links that would be sent. */
+    mirrors?: string[];
   } | null> {
     const pending = (await this.asks.get()).find((ask) => ask.id === id);
     if (!pending) return null;
     const checksum = pending.body.checksum;
+    const mirrors = [
+      ...new Set(
+        (pending.body.mirrors ?? []).flatMap((mirror) => {
+          const host = downloadHost(mirror);
+          return host ? [host] : [];
+        }),
+      ),
+    ];
     return {
       name: pending.name,
       host: pending.host,
@@ -585,6 +595,7 @@ export class InterceptService {
       ...(checksum
         ? { checksum: { algorithm: checksum.algorithm, expected: checksum.expected } }
         : {}),
+      ...(mirrors.length > 0 ? { mirrors } : {}),
     };
   }
 
@@ -598,7 +609,7 @@ export class InterceptService {
     if (!pending) return;
     const chosen = pending;
     if (choice === 'omit' || (choice === 'browser' && chosen.purpose === 'checksum')) {
-      await this.finish(withoutChecksum(chosen.body), chosen);
+      await this.finish(withoutHints(chosen.body), chosen);
       return;
     }
     if (choice === 'browser') {
@@ -660,7 +671,7 @@ export class InterceptService {
 
   /** A prompt that was never answered: a checksum review still sends the file, ask-first goes to the browser. */
   private async resolveUnanswered(ask: PendingAsk): Promise<void> {
-    if (ask.purpose === 'checksum') await this.finish(withoutChecksum(ask.body), ask);
+    if (ask.purpose === 'checksum') await this.finish(withoutHints(ask.body), ask);
     else await this.fallback(ask.fallback);
   }
 
@@ -802,15 +813,15 @@ export class InterceptService {
     if (decision.action !== 'leave') {
       const host = downloadHost(finalUrl ?? url);
       if (host) {
-        draft.cookies = await this.readCookies(
-          finalUrl ?? url,
+        draft.cookies = await this.cookieReader.read({
+          url: finalUrl ?? url,
           pageUrl,
           storeId,
-          observed?.tabId,
+          tabId: observed?.tabId,
           incognito,
-          settings.rules.privateWindows,
+          allowPrivate: settings.rules.privateWindows,
           host,
-        );
+        });
       }
     }
     const address = finalUrl ?? url;
@@ -825,7 +836,7 @@ export class InterceptService {
     };
     return {
       decision,
-      draft: await this.applyHints(draft, settings),
+      draft: await this.applyHints(draft, settings, originOf(observed?.documentUrl)),
       name: displayName(filename, address),
       site: observed?.documentUrl ? downloadHost(observed.documentUrl) : undefined,
       replay,
@@ -837,10 +848,12 @@ export class InterceptService {
   private async applyHints(
     draft: CaptureDraft,
     settings: Awaited<ReturnType<SettingsStore['get']>>,
+    origin: string | undefined,
   ): Promise<CaptureDraft> {
     if (!this.deps.hints) return draft;
     const urls = [draft.finalUrl, draft.url].filter((url): url is string => Boolean(url));
-    const hint = await this.deps.hints.find(urls, this.now());
+    // Only what the page the download started on said about it.
+    const hint = await this.deps.hints.find(urls, origin, this.now());
     if (!hint) return draft;
     return {
       ...draft,
@@ -849,66 +862,6 @@ export class InterceptService {
         ? { mirrors: hint.mirrors }
         : {}),
     };
-  }
-
-  private async readCookies(
-    url: string,
-    pageUrl: string | undefined,
-    storeId: string | undefined,
-    tabId: number | undefined,
-    incognito: boolean,
-    allowPrivate: boolean,
-    host: string,
-  ): Promise<CaptureCookie[]> {
-    if (incognito && !allowPrivate) return [];
-    const store = storeId ?? (await this.storeOfTab(tabId));
-    const base: CookieQuery = store ? { url, storeId: store } : { url };
-    const lists: BrowserCookieLike[][] = [];
-    lists.push(await this.readCookieList(base));
-    if (pageUrl) {
-      try {
-        const origin = new URL(pageUrl).origin;
-        if (origin !== 'null') {
-          lists.push(
-            await this.readCookieList({ ...base, partitionKey: { topLevelSite: origin } }),
-          );
-        }
-      } catch {
-        // The page address is not a URL we can use as a partition key.
-      }
-    }
-    const seen = new Set<string>();
-    const cookies = [];
-    for (const cookie of lists.flat()) {
-      const mapped = toCaptureCookie(cookie, host);
-      if (!mapped) continue;
-      const key = `${mapped.domain}\n${mapped.name}\n${mapped.path ?? ''}\n${mapped.partitionKey ?? ''}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      cookies.push(mapped);
-    }
-    return cookies;
-  }
-
-  /** Chrome: webRequest has no cookie store, but the stores know their tabs (a private window has a store of its own). */
-  private async storeOfTab(tabId: number | undefined): Promise<string | undefined> {
-    if (tabId === undefined || tabId < 0 || !this.deps.cookies.stores) return undefined;
-    try {
-      const stores = await this.deps.cookies.stores();
-      return stores.find((store) => store.tabIds.includes(tabId))?.id;
-    } catch (error) {
-      this.deps.log.debug('intercept', 'cookie stores could not be listed', { error });
-      return undefined;
-    }
-  }
-
-  private async readCookieList(query: CookieQuery): Promise<BrowserCookieLike[]> {
-    try {
-      return await this.deps.cookies.getAll(query);
-    } catch (error) {
-      this.deps.log.debug('intercept', 'cookies could not be read', { error });
-      return [];
-    }
   }
 
   /**
@@ -1154,3 +1107,5 @@ export class InterceptService {
     }
   }
 }
+
+export type { CookieQuery, CookiesPort } from './cookies';

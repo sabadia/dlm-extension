@@ -1,5 +1,6 @@
 import { ConnectionService, type ActionApi } from '../lib/connection/service';
 import { DlmClient } from '../lib/api/client';
+import { t } from '../lib/i18n';
 import { DownloadsService } from '../lib/downloads/service';
 import {
   InterceptService,
@@ -152,10 +153,11 @@ export function createServices(env: Environment): Services {
     connection,
     session: env.session,
     log,
+    userAgent: env.userAgent,
     tasks: (baseUrl, token) => {
       const client = new DlmClient({ baseUrl, token, log });
       return {
-        create: (body) => client.createTask(body),
+        capture: (body) => client.capture(body),
         resolve: async (url) => {
           const result = await client.resolve({ url });
           return {
@@ -166,6 +168,7 @@ export function createServices(env: Environment): Services {
         },
       };
     },
+    ...(env.cookies ? { cookies: env.cookies } : {}),
     ...(env.fetchText ? { fetchText: env.fetchText } : {}),
   });
   const links =
@@ -174,12 +177,20 @@ export function createServices(env: Environment): Services {
           settings,
           secrets,
           connection,
-          hints,
           session: env.session,
           log,
           menus: env.menus,
           tasks: taskPort,
           linksUrl: env.linksUrl,
+          notify: (message) => {
+            void Promise.resolve(
+              env.notifications?.create('dlm-links', {
+                title: t('intercept.notify.title'),
+                message,
+                ...(env.iconUrl ? { iconUrl: env.iconUrl } : {}),
+              }),
+            ).catch(() => undefined);
+          },
           ...(env.fetchFile ? { fetchFile: env.fetchFile } : {}),
         })
       : undefined;

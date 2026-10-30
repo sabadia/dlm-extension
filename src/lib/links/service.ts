@@ -1,7 +1,6 @@
 import type { CaptureCookie } from '../api/client';
 import { ApiError, NetworkError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
-import type { HintStore } from '../page/store';
 import { targetFor } from '../settings/routing';
 import { chunk } from './filter';
 import { t } from '../i18n';
@@ -28,6 +27,8 @@ export interface MenuClick {
 export interface MenuPort {
   removeAll(): Promise<void>;
   create(spec: MenuSpec): Promise<void> | void;
+  /** Changes a checkbox that already exists. */
+  update?(id: string, change: { checked: boolean }): Promise<void> | void;
   open(url: string): Promise<void>;
 }
 
@@ -56,17 +57,21 @@ export interface LinksDeps {
   connection: Pick<ConnectionService, 'get'> & {
     endpoint?(targetId: string): Promise<{ baseUrl: string; token: string } | undefined>;
   };
-  hints?: Pick<HintStore, 'find'>;
   session: KeyValueArea;
   log: Logger;
   menus: MenuPort;
   tasks: (baseUrl: string, token: string) => TaskPort;
+  /** Tells the person something that happened to a menu click (a notification). Absent in tests that do not care. */
+  notify?: (message: string) => void;
   /** Page that previews the links of a tab. */
   linksUrl: (tabId: number) => string;
   fetchFile?: FetchFile;
 }
 
 const PAUSED_KEY = 'links.paused';
+
+/** The places with an "add paused" checkbox (`menus.ts`). */
+const PAUSED_CONTEXTS = ['link', 'selection', 'image', 'audio', 'video', 'page'] as const;
 
 function parsePaused(raw: unknown): boolean {
   return raw === true;
@@ -78,25 +83,51 @@ function parsePaused(raw: unknown): boolean {
  */
 export class LinksService {
   private readonly paused: StoredValue<boolean>;
+  private building: Promise<void> = Promise.resolve();
 
   constructor(private readonly deps: LinksDeps) {
     this.paused = new StoredValue(deps.session, PAUSED_KEY, parsePaused);
   }
 
-  /** Builds the menus. Safe to call again: it replaces whatever was there. */
-  async install(): Promise<void> {
-    const queues = await this.queues();
-    const addPaused = await this.paused.get();
-    await this.deps.menus.removeAll();
-    for (const spec of menuTree(queues, addPaused)) await this.deps.menus.create(spec);
+  /**
+   * Builds the menus. Safe to call again: it replaces whatever was there. Calls are queued, so two builds never run
+   * their `removeAll` and `create` steps into each other. Called when the extension is installed or the browser starts,
+   * and when DLM becomes reachable (the queues are listed then), not every time the background wakes.
+   */
+  install(): Promise<void> {
+    const run = async (): Promise<void> => {
+      const queues = await this.queues();
+      const addPaused = await this.paused.get();
+      await this.deps.menus.removeAll();
+      for (const spec of menuTree(queues, addPaused)) await this.deps.menus.create(spec);
+    };
+    const result = this.building.then(run, run);
+    this.building = result.catch((error: unknown) => {
+      this.deps.log.warn('links', 'could not build the menus', { error });
+    });
+    return this.building;
   }
 
-  /** A context-menu click. */
+  /** A context-menu click. A failure is told to the person, not dropped. */
   async onClick(click: MenuClick): Promise<void> {
+    try {
+      await this.handleClick(click);
+    } catch (error) {
+      this.deps.log.warn('links', 'a menu action failed', { error });
+      this.deps.notify?.(failureReason(error));
+    }
+  }
+
+  private async handleClick(click: MenuClick): Promise<void> {
     const action = menuAction(String(click.menuItemId));
     if (!action) return;
     if (action.kind === 'paused') {
-      await this.paused.set(click.checked === true);
+      const checked = click.checked === true;
+      await this.paused.set(checked);
+      // Every place has its own checkbox for the same setting: keep them in step.
+      for (const context of PAUSED_CONTEXTS) {
+        await this.deps.menus.update?.(`dlm:${context}:paused`, { checked });
+      }
       return;
     }
     if (action.kind === 'all') {
@@ -107,6 +138,7 @@ export class LinksService {
     const url = targetUrl(action.context, click);
     if (!url) return;
     await this.add(url, { queueId: action.queueId, paused: await this.paused.get() });
+    this.deps.notify?.(t('links.sent', { ok: 1 }));
   }
 
   /** A magnet or eD2K link the content script caught. */
@@ -216,25 +248,16 @@ export class LinksService {
     const tasks = await this.client(url);
     if (!tasks) throw new Error(t('links.offline'));
     let queueId = options.queueId;
-    let checksum: { algorithm: string; expected: string } | undefined;
-    let mirrors: string[] | undefined;
-    if (this.deps.connection.endpoint || this.deps.hints) {
+    if (this.deps.connection.endpoint) {
       const settings = await this.deps.settings.get();
-      if (this.deps.connection.endpoint && targetFor(settings, url) !== settings.activeTargetId) {
-        queueId = undefined;
-      }
-      const hint = await this.deps.hints?.find([url]);
-      if (hint?.checksum) checksum = hint.checksum;
-      if (settings.preferences.mirrors && hint?.mirrors && hint.mirrors.length > 0) {
-        mirrors = hint.mirrors;
-      }
+      if (targetFor(settings, url) !== settings.activeTargetId) queueId = undefined;
     }
+    // A checksum or mirror list a page printed is reviewed before it is sent (the ask page, when a download is
+    // intercepted); a link the person chose from a menu or the links page is sent as it is.
     await tasks.create({
       url,
       paused: options.paused,
       ...(queueId ? { queueId } : {}),
-      ...(checksum ? { checksum } : {}),
-      ...(mirrors ? { mirrors } : {}),
     });
     this.deps.log.info('links', 'sent a link', { url: redactUrl(url) });
   }

@@ -172,3 +172,97 @@ describe('LinksService', () => {
     ]);
   });
 });
+
+describe('LinksService review fixes', () => {
+  function build(options: { fail?: boolean } = {}) {
+    const events: string[] = [];
+    const notes: string[] = [];
+    const updates: { id: string; checked: boolean }[] = [];
+    const connection: ConnectionState = {
+      kind: 'connected',
+      targetId: 'local',
+      baseUrl: 'http://127.0.0.1:9',
+      version: '0.6.0',
+    };
+    const tasks: TaskPort = {
+      listQueues: () => {
+        events.push('queues');
+        return Promise.resolve({ queues: [{ id: 'main', name: 'Main' }] });
+      },
+      create: (body) =>
+        options.fail ? Promise.reject(new Error('down')) : Promise.resolve({ url: body.url }),
+      createMany: () => Promise.resolve([]),
+      addTorrent: () => Promise.resolve({}),
+    };
+    const service = new LinksService({
+      settings: { get: () => Promise.reject(new Error('unused')) },
+      secrets: { get: () => Promise.resolve('token') },
+      connection: { get: () => Promise.resolve(connection) },
+      session: memoryArea(),
+      log: silentLog,
+      menus: {
+        removeAll: async () => {
+          events.push('removeAll');
+          await new Promise((resolve) => setTimeout(resolve, 5));
+        },
+        create: (spec) => {
+          events.push(`create ${spec.id}`);
+        },
+        update: (id, change) => {
+          updates.push({ id, checked: change.checked });
+        },
+        open: () => Promise.resolve(),
+      },
+      tasks: () => tasks,
+      notify: (message) => notes.push(message),
+      linksUrl: () => 'links.html',
+    });
+    return { service, events, notes, updates };
+  }
+
+  it('builds the menus one build after another, never in each other', async () => {
+    const { service, events } = build();
+    await Promise.all([service.install(), service.install()]);
+    const marks = events.filter((entry) => entry === 'removeAll' || entry.startsWith('queues'));
+    // queues, removeAll, ...creates, queues, removeAll, ...creates (no second removeAll before the first creates).
+    const firstRemove = events.indexOf('removeAll');
+    const secondRemove = events.indexOf('removeAll', firstRemove + 1);
+    const between = events.slice(firstRemove, secondRemove);
+    expect(between.filter((entry) => entry.startsWith('create '))).not.toHaveLength(0);
+    expect(marks.filter((entry) => entry === 'removeAll')).toHaveLength(2);
+  });
+
+  it('tells the person when a menu click could not be sent, and when it was', async () => {
+    const failing = build({ fail: true });
+    await failing.service.onClick({
+      menuItemId: 'dlm:link:queue:main',
+      linkUrl: 'https://files.example.test/a.zip',
+    });
+    expect(failing.notes).toHaveLength(1);
+    const working = build();
+    await working.service.onClick({
+      menuItemId: 'dlm:link:queue:main',
+      linkUrl: 'https://files.example.test/a.zip',
+    });
+    expect(working.notes).toEqual(['Sent 1 to DLM.']);
+  });
+
+  it('keeps the add-paused checkboxes of every place in step', async () => {
+    const { service, updates } = build();
+    await service.onClick({ menuItemId: 'dlm:image:paused', checked: true });
+    expect(updates).toHaveLength(6);
+    expect(updates.every((update) => update.checked)).toBe(true);
+    expect(updates.map((update) => update.id)).toContain('dlm:page:paused');
+  });
+
+  it('refuses a pattern that is too long to test against every link', () => {
+    expect(patternRejected('a'.repeat(201))).toBe(true);
+    expect(
+      filterLinks([link('https://a.test/a')], {
+        extensions: [],
+        pattern: 'a'.repeat(201),
+        minSizeBytes: 0,
+      }),
+    ).toEqual([]);
+  });
+});

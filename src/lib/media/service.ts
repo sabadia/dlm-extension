@@ -1,30 +1,27 @@
+import type { CaptureBody } from '../api/client';
 import type { ConnectionService } from '../connection/service';
-import { targetFor } from '../settings/routing';
-import type { SettingsStore } from '../settings/store';
 import { t } from '../i18n';
+import { CookieReader, type CookiesPort } from '../intercept/cookies';
+import { downloadHost } from '../intercept/rules';
 import type { Logger } from '../log/log';
 import { redactUrl } from '../log/redact';
-import type { SecretStore } from '../settings/store';
+import { targetFor } from '../settings/routing';
+import type { SecretStore, SettingsStore } from '../settings/store';
 import type { KeyValueArea } from '../storage/area';
 import { StoredValue } from '../storage/state';
-import { parseHandoffCount } from '../intercept/count';
-import { classifyNetwork, type MediaKind } from './classify';
+import { canonicalUrl, classifyNetwork, type MediaKind } from './classify';
+import { mediaFromPage, type PageMedia, type PageSnapshot } from './page';
 import { parseDash, parseHls, type Variant } from './playlist';
-import type { PageMedia, PageSnapshot } from './page';
-import { mediaFromPage } from './page';
 import {
   addNetwork,
-  parseTab,
+  emptyTab,
+  limitTabs,
+  MEDIA_TABS_KEY,
+  parseTabs,
   replacePage,
-  visibleItems,
   type MediaRow,
   type TabMedia,
 } from './store';
-
-/** The badge number for the tab the person is looking at. */
-export const MEDIA_BADGE_KEY = 'media.badge';
-
-const MAX_TABS = 30;
 
 export interface MediaView {
   url: string;
@@ -44,102 +41,134 @@ export interface TabView {
 
 export interface DownloadRequest {
   url: string;
+  /** The page the media is on: its address, and the Referer the CDN may want. */
   pageUrl?: string | undefined;
   kind?: MediaKind | undefined;
   /** Chosen quality label, sent as the task's media hint. */
   quality?: string | undefined;
+  /** `ytdlp` and `browser` download the page itself; `direct` (or nothing) downloads the media address. */
   resolverKind?: 'direct' | 'ytdlp' | 'browser' | undefined;
+  /** The tab, to read the cookies of its cookie store. */
+  tabId?: number | undefined;
+  /** The tab is a private window. */
+  incognito?: boolean | undefined;
+  /** Firefox: the container of the tab. */
+  cookieStoreId?: string | undefined;
 }
 
 interface Tasks {
-  create(body: {
-    url?: string;
-    source?: {
-      currentUrl: string;
-      resolverKind?: 'ytdlp' | 'browser';
-      mediaHint?: string;
-      pageUrl?: string;
-      streamKind?: 'hls' | 'dash';
-    };
-  }): Promise<unknown>;
+  capture(body: CaptureBody): Promise<unknown>;
   resolve(url: string): Promise<{ name: string; size: number; duplicate?: string }>;
 }
 
 export interface MediaDeps {
   secrets: Pick<SecretStore, 'get'>;
-  settings?: Pick<SettingsStore, 'get'>;
-  connection: Pick<ConnectionService, 'get' | 'repaint'> & {
+  settings: Pick<SettingsStore, 'get'>;
+  connection: Pick<ConnectionService, 'get'> & {
     endpoint?(targetId: string): Promise<{ baseUrl: string; token: string } | undefined>;
+    /** Paints the toolbar button of one tab with its media count. */
+    paintTab?(tabId: number, count: number): Promise<void>;
   };
   session: KeyValueArea;
   log: Logger;
   tasks: (baseUrl: string, token: string) => Tasks;
+  userAgent: string;
+  /** Cookies for a media download. Absent in tests that do not send any. */
+  cookies?: CookiesPort;
   /** Reads a playlist. The extension already has host access. */
   fetchText?: (url: string) => Promise<string>;
+  now?: () => number;
 }
 
 /**
  * The per-tab media list. Network responses and the page scan both write it; the popup reads it. Nothing is kept in
- * memory: a restarted worker reads the same session storage.
+ * memory: a restarted worker reads the same session storage, and every change is one read-modify-write in the storage
+ * queue, so two responses arriving together cannot overwrite each other.
  */
 export class MediaService {
   private readonly tabs: StoredValue<Record<string, TabMedia>>;
+  private readonly cookieReader: CookieReader | undefined;
+  private readonly now: () => number;
 
   constructor(private readonly deps: MediaDeps) {
-    this.tabs = new StoredValue(deps.session, 'media.tabs', parseTabs);
+    this.tabs = new StoredValue(deps.session, MEDIA_TABS_KEY, parseTabs);
+    this.cookieReader = deps.cookies ? new CookieReader(deps.cookies, deps.log) : undefined;
+    this.now = deps.now ?? (() => Date.now());
   }
 
-  /** A response the classifier accepts. `pageUrl` is the tab's document, when webRequest knows it. */
+  /**
+   * A response of a tab. Classifying is pure and comes first, so the many responses that are not media (and the
+   * segments of a stream, which are not listed) cost no storage access at all.
+   */
   async observe(hit: {
     url: string;
     tabId: number;
     mime?: string;
     sizeBytes?: number;
-    pageUrl?: string;
   }): Promise<void> {
     if (hit.tabId < 0) return;
-    const tab = await this.read(hit.tabId);
-    const manifests = tab.items
-      .filter((item) => item.kind === 'hls' || item.kind === 'dash')
-      .map((item) => item.url);
     const classified = classifyNetwork({
       url: hit.url,
       ...(hit.mime ? { mime: hit.mime } : {}),
       ...(hit.sizeBytes !== undefined ? { sizeBytes: hit.sizeBytes } : {}),
-      manifests,
     });
-    if (!classified) return;
+    if (!classified || classified.manifestUrl) return;
     const row: MediaRow = {
-      url: classified.url,
+      url: canonicalUrl(classified.url),
       kind: classified.kind,
       name: classified.name,
       source: 'network',
       ...(classified.mime ? { mime: classified.mime } : {}),
       ...(classified.sizeBytes !== undefined ? { sizeBytes: classified.sizeBytes } : {}),
-      ...(classified.manifestUrl ? { manifestUrl: classified.manifestUrl } : {}),
     };
-    await this.write(hit.tabId, addNetwork(tab, row, hit.pageUrl ?? tab.pageUrl));
+    const now = this.now();
+    await this.change(hit.tabId, (tab) => addNetwork(tab, row, now));
   }
 
-  /** The content script's scan of the document the person is looking at. */
-  async scan(tabId: number, snapshot: PageSnapshot, visible: boolean): Promise<void> {
-    const tab = await this.read(tabId);
-    const rows: MediaRow[] = mediaFromPage(snapshot).map((item) => pageRow(item));
-    const next = replacePage(tab, snapshot.pageUrl, rows, {
-      protectedMedia: snapshot.protectedMedia,
-      blobOrMse: snapshot.blobOrMse,
+  /** The tab loads a new page: what was found on the old one is gone. */
+  async navigated(tabId: number, pageUrl: string): Promise<void> {
+    if (tabId < 0) return;
+    const now = this.now();
+    await this.change(tabId, () => emptyTab(pageUrl, now));
+  }
+
+  /** The tab is closed: forget its list. */
+  async closed(tabId: number): Promise<void> {
+    await this.tabs.update((all) => {
+      const next = { ...all };
+      delete next[String(tabId)];
+      return next;
     });
-    await this.write(tabId, next);
-    if (visible) await this.paint(visibleItems(next).length);
+  }
+
+  /** An iframe of the tab plays protected media. */
+  async markProtected(tabId: number): Promise<void> {
+    const now = this.now();
+    await this.change(tabId, (tab) => ({ ...tab, protectedMedia: true, at: now }));
+  }
+
+  /** The content script's scan of the top document of a tab. */
+  async scan(tabId: number, snapshot: PageSnapshot): Promise<void> {
+    const rows: MediaRow[] = mediaFromPage(snapshot).map((item) => pageRow(item));
+    const now = this.now();
+    await this.change(tabId, (tab) =>
+      replacePage(
+        tab,
+        snapshot.pageUrl,
+        rows,
+        { protectedMedia: snapshot.protectedMedia, blobOrMse: snapshot.blobOrMse },
+        now,
+      ),
+    );
   }
 
   async forTab(tabId: number): Promise<TabView> {
-    const tab = await this.read(tabId);
+    const tab = (await this.tabs.get())[String(tabId)] ?? emptyTab();
     return {
       pageUrl: tab.pageUrl,
       protectedMedia: tab.protectedMedia,
       blobOrMse: tab.blobOrMse,
-      items: visibleItems(tab).map(viewOf),
+      items: tab.items.map(viewOf),
     };
   }
 
@@ -148,43 +177,69 @@ export class MediaService {
     if (!this.deps.fetchText) return [];
     try {
       const text = await this.deps.fetchText(url);
-      return url.toLowerCase().includes('.mpd') ? parseDash(text, url) : parseHls(text, url);
+      return /\.mpd(\?|$)/i.test(url) || /<MPD[\s>]/i.test(text)
+        ? parseDash(text, url)
+        : parseHls(text, url);
     } catch (error) {
       this.deps.log.debug('media', 'playlist could not be read', { error, url: redactUrl(url) });
       return [];
     }
   }
 
-  /** Sends one item, a chosen variant, or the page itself through yt-dlp or the daemon's browser. */
+  /**
+   * Sends one item, a chosen variant, or the page itself through yt-dlp or the daemon's browser. It is a capture, like
+   * an intercepted download: the page and the referrer, the cookies of this download's domain for this task only, and
+   * the kind of stream, so a manifest without a `.m3u8` suffix is still recognised.
+   */
   async download(request: DownloadRequest): Promise<{ ok: boolean; error?: string }> {
     const tasks = await this.client(request.url);
     if (!tasks) return { ok: false, error: t('links.offline') };
     try {
-      if (
-        request.resolverKind === 'ytdlp' ||
-        request.resolverKind === 'browser' ||
-        request.quality
-      ) {
-        await tasks.create({
-          source: {
-            currentUrl: request.url,
-            ...(request.resolverKind === 'ytdlp' || request.resolverKind === 'browser'
-              ? { resolverKind: request.resolverKind }
-              : {}),
-            ...(request.quality ? { mediaHint: request.quality } : {}),
-            ...(request.pageUrl ? { pageUrl: request.pageUrl } : {}),
-            ...(request.kind === 'hls' ? { streamKind: 'hls' as const } : {}),
-            ...(request.kind === 'dash' ? { streamKind: 'dash' as const } : {}),
-          },
-        });
-      } else {
-        await tasks.create({ url: request.url });
-      }
+      await tasks.capture(await this.captureBody(request));
       return { ok: true };
     } catch (error) {
       this.deps.log.warn('media', 'could not send media', { error, url: redactUrl(request.url) });
       return { ok: false, error: t('intercept.reason.rejected') };
     }
+  }
+
+  private async captureBody(request: DownloadRequest): Promise<CaptureBody> {
+    const body: CaptureBody = {
+      url: request.url,
+      cookieScope: 'task',
+      userAgent: this.deps.userAgent,
+    };
+    if (request.pageUrl) {
+      body.pageUrl = request.pageUrl;
+      body.referrer = request.pageUrl;
+    }
+    if (request.resolverKind === 'ytdlp' || request.resolverKind === 'browser') {
+      body.resolverKind = request.resolverKind;
+    } else if (request.kind) {
+      // Whatever its name, an HLS or DASH address is a stream, and a chosen quality travels with it.
+      body.mediaCandidates = [
+        {
+          url: request.url,
+          kind: request.kind,
+          ...(request.quality ? { variant: request.quality } : {}),
+        },
+      ];
+    }
+    const host = downloadHost(request.url);
+    if (host && this.cookieReader) {
+      const settings = await this.deps.settings.get();
+      const cookies = await this.cookieReader.read({
+        url: request.url,
+        pageUrl: request.pageUrl,
+        storeId: request.cookieStoreId,
+        tabId: request.tabId,
+        incognito: request.incognito === true,
+        allowPrivate: settings.rules.privateWindows,
+        host,
+      });
+      if (cookies.length > 0) body.cookies = cookies;
+    }
+    return body;
   }
 
   /** Lazy probes. One failure does not drop the others. */
@@ -210,30 +265,19 @@ export class MediaService {
     return out;
   }
 
-  private async read(tabId: number): Promise<TabMedia> {
-    const all = await this.tabs.get();
-    return (
-      all[String(tabId)] ?? { pageUrl: '', protectedMedia: false, blobOrMse: false, items: [] }
-    );
-  }
-
-  private async write(tabId: number, tab: TabMedia): Promise<void> {
+  /** One read-modify-write of a tab's list, then its toolbar button. */
+  private async change(tabId: number, fn: (tab: TabMedia) => TabMedia): Promise<void> {
+    let count = 0;
     await this.tabs.update((all) => {
-      const next = { ...all, [String(tabId)]: tab };
-      const ids = Object.keys(next);
-      if (ids.length <= MAX_TABS) return next;
-      delete next[ids[0] ?? ''];
-      return next;
+      const next = fn(all[String(tabId)] ?? emptyTab());
+      count = next.items.length;
+      return limitTabs({ ...all, [String(tabId)]: next });
     });
-  }
-
-  private async paint(count: number): Promise<void> {
-    await this.deps.session.set(MEDIA_BADGE_KEY, count);
-    await this.deps.connection.repaint();
+    await this.deps.connection.paintTab?.(tabId, count);
   }
 
   private async client(url?: string): Promise<Tasks | undefined> {
-    if (url && this.deps.connection.endpoint && this.deps.settings) {
+    if (url && this.deps.connection.endpoint) {
       const settings = await this.deps.settings.get();
       const endpoint = await this.deps.connection.endpoint(targetFor(settings, url));
       if (!endpoint) return undefined;
@@ -266,15 +310,4 @@ function viewOf(row: MediaRow): MediaView {
     ...(row.mime ? { mime: row.mime } : {}),
     ...(row.sizeBytes !== undefined ? { sizeBytes: row.sizeBytes } : {}),
   };
-}
-
-function parseTabs(raw: unknown): Record<string, TabMedia> {
-  if (typeof raw !== 'object' || raw === null) return {};
-  const out: Record<string, TabMedia> = {};
-  for (const [id, value] of Object.entries(raw)) out[id] = parseTab(value);
-  return out;
-}
-
-export function mediaBadgeCount(raw: unknown): number {
-  return parseHandoffCount(raw);
 }
