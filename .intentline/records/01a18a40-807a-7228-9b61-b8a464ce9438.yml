@@ -1,0 +1,83 @@
+schema_version: 1
+id: 01a18a40-807a-7228-9b61-b8a464ce9438
+status: draft
+created_at: '2026-10-30T00:40:45Z'
+updated_at: '2026-10-30T00:40:45Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: grok
+goal: 'Implement E3 links and menus: context menus, download all links, magnet and ed2k clicks, and torrent files.'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: docs/PLAN.md
+  start_line: null
+  end_line: null
+- path: entrypoints/background.ts
+  start_line: null
+  end_line: null
+- path: entrypoints/links/App.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/links/index.html
+  start_line: null
+  end_line: null
+- path: entrypoints/links/main.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/page.content.ts
+  start_line: null
+  end_line: null
+- path: spec/used-operations.json
+  start_line: null
+  end_line: null
+- path: src/background/handlers.ts
+  start_line: null
+  end_line: null
+- path: src/background/register.ts
+  start_line: null
+  end_line: null
+- path: src/background/services.ts
+  start_line: null
+  end_line: null
+- path: src/lib/api/client.ts
+  start_line: null
+  end_line: null
+- path: src/lib/bus/messages.ts
+  start_line: null
+  end_line: null
+- path: src/lib/i18n/en.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/links/classify.ts
+  start_line: null
+  end_line: null
+- path: src/lib/links/filter.ts
+  start_line: null
+  end_line: null
+- path: src/lib/links/links.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/links/menus.ts
+  start_line: null
+  end_line: null
+- path: src/lib/links/service.ts
+  start_line: null
+  end_line: null
+- path: wxt.config.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

@@ -31,6 +31,7 @@ import {
   type Gesture,
   type Observation,
 } from './observations';
+import { isTorrent } from '../links/classify';
 import { decide, downloadHost, type DownloadFacts } from './rules';
 
 /** A browser download, reduced to what the hand-off reads. */
@@ -261,6 +262,17 @@ export interface InterceptDeps {
   /** Address of the ask page for one pending id. */
   askUrl: (id: string) => string;
   client: (baseUrl: string, token: string) => CaptureClient;
+  /**
+   * Sends a `.torrent` by URL, or as bytes when the download carried cookies. Absent in tests that are not about
+   * torrents; those downloads are captured like any other file.
+   */
+  torrents?: {
+    addTorrent(facts: {
+      url: string;
+      filename?: string | undefined;
+      cookies?: CaptureBody['cookies'];
+    }): Promise<'taken' | 'failed'>;
+  };
   now?: () => number;
   id?: () => string;
 }
@@ -318,7 +330,7 @@ export class InterceptService {
     if (!prepared || prepared.decision.action !== 'take') return;
     const address = prepared.draft.finalUrl ?? prepared.draft.url;
     if ((await this.claim(address)) !== 'won') return;
-    const result = await this.send(buildCaptureBody(prepared.draft), prepared.name);
+    const result = await this.deliver(prepared.draft, prepared.name);
     await this.settle(address, result === 'failed' ? 'failed' : 'taken');
     if (result === 'failed') return;
     return { cancel: true };
@@ -363,7 +375,7 @@ export class InterceptService {
       await this.ask(prepared);
       return;
     }
-    const result = await this.send(buildCaptureBody(prepared.draft), prepared.name);
+    const result = await this.deliver(prepared.draft, prepared.name);
     await this.settle(address, result === 'failed' ? 'failed' : 'taken');
     if (result === 'failed') await this.fallback(address, prepared.draft.filename);
   }
@@ -598,6 +610,33 @@ export class InterceptService {
       this.deps.log.warn('intercept', 'could not cancel the browser download', { error });
       return false;
     }
+  }
+
+  /** A torrent file goes to the torrent upload; everything else is a capture. */
+  private async deliver(draft: CaptureDraft, name: string): Promise<SendResult> {
+    const address = draft.finalUrl ?? draft.url;
+    if (
+      this.deps.torrents &&
+      isTorrent({
+        url: address,
+        ...(draft.filename ? { filename: draft.filename } : {}),
+        ...(draft.mime ? { mime: draft.mime } : {}),
+      })
+    ) {
+      const outcome = await this.deps.torrents.addTorrent({
+        url: address,
+        ...(draft.filename ? { filename: draft.filename } : {}),
+        ...(draft.cookies ? { cookies: draft.cookies } : {}),
+      });
+      if (outcome === 'failed') {
+        await this.notify('intercept.failed', name, t('intercept.reason.rejected'));
+        return 'failed';
+      }
+      await this.bump();
+      await this.notify('intercept.sent', name);
+      return 'taken';
+    }
+    return this.send(buildCaptureBody(draft), name);
   }
 
   private async send(body: CaptureBody, name: string): Promise<SendResult> {

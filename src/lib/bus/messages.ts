@@ -40,6 +40,10 @@ export interface MessageMap {
   'ask.get': { request: { id: string }; response: { name: string; host: string } | null };
   /** The person's choice on the ask page. */
   'ask.choose': { request: { id: string; choice: AskChoice }; response: null };
+  /** A magnet or eD2K link a content script caught before the browser could prompt. */
+  'links.add': { request: { url: string }; response: boolean };
+  /** The addresses the person picked on the links page. */
+  'links.send': { request: { urls: string[] }; response: { ok: number; failed: number } };
 }
 
 export type MessageType = keyof MessageMap;

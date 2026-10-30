@@ -1,9 +1,12 @@
 import { browser } from 'wxt/browser';
 import {
   attachIntercept,
+  attachMenus,
   registerBackground,
   type InterceptBrowser,
+  type MenuBrowser,
 } from '../src/background/register';
+import type { MenuSpec } from '../src/lib/links/menus';
 import { detectBrowser } from '../src/lib/pairing/browser';
 import { originPattern } from '../src/lib/settings/url';
 import { browserArea } from '../src/lib/storage/area';
@@ -53,6 +56,26 @@ export default defineBackground(() => {
         },
       },
       askUrl: (id) => browser.runtime.getURL(`/ask.html?id=${encodeURIComponent(id)}`),
+      menus: {
+        removeAll: () => browser.contextMenus.removeAll(),
+        create: (spec: MenuSpec) => {
+          browser.contextMenus.create({
+            id: spec.id,
+            title: spec.title,
+            contexts: spec.contexts as ['page'],
+            ...(spec.parentId ? { parentId: spec.parentId } : {}),
+            ...(spec.type === 'checkbox'
+              ? { type: 'checkbox' as const, checked: spec.checked ?? false }
+              : {}),
+          });
+        },
+        open: async (url) => {
+          await browser.tabs.create({ url });
+        },
+      },
+      linksUrl: (tabId) => browser.runtime.getURL(`/links.html?tab=${tabId}`),
+      fetchFile: async (url) =>
+        new Uint8Array(await (await fetch(url, { credentials: 'include' })).arrayBuffer()),
     },
     {
       onStartup: browser.runtime.onStartup,
@@ -61,6 +84,9 @@ export default defineBackground(() => {
       intercept: {
         attach: (intercept) =>
           attachIntercept(browser as unknown as InterceptBrowser, intercept, firefox),
+      },
+      menus: {
+        attach: (links) => attachMenus(browser.contextMenus as unknown as MenuBrowser, links),
       },
     },
   );

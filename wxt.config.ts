@@ -31,6 +31,7 @@ export default defineConfig({
       'webRequest',
       'cookies',
       'notifications',
+      'contextMenus',
       ...(browser === 'firefox' ? ['webRequestBlocking' as const] : []),
     ],
     icons: { '16': '/icon-16.png', '128': '/icon.png' },

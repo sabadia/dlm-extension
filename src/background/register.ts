@@ -1,5 +1,6 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
+import type { LinksService } from '../lib/links/service';
 import { createHandlers } from './handlers';
 import { createServices, type Environment } from './services';
 
@@ -37,6 +38,10 @@ export function registerBackground(
     lifecycle.intercept.attach(services.intercept);
     void services.intercept.sweep();
   }
+  if (services.links && lifecycle.menus) {
+    lifecycle.menus.attach(services.links);
+    void services.links.install();
+  }
 }
 
 /** The alarm that looks at the connection once a minute. */
@@ -57,6 +62,10 @@ export interface Lifecycle {
    */
   intercept?: {
     attach(intercept: InterceptService): void;
+  };
+  /** Registers the context-menu listener synchronously, then the service fills the menus. */
+  menus?: {
+    attach(links: LinksService): void;
   };
 }
 
@@ -112,6 +121,40 @@ export interface RawRequest {
   cookieStoreId?: string | undefined;
   requestHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
   responseHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
+}
+
+/** The context-menu click, narrowed to the fields the links service reads. */
+export interface MenuBrowser {
+  onClicked: {
+    addListener(
+      listener: (
+        info: {
+          menuItemId: string | number;
+          linkUrl?: string;
+          srcUrl?: string;
+          selectionText?: string;
+          pageUrl?: string;
+          checked?: boolean;
+        },
+        tab?: { id?: number },
+      ) => void,
+    ): void;
+  };
+}
+
+/** Registers the menu listener while the background loads. The entries themselves are filled in afterwards. */
+export function attachMenus(browser: MenuBrowser, links: LinksService): void {
+  browser.onClicked.addListener((info, tab) => {
+    void links.onClick({
+      menuItemId: String(info.menuItemId),
+      ...(info.linkUrl ? { linkUrl: info.linkUrl } : {}),
+      ...(info.srcUrl ? { srcUrl: info.srcUrl } : {}),
+      ...(info.selectionText ? { selectionText: info.selectionText } : {}),
+      ...(info.pageUrl ? { pageUrl: info.pageUrl } : {}),
+      ...(info.checked !== undefined ? { checked: info.checked } : {}),
+      ...(tab?.id !== undefined ? { tabId: tab.id } : {}),
+    });
+  });
 }
 
 /** Registers the hand-off listeners. Firefox also asks to cancel attachments before they become downloads. */

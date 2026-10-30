@@ -96,5 +96,20 @@ export function createHandlers(services: Services): Handlers {
         return null;
       },
     },
+    'links.add': {
+      fromContent: true,
+      handle: async (input) => {
+        if (!input || typeof input.url !== 'string' || input.url.length > 8192) return false;
+        return (await services.links?.addDirect(input.url)) ?? false;
+      },
+    },
+    'links.send': {
+      handle: async (input) => {
+        const urls = Array.isArray(input?.urls)
+          ? input.urls.filter((url): url is string => typeof url === 'string' && url.length < 8192)
+          : [];
+        return (await services.links?.sendMany(urls)) ?? { ok: 0, failed: urls.length };
+      },
+    },
   };
 }
