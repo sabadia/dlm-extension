@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /** One download in the popup. Built from a task and updated from the event stream. */
 export interface LiveTask {
   id: string;
@@ -25,7 +26,7 @@ export interface TaskLike {
 export function liveFromTask(task: TaskLike): LiveTask {
   return {
     id: task.id,
-    name: task.name && task.name !== '' ? task.name : 'download',
+    name: task.name && task.name !== '' ? task.name : t('downloads.unnamed'),
     status: task.status,
     downloaded: task.downloaded,
     size: task.size,

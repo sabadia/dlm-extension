@@ -5,7 +5,7 @@ import type { PageHint } from '../page/hints';
 import type { PageSnapshot } from '../media/page';
 import type { LiveSnapshot } from '../downloads/service';
 import type { DownloadRequest, TabView } from '../media/service';
-import type { Settings } from '../settings/schema';
+import type { Settings, SettingsPatch } from '../settings/schema';
 import type { Variant } from '../media/playlist';
 import type { AddResult, RemoteTestResult, RemoteView } from '../remote/service';
 
@@ -75,11 +75,11 @@ export interface MessageMap {
   };
   /** The settings, without tokens. */
   'settings.get': { request: undefined; response: Settings };
-  /** Replaces the settings with this value. It is parsed again, so a bad field falls back to the default. */
-  'settings.save': { request: Settings; response: Settings };
+  /** Saves the rules, preferences and routes. It is parsed again, so a bad field falls back to the default. */
+  'settings.save': { request: SettingsPatch; response: Settings };
   /** The settings as a file. It contains no token. */
   'settings.export': { request: undefined; response: string };
-  /** Replaces the settings from an exported file. */
+  /** Replaces the settings from an exported file. A server with a new address starts without its token. */
   'settings.import': { request: { text: string }; response: Settings };
   /** The downloads DLM is working on, the queues, and whether turbo is on. */
   'downloads.list': { request: undefined; response: LiveSnapshot };

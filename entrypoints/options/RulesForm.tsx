@@ -82,9 +82,9 @@ export function RulesForm() {
               setRules({ bypassKey: value });
           }}
         >
-          <option value="alt">Alt</option>
-          <option value="shift">Shift</option>
-          <option value="none">{t('options.bypass')}</option>
+          <option value="alt">{t('options.bypass.alt')}</option>
+          <option value="shift">{t('options.bypass.shift')}</option>
+          <option value="none">{t('options.bypass.none')}</option>
         </select>
       </label>
       <label>
@@ -166,29 +166,21 @@ export function RulesForm() {
         <span>
           {t('options.routesHint')}{' '}
           {settings.targets
-            .map((target) => `${target.kind === 'local' ? 'DLM' : target.name} ${target.id}`)
+            .map(
+              (target) =>
+                `${target.kind === 'local' ? t('remote.local') : target.name} ${target.id}`,
+            )
             .join(', ')}
         </span>
-      </label>
-      <label>
-        {t('options.connection')}
-        <select
-          value={settings.activeTargetId}
-          onChange={(event) =>
-            setSettings({ ...settings, activeTargetId: event.currentTarget.value })
-          }
-        >
-          {settings.targets.map((target) => (
-            <option key={target.id} value={target.id}>
-              {target.kind === 'local' ? 'DLM' : target.name}
-            </option>
-          ))}
-        </select>
       </label>
       <button
         type="button"
         onClick={() => {
-          void sendMessage(browser.runtime, 'settings.save', settings).then(
+          void sendMessage(browser.runtime, 'settings.save', {
+            rules: settings.rules,
+            preferences: settings.preferences,
+            routes: settings.routes,
+          }).then(
             (saved) => {
               setSettings(saved);
               setNote(t('options.saved'));
@@ -213,6 +205,10 @@ function routeLines(value: string): DomainRoute[] {
     routes.push({ site, targetId });
   }
   return routes;
+}
+
+function importErrorText(error: unknown): string {
+  return error instanceof Error ? error.message : t('error.failed');
 }
 
 function lines(value: string): string[] {
@@ -251,7 +247,7 @@ function SettingsFile() {
             void file.text().then((text) =>
               sendMessage(browser.runtime, 'settings.import', { text }).then(
                 () => setNote(t('options.imported')),
-                (error: unknown) => setNote(error instanceof Error ? error.message : 'failed'),
+                (error: unknown) => setNote(importErrorText(error)),
               ),
             );
           }}

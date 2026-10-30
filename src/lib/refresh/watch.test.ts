@@ -36,7 +36,7 @@ describe('refreshNotices', () => {
       ]),
     ).toEqual([
       { id: '1', name: 'Setup', pageUrl: 'https://files.example.test/setup' },
-      { id: '3', name: 'download' },
+      { id: '3', name: 'Download' },
     ]);
   });
 });

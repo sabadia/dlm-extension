@@ -15,7 +15,6 @@ export type CaptureCookie = Schemas['CaptureCookie'];
 export type CaptureOutput = Schemas['CaptureOutput'];
 export type ResolveResult = Schemas['ResolveResult'];
 export type ResolveTaskBody = Schemas['ResolveTaskBody'];
-export type ResolvePageBody = Schemas['ResolvePageBody'];
 export type TaskSelector = Schemas['TaskSelector'];
 export type ListTasksQuery = NonNullable<operations['list-tasks']['parameters']['query']>;
 
@@ -148,11 +147,6 @@ export class DlmClient {
   /** What a link is (size, name, formats) without adding it. */
   resolve(body: ResolveTaskBody, signal?: AbortSignal): Promise<ResolveResult> {
     return this.json('POST', '/v1/resolve', body, { signal });
-  }
-
-  /** Looks for media on a page with the daemon's own browser. */
-  resolvePage(body: ResolvePageBody, signal?: AbortSignal): Promise<unknown> {
-    return this.json('POST', '/v1/browser/resolve', body, { signal });
   }
 
   /**

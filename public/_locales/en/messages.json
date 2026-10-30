@@ -1,0 +1,18 @@
+{
+  "extDescription": {
+    "message": "Send downloads, media, magnet links and torrents from your browser to DLM.",
+    "description": "The extension's description in the browser's extension list and store."
+  },
+  "cmdOpen": {
+    "message": "Open DLM",
+    "description": "Description of the keyboard shortcut that opens the popup."
+  },
+  "cmdToggleIntercept": {
+    "message": "Turn download interception on or off",
+    "description": "Description of the keyboard shortcut that switches interception."
+  },
+  "cmdOpenOptions": {
+    "message": "Open DLM options",
+    "description": "Description of the keyboard shortcut that opens the options page."
+  }
+}

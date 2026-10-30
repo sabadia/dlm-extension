@@ -3,7 +3,6 @@ import { ApiError, NetworkError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
 import type { HintStore } from '../page/store';
 import { targetFor } from '../settings/routing';
-import { isTorrent } from './classify';
 import { chunk } from './filter';
 import { t } from '../i18n';
 import type { Logger } from '../log/log';
@@ -267,13 +266,4 @@ export class LinksService {
 export function failureReason(error: unknown): string {
   if (error instanceof ApiError || error instanceof NetworkError) return error.message;
   return t('links.offline');
-}
-
-/** Whether the hand-off should treat this download as a torrent file. */
-export function torrentDownload(facts: {
-  url?: string;
-  filename?: string;
-  mime?: string;
-}): boolean {
-  return isTorrent(facts);
 }

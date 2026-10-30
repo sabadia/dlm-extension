@@ -1,5 +1,6 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
 import type { LiveSnapshot } from '../lib/downloads/service';
+import { contentLength, headerValue } from '../lib/intercept/metadata';
 import { postBodyFrom } from '../lib/intercept/post';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
 import type { LinksService } from '../lib/links/service';
@@ -50,6 +51,11 @@ export function registerBackground(
   if (services.media && lifecycle.media) lifecycle.media.attach(services.media);
   lifecycle.live?.onConnect.addListener((port) => {
     if (port.name !== 'downloads') return;
+    // Only the extension's own pages (the popup) may open the stream; a content script or another extension may not.
+    if (port.sender?.id !== runtime.id || !port.sender.url?.startsWith(runtime.getURL(''))) {
+      port.disconnect?.();
+      return;
+    }
     const controller = new AbortController();
     port.onDisconnect.addListener(() => controller.abort());
     void services.downloads.watch((snapshot) => port.postMessage(snapshot), controller.signal);
@@ -109,12 +115,14 @@ export interface Lifecycle {
 
 interface LivePort {
   name: string;
+  sender?: { id?: string | undefined; url?: string | undefined } | undefined;
+  disconnect?(): void;
   postMessage(message: LiveSnapshot): void;
   onDisconnect: { addListener(listener: () => void): void };
 }
 
 /** Addresses the hand-off watches. `blob:` and `data:` are not among them. */
-export const INTERCEPT_URLS = ['http://*/*', 'https://*/*', 'ftp://*/*'] as const;
+export const INTERCEPT_URLS = ['http://*/*', 'https://*/*'] as const;
 
 /** The listener shape `browser.webRequest` and `browser.downloads` share, narrowed to what E2 registers. */
 export interface InterceptBrowser {
@@ -221,18 +229,6 @@ export function attachMedia(browser: InterceptBrowser, media: MediaService): voi
     { urls: [...INTERCEPT_URLS] },
     ['responseHeaders'],
   );
-}
-
-function headerValue(
-  headers: { name?: string | undefined; value?: string | undefined }[] | undefined,
-  name: string,
-): string | undefined {
-  return headers?.find((header) => header.name?.toLowerCase() === name)?.value;
-}
-
-function contentLength(value: string | undefined): number | undefined {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 /** Registers the hand-off listeners. Firefox also asks to cancel attachments before they become downloads. */

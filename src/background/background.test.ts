@@ -189,4 +189,52 @@ describe('the background lifecycle', () => {
     expect(created).toEqual([CHECK_ALARM, REFRESH_ALARM]);
     listeners.alarm[0]?.({ name: 'something-else' }); // ignored
   });
+
+  it('lets only pages of this extension open the live stream', async () => {
+    const { registerBackground } = await import('./register');
+    let connect: ((port: unknown) => void) | undefined;
+    registerBackground(
+      fakeRuntime(),
+      {
+        local: memoryArea(),
+        session: memoryArea(),
+        version: '1',
+        userAgent: 'u',
+        native: noHost,
+        action: noAction,
+      },
+      {
+        onStartup: { addListener: () => undefined },
+        onInstalled: { addListener: () => undefined },
+        alarms: {
+          get: () => Promise.resolve({}),
+          create: () => undefined,
+          onAlarm: { addListener: () => undefined },
+        },
+        live: { onConnect: { addListener: (l) => (connect = l as (port: unknown) => void) } },
+      },
+    );
+    const port = (sender: { id?: string; url?: string }) => {
+      const state = { disconnected: false, handlers: 0 };
+      return {
+        state,
+        port: {
+          name: 'downloads',
+          sender,
+          disconnect: () => (state.disconnected = true),
+          postMessage: () => undefined,
+          onDisconnect: { addListener: () => (state.handlers += 1) },
+        },
+      };
+    };
+    const foreign = port({ id: 'other', url: 'chrome-extension://other/popup.html' });
+    const page = port({ id: 'abc', url: `${BASE}popup.html` });
+    const content = port({ id: 'abc', url: 'https://example.test/' });
+    connect?.(foreign.port);
+    connect?.(page.port);
+    connect?.(content.port);
+    expect(foreign.state).toEqual({ disconnected: true, handlers: 0 });
+    expect(content.state).toEqual({ disconnected: true, handlers: 0 });
+    expect(page.state).toEqual({ disconnected: false, handlers: 1 });
+  });
 });

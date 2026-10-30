@@ -3,7 +3,7 @@ import { browser } from 'wxt/browser';
 import { sendMessage } from '../../src/lib/bus/bus';
 import { formatBytes, openInAppUrl, type LiveTask } from '../../src/lib/downloads/live';
 import type { LiveSnapshot } from '../../src/lib/downloads/service';
-import { t } from '../../src/lib/i18n';
+import { statusText, t } from '../../src/lib/i18n';
 
 /** The downloads DLM is working on. The stream lives only while this popup is open. */
 export function LiveList() {
@@ -62,7 +62,7 @@ function TaskRow({
   return (
     <li>
       <p>
-        {task.name} · {task.status}
+        {task.name} · {statusText(task.status)}
         {task.size > 0
           ? ` · ${formatBytes(task.downloaded)} / ${formatBytes(task.size)} (${fraction}%)`
           : ''}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { memoryArea } from '../storage/area';
 import { migrateSettings, SettingsTooNewError, type Migration } from './migrate';
+import { adoptImported } from './import';
 import { normalizeFileType, normalizeMimeType, normalizeSite, parseSettings } from './parse';
 import { defaultSettings } from './schema';
 import {
@@ -203,8 +204,9 @@ describe('SettingsStore', () => {
     expect(text).toContain('https://a.test');
 
     const other = new SettingsStore(memoryArea());
-    const imported = await other.import(text);
-    expect(imported.targets.map((t) => t.id)).toEqual(['local', 'a']);
+    // A server this browser does not know yet comes in with a new id (and so without a token).
+    const imported = await other.import(text, () => 'minted');
+    expect(imported.targets.map((t) => t.id)).toEqual(['local', 'minted']);
     expect(await new SecretStore(memoryArea()).has('a')).toBe(false);
   });
 
@@ -228,6 +230,33 @@ describe('SecretStore', () => {
     await secrets.remove('a');
     expect(await secrets.get('a')).toBeUndefined();
     expect(await secrets.get('local')).toBe('t1');
+  });
+});
+
+describe('adoptImported', () => {
+  const known = parseSettings({
+    targets: [{ id: 'a', kind: 'remote', name: 'A', url: 'https://a.test' }],
+    activeTargetId: 'a',
+  });
+  const incoming = (url: string, routes = true) =>
+    parseSettings({
+      targets: [{ id: 'a', kind: 'remote', name: 'A', url }],
+      activeTargetId: 'a',
+      routes: routes ? [{ site: 'example.test', targetId: 'a' }] : [],
+    });
+
+  it('keeps a server whose address is the same', () => {
+    const next = adoptImported(known, incoming('https://a.test'), () => 'new');
+    expect(next.targets.map((t) => t.id)).toEqual(['local', 'a']);
+    expect(next.activeTargetId).toBe('a');
+    expect(next.routes).toHaveLength(1);
+  });
+
+  it('gives a server with another address a new id, no activity and no routes', () => {
+    const next = adoptImported(known, incoming('https://evil.test'), () => 'new');
+    expect(next.targets.map((t) => t.id)).toEqual(['local', 'new']);
+    expect(next.activeTargetId).toBe('local');
+    expect(next.routes).toEqual([]);
   });
 });
 

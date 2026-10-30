@@ -113,8 +113,8 @@ Made by the author of the plan:
 In E1 the manifest declares `storage`, `nativeMessaging` (find and pair with the local DLM), `alarms` (the once-a-minute
 connection check) and host access to the loopback addresses of the daemon (`http://127.0.0.1/*`, `http://localhost/*`);
 remote servers are optional host permissions, asked for one server at a time when the person adds it (E1.7). E2 adds
-`downloads`, `webRequest`, `cookies` and `notifications`, and host access to `http://*/*`, `https://*/*` and
-`ftp://*/*`, so a download's headers and cookies can be read on any site. Firefox also declares `webRequestBlocking`
+`downloads`, `webRequest`, `cookies` and `notifications`, and host access to `http://*/*` and `https://*/*`, so a
+download's headers and cookies can be read on any site (no `ftp://`: neither browser downloads FTP any more). Firefox also declares `webRequestBlocking`
 so an attachment can be cancelled before a download entry appears. E3 adds `contextMenus` for the right-click menus.
 The remaining permissions arrive with the features that need them.
 No remote code, no analytics, no data leaves the computer except to the user's own DLM server.

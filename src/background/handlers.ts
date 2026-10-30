@@ -1,15 +1,33 @@
-import type { Handlers, SenderLike } from '../lib/bus/bus';
+import { isTopFrame, type Handlers, type SenderLike } from '../lib/bus/bus';
 import { buildDiagnostics } from '../lib/log/diagnostics';
 import { describeState } from '../lib/connection/service';
 import type { AskChoice } from '../lib/intercept/service';
 import { acceptedHints } from '../lib/page/hints';
-import type { PageSnapshot } from '../lib/media/page';
+import { t } from '../lib/i18n';
+import { SettingsImportError } from '../lib/settings/store';
+import { isDirectScheme } from '../lib/links/classify';
+import { parseSnapshot } from '../lib/media/page';
 import type { Services } from './services';
 
 function tabIdOf(sender: SenderLike): number | undefined {
   const tab = sender.tab;
   if (typeof tab !== 'object' || tab === null || !('id' in tab)) return undefined;
   return typeof tab.id === 'number' ? tab.id : undefined;
+}
+
+const MAX_URL = 8192;
+/** The most addresses one links-page send may carry. */
+const MAX_SEND = 500;
+
+/** An address the links page may send: a web address, or a magnet or eD2K link. */
+function isSendable(url: string): boolean {
+  if (isDirectScheme(url)) return true;
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:' || protocol === 'ftp:';
+  } catch {
+    return false;
+  }
 }
 
 const ASK_CHOICES: readonly AskChoice[] = ['dlm', 'browser', 'always', 'omit'];
@@ -100,22 +118,31 @@ export function createHandlers(services: Services): Handlers {
     },
     'page.hints': {
       fromContent: true,
-      handle: async (input) => {
+      handle: async (input, sender) => {
+        if (!isTopFrame(sender)) return null;
         await services.intercept?.noteHints(acceptedHints(input?.hints));
         return null;
       },
     },
     'links.add': {
       fromContent: true,
-      handle: async (input) => {
-        if (!input || typeof input.url !== 'string' || input.url.length > 8192) return false;
+      handle: async (input, sender) => {
+        // Only a magnet or eD2K link, only from the top frame of a tab; anything else is not ours to send.
+        if (!isTopFrame(sender)) return false;
+        if (typeof input?.url !== 'string' || input.url.length > MAX_URL) return false;
+        if (!isDirectScheme(input.url)) return false;
         return (await services.links?.addDirect(input.url)) ?? false;
       },
     },
     'links.send': {
       handle: async (input) => {
         const urls = Array.isArray(input?.urls)
-          ? input.urls.filter((url): url is string => typeof url === 'string' && url.length < 8192)
+          ? input.urls
+              .filter(
+                (url): url is string =>
+                  typeof url === 'string' && url.length < MAX_URL && isSendable(url),
+              )
+              .slice(0, MAX_SEND)
           : [];
         return (await services.links?.sendMany(urls)) ?? { ok: 0, failed: urls.length };
       },
@@ -129,16 +156,19 @@ export function createHandlers(services: Services): Handlers {
       fromContent: true,
       handle: (input, sender) => {
         const tabId = tabIdOf(sender);
-        if (tabId === undefined || !isSnapshot(input?.snapshot)) return null;
+        if (tabId === undefined || !isTopFrame(sender) || sender.url === undefined) return null;
+        // The address of the page is the sender's, not the one the content script claims.
+        const snapshot = parseSnapshot(input?.snapshot, sender.url);
+        if (!snapshot) return null;
         return (
-          services.media?.scan(tabId, input.snapshot, input.visible === true).then(() => null) ??
-          null
+          services.media?.scan(tabId, snapshot, input.visible === true).then(() => null) ?? null
         );
       },
     },
     'media.download': {
       handle: (input) =>
-        services.media?.download(input) ?? Promise.resolve({ ok: false, error: 'no media' }),
+        services.media?.download(input) ??
+        Promise.resolve({ ok: false, error: t('error.noMedia') }),
     },
     'media.variants': {
       handle: ({ url }) => services.media?.variants(url) ?? Promise.resolve([]),
@@ -148,9 +178,21 @@ export function createHandlers(services: Services): Handlers {
         services.media?.probe(urls.filter((url) => typeof url === 'string')) ?? Promise.resolve([]),
     },
     'settings.get': { handle: () => services.settings.get() },
-    'settings.save': { handle: (settings) => services.settings.update(() => settings) },
+    'settings.save': { handle: (patch) => services.settings.save(patch) },
     'settings.export': { handle: () => services.settings.export() },
-    'settings.import': { handle: ({ text }) => services.settings.import(text) },
+    'settings.import': {
+      handle: async ({ text }) => {
+        const settings = await services.settings.import(text).catch((error: unknown) => {
+          // The page gets the sentence, not the reason code.
+          throw error instanceof SettingsImportError
+            ? new Error(t(`options.importError.${error.reason}`))
+            : error;
+        });
+        // A server that is not in the file, or has a new address, must not keep the token it had.
+        await services.secrets.keepOnly(settings.targets.map((target) => target.id));
+        return settings;
+      },
+    },
     'downloads.list': {
       handle: () => services.downloads.list(),
     },
@@ -179,19 +221,9 @@ export function createHandlers(services: Services): Handlers {
           await services.downloads.test(url);
           return { ok: true };
         } catch (error) {
-          return { ok: false, error: error instanceof Error ? error.message : 'failed' };
+          return { ok: false, error: error instanceof Error ? error.message : t('error.failed') };
         }
       },
     },
   };
-}
-
-function isSnapshot(value: unknown): value is PageSnapshot {
-  if (typeof value !== 'object' || value === null) return false;
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.pageUrl === 'string' &&
-    Array.isArray(record.videos) &&
-    Array.isArray(record.audios)
-  );
 }

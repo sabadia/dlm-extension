@@ -78,6 +78,9 @@ export interface Settings {
   preferences: Preferences;
 }
 
+/** What the options page saves: the parts it edits. Targets and the active target are changed elsewhere. */
+export type SettingsPatch = Pick<Settings, 'rules' | 'preferences' | 'routes'>;
+
 export const LOCAL_TARGET: LocalTarget = { id: 'local', kind: 'local' };
 
 /** 1 MB: smaller files stay in the browser (docs/PLAN.md, decisions). */

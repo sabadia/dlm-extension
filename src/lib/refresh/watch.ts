@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /**
  * Which expired links the extension should tell the user about. The daemon keeps a task in `awaiting_link` until the
  * next matching download is captured (docs/PLAN.md, E6.1). The worker does not stay awake for a stream (spike E0.8),
@@ -40,7 +41,7 @@ export function refreshNotices(tasks: readonly WaitingTask[]): RefreshNotice[] {
   for (const task of tasks) {
     if (task.status !== 'awaiting_link' || task.id === '') continue;
     const pageUrl = storedPage(task.source);
-    const name = task.name?.trim() || 'download';
+    const name = task.name?.trim() || t('downloads.unnamed');
     notices.push(pageUrl ? { id: task.id, name, pageUrl } : { id: task.id, name });
   }
   return notices;
