@@ -1,5 +1,6 @@
 import { render } from 'preact';
-import { App } from './App';
+import '../../src/ui/theme.css';
+import { FilesView } from '../../src/ui/FilesView';
 
 const root = document.getElementById('app');
-if (root) render(<App />, root);
+if (root) render(<FilesView surface="popup" />, root);

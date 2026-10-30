@@ -39,9 +39,9 @@ export default defineConfig({
     ],
     icons: { '16': '/icon-16.png', '32': '/icon-32.png', '48': '/icon-48.png', '128': '/icon.png' },
     commands: {
-      _execute_action: {
+      'open-files': {
         suggested_key: { default: 'Alt+Shift+D' },
-        description: '__MSG_cmdOpen__',
+        description: '__MSG_cmdOpenFiles__',
       },
       'toggle-intercept': {
         suggested_key: { default: 'Alt+Shift+I' },

@@ -194,7 +194,7 @@ watched).
 - [x] E5b.1 Settings for the Files panel (#63) — Surface (side panel, default, or popup), naming (page title, default, or file name), follow redirects (on), sort (size, largest first). Settings version 5 with a migration.
 - [x] E5b.2 UI kit, theme and real icons (#64) — Reusable components, light, dark and high-contrast theme, inline icons, the app's icon set for the toolbar; no new runtime dependency.
 - [x] E5b.3 Files logic (#65) — Candidates (page media, network files, links that look like downloads), a check of each (HEAD with credentials, redirects followed, ranged GET when HEAD is refused) that keeps only valid files with a known size, title naming with collision handling, sort and filter, capture with DLM's browser, and a site's cookies sent to DLM.
-- [ ] E5b.4 Side panel and popup surfaces (#66) — The toolbar button opens a side panel (Chrome `sidePanel`, Firefox `sidebar_action`); the popup is a setting; the live download list and its plumbing are removed.
+- [x] E5b.4 Side panel and popup surfaces (#66) — The toolbar button opens a side panel (Chrome `sidePanel`, Firefox `sidebar_action`); the popup is a setting; the live download list and its plumbing are removed.
 - [ ] E5b.5 Files view (#67) — Search, type chips, sort, rename, selection with a queue picker and add paused, per-file and per-page DLM's browser, send cookies, rescan, states.
 - [ ] E5b.6 Options redesign (#68) — Navigation, cards, switches and chip inputs, a Get started card, Servers cards.
 

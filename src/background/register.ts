@@ -1,5 +1,4 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
-import type { LiveSnapshot } from '../lib/downloads/service';
 import { contentLength, headerValue } from '../lib/intercept/metadata';
 import { responseSize } from '../lib/media/classify';
 import { postBodyFrom } from '../lib/intercept/post';
@@ -9,6 +8,7 @@ import type { MediaService } from '../lib/media/service';
 import { REFRESH_PERIOD_MINUTES } from '../lib/refresh/watch';
 import { t } from '../lib/i18n';
 import { createHandlers } from './handlers';
+import { applySurface, onActionClicked, openSurface } from './surface';
 import { createServices, type Environment } from './services';
 
 /**
@@ -68,31 +68,23 @@ export function registerBackground(
       await services.refresh.onNotificationClicked(id);
     })();
   });
+  // Where the toolbar button opens the files: applied at every load, because the browser forgets the popup choice.
+  const surface = env.surface;
+  if (surface) {
+    void services.settings.get().then(
+      (settings) => applySurface(surface, settings.files.surface),
+      (error: unknown) =>
+        services.log.warn('surface', 'could not set the toolbar button', { error }),
+    );
+    // With no popup the button sends this event (Firefox: open the sidebar, which must happen in this call).
+    lifecycle.action?.onClicked.addListener((tab) => {
+      void onActionClicked(surface, tab?.id);
+    });
+  }
   lifecycle.tabs?.onRemoved.addListener((tabId) => {
     void services.media?.closed(tabId);
   });
-  lifecycle.live?.onConnect.addListener((port) => {
-    if (port.name !== 'downloads') return;
-    // Only the extension's own pages (the popup) may open the stream; a content script or another extension may not.
-    if (port.sender?.id !== runtime.id || !port.sender.url?.startsWith(runtime.getURL(''))) {
-      port.disconnect?.();
-      return;
-    }
-    const controller = new AbortController();
-    port.onDisconnect.addListener(() => controller.abort());
-    const send = (snapshot: LiveSnapshot) => {
-      try {
-        port.postMessage(snapshot);
-      } catch {
-        // The popup closed between two messages.
-        controller.abort();
-      }
-    };
-    services.downloads.watch(send, controller.signal).catch((error: unknown) => {
-      services.log.warn('downloads', 'the live list stopped', { error });
-    });
-  });
-  lifecycle.commands?.onCommand.addListener((command) => {
+  lifecycle.commands?.onCommand.addListener((command, tab) => {
     if (command === 'toggle-intercept') {
       void services.settings
         .update((settings) => ({
@@ -114,6 +106,11 @@ export function registerBackground(
         });
     }
     if (command === 'open-options') void lifecycle.commands?.openOptions();
+    if (command === 'open-files' && surface) {
+      void services.settings
+        .get()
+        .then((settings) => openSurface(surface, settings.files.surface, tab?.id));
+    }
   });
 }
 
@@ -147,11 +144,9 @@ export interface Lifecycle {
   media?: {
     attach(media: MediaService): void;
   };
-  /** The popup connects here while it is open so the event stream can stop when it closes. */
-  live?: {
-    onConnect: {
-      addListener(listener: (port: LivePort) => void): void;
-    };
+  /** The toolbar button, when it has no popup. */
+  action?: {
+    onClicked: { addListener(listener: (tab?: { id?: number | undefined }) => void): void };
   };
   notifications?: {
     onClicked: { addListener(listener: (notificationId: string) => void): void };
@@ -161,17 +156,11 @@ export interface Lifecycle {
     onRemoved: { addListener(listener: (tabId: number) => void): void };
   };
   commands?: {
-    onCommand: { addListener(listener: (command: string) => void): void };
+    onCommand: {
+      addListener(listener: (command: string, tab?: { id?: number | undefined }) => void): void;
+    };
     openOptions(): void;
   };
-}
-
-interface LivePort {
-  name: string;
-  sender?: { id?: string | undefined; url?: string | undefined } | undefined;
-  disconnect?(): void;
-  postMessage(message: LiveSnapshot): void;
-  onDisconnect: { addListener(listener: () => void): void };
 }
 
 /** Addresses the hand-off watches. `blob:` and `data:` are not among them. */

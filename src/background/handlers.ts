@@ -221,7 +221,13 @@ export function createHandlers(services: Services): Handlers {
         services.media?.probe(urls.filter((url) => typeof url === 'string')) ?? Promise.resolve([]),
     },
     'settings.get': { handle: () => services.settings.get() },
-    'settings.save': { handle: (patch) => services.settings.save(patch) },
+    'settings.save': {
+      handle: async (patch) => {
+        const saved = await services.settings.save(patch);
+        await services.applySurface?.(saved.files.surface);
+        return saved;
+      },
+    },
     'settings.export': { handle: () => services.settings.export() },
     'settings.import': {
       handle: async ({ text }) => {
@@ -233,31 +239,10 @@ export function createHandlers(services: Services): Handlers {
         });
         // A server that is not in the file, or has a new address, must not keep the token it had.
         await services.secrets.keepOnly(settings.targets.map((target) => target.id));
+        await services.applySurface?.(settings.files.surface);
         return settings;
       },
     },
-    'downloads.list': {
-      handle: () => services.downloads.list(),
-    },
-    'downloads.pause': {
-      handle: async ({ id }) => {
-        await services.downloads.pause(id);
-        return null;
-      },
-    },
-    'downloads.resume': {
-      handle: async ({ id }) => {
-        await services.downloads.resume(id);
-        return null;
-      },
-    },
-    'downloads.move': {
-      handle: async ({ id, queueId }) => {
-        await services.downloads.move(id, queueId);
-        return null;
-      },
-    },
-    'downloads.turbo': { handle: ({ on }) => services.downloads.setTurbo(on) },
     'downloads.test': {
       handle: async () => {
         try {

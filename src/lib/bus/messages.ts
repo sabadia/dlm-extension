@@ -3,7 +3,6 @@ import type { PairingView } from '../pairing/service';
 import type { AskChoice, AskPurpose } from '../intercept/service';
 import type { PageHint } from '../page/hints';
 import type { PageSnapshot } from '../media/page';
-import type { LiveSnapshot } from '../downloads/service';
 import type { DownloadRequest, TabView } from '../media/service';
 import type { Settings, SettingsPatch } from '../settings/schema';
 import type { Variant } from '../media/playlist';
@@ -84,12 +83,6 @@ export interface MessageMap {
   'settings.export': { request: undefined; response: string };
   /** Replaces the settings from an exported file. A server with a new address starts without its token. */
   'settings.import': { request: { text: string }; response: Settings };
-  /** The downloads DLM is working on, the queues, and whether turbo is on. */
-  'downloads.list': { request: undefined; response: LiveSnapshot };
-  'downloads.pause': { request: { id: string }; response: null };
-  'downloads.resume': { request: { id: string }; response: null };
-  'downloads.move': { request: { id: string; queueId: string }; response: null };
-  'downloads.turbo': { request: { on: boolean }; response: boolean };
   /** Has DLM download a small file of its own (its health report) to show that the whole way works. */
   'downloads.test': { request: undefined; response: { ok: boolean; error?: string } };
 }

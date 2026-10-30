@@ -20,6 +20,8 @@ import { HintStore } from '../lib/page/store';
 import { PairingService } from '../lib/pairing/service';
 import { SecretStore, SettingsStore } from '../lib/settings/store';
 import type { KeyValueArea } from '../lib/storage/area';
+import type { Surface } from '../lib/settings/schema';
+import { applySurface, type SurfaceApi } from './surface';
 
 /** What the background needs from the browser, so that it can be built and tested without one. */
 export interface Environment {
@@ -49,6 +51,8 @@ export interface Environment {
   downloads?: DownloadsPort;
   cookies?: CookiesPort;
   notifications?: NotificationsPort;
+  /** Where the toolbar button opens the files. Absent in tests. */
+  surface?: SurfaceApi;
   /** Opens a page, for an expired link. */
   open?: (url: string) => Promise<void>;
   windows?: WindowsPort;
@@ -88,6 +92,8 @@ export interface Services {
   downloads: DownloadsService;
   /** Expired links the daemon is waiting for this browser to capture again (E6.1). */
   refresh: RefreshService;
+  /** Puts the toolbar button on the surface the settings choose. Absent where there is no such button (tests). */
+  applySurface?: (surface: Surface) => Promise<void>;
 }
 
 export function createServices(env: Environment): Services {
@@ -254,5 +260,8 @@ export function createServices(env: Environment): Services {
     ...(links ? { links } : {}),
     media,
     downloads: new DownloadsService({ secrets, connection, log }),
+    ...(env.surface
+      ? { applySurface: (surface: Surface) => applySurface(env.surface as SurfaceApi, surface) }
+      : {}),
   };
 }
