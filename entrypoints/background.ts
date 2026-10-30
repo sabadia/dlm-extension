@@ -97,6 +97,13 @@ export default defineBackground(() => {
       media: {
         attach: (media) => attachMedia(browser as unknown as InterceptBrowser, media),
       },
+      live: { onConnect: browser.runtime.onConnect },
+      commands: {
+        onCommand: browser.commands.onCommand,
+        openOptions: () => {
+          void browser.runtime.openOptionsPage();
+        },
+      },
     },
   );
 });

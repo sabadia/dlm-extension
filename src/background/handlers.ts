@@ -139,6 +139,42 @@ export function createHandlers(services: Services): Handlers {
       handle: ({ urls }) =>
         services.media?.probe(urls.filter((url) => typeof url === 'string')) ?? Promise.resolve([]),
     },
+    'settings.get': { handle: () => services.settings.get() },
+    'settings.save': { handle: (settings) => services.settings.update(() => settings) },
+    'settings.export': { handle: () => services.settings.export() },
+    'settings.import': { handle: ({ text }) => services.settings.import(text) },
+    'downloads.list': {
+      handle: () => services.downloads.list(),
+    },
+    'downloads.pause': {
+      handle: async ({ id }) => {
+        await services.downloads.pause(id);
+        return null;
+      },
+    },
+    'downloads.resume': {
+      handle: async ({ id }) => {
+        await services.downloads.resume(id);
+        return null;
+      },
+    },
+    'downloads.move': {
+      handle: async ({ id, queueId }) => {
+        await services.downloads.move(id, queueId);
+        return null;
+      },
+    },
+    'downloads.turbo': { handle: ({ on }) => services.downloads.setTurbo(on) },
+    'downloads.test': {
+      handle: async ({ url }) => {
+        try {
+          await services.downloads.test(url);
+          return { ok: true };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : 'failed' };
+        }
+      },
+    },
   };
 }
 

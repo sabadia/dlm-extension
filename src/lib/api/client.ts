@@ -118,6 +118,25 @@ export class DlmClient {
     return (await res.json()) as Task;
   }
 
+  /** Moves tasks to the end of a queue. */
+  moveTasks(
+    body: { ids: string[]; queueId: string },
+    signal?: AbortSignal,
+  ): Promise<Schemas['BatchOutputBody']> {
+    return this.json('POST', '/v1/tasks/move', body, { signal });
+  }
+
+  /** The speed limits in force, including a temporary turbo override. */
+  limits(signal?: AbortSignal): Promise<Schemas['LimitsView']> {
+    return this.json('GET', '/v1/limits', undefined, { signal });
+  }
+
+  /** Turns turbo on for an hour, or ends it. Turbo is an unlimited temporary speed limit. */
+  turbo(on: boolean, signal?: AbortSignal): Promise<Schemas['LimitsView']> {
+    if (!on) return this.json('DELETE', '/v1/limits/override', undefined, { signal });
+    return this.json('POST', '/v1/limits/override', { speedLimit: 0, minutes: 60 }, { signal });
+  }
+
   pauseTasks(selector: TaskSelector, signal?: AbortSignal): Promise<unknown> {
     return this.json('POST', '/v1/tasks/pause', selector, { signal });
   }

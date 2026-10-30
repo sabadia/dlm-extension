@@ -35,6 +35,20 @@ export default defineConfig({
       ...(browser === 'firefox' ? ['webRequestBlocking' as const] : []),
     ],
     icons: { '16': '/icon-16.png', '128': '/icon.png' },
+    commands: {
+      _execute_action: {
+        suggested_key: { default: 'Alt+Shift+D' },
+        description: 'Open DLM',
+      },
+      'toggle-intercept': {
+        suggested_key: { default: 'Alt+Shift+I' },
+        description: 'Turn download interception on or off',
+      },
+      'open-options': {
+        suggested_key: { default: 'Alt+Shift+O' },
+        description: 'Open DLM options',
+      },
+    },
     // The daemon of this computer, plus every site a download can come from. Remote servers are still asked for one
     // by one when the person adds one that the required host access does not already cover.
     host_permissions: [

@@ -8,6 +8,7 @@ import type { MediaKind } from '../../src/lib/media/classify';
 import type { Variant } from '../../src/lib/media/playlist';
 import type { TabView } from '../../src/lib/media/service';
 import { PairingPanel } from '../../src/ui/PairingPanel';
+import { LiveList } from './LiveList';
 
 interface Shown {
   state: ConnectionState;
@@ -45,6 +46,7 @@ export function App() {
       <p role="status" aria-live="polite">
         {shown.text}
       </p>
+      <LiveList />
       <MediaList />
       {shown.state.kind === 'access-needed' && (
         <button type="button" onClick={() => allow(shown.state)}>

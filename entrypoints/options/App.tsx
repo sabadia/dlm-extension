@@ -3,6 +3,8 @@ import { browser } from 'wxt/browser';
 import { sendMessage } from '../../src/lib/bus/bus';
 import { t } from '../../src/lib/i18n';
 import { RemoteTargets } from '../../src/ui/RemoteTargets';
+import { Onboarding } from './Onboarding';
+import { RulesForm } from './RulesForm';
 
 type CopyState = { kind: 'idle' } | { kind: 'copied' } | { kind: 'failed'; reason: string };
 
@@ -22,7 +24,9 @@ export function App() {
   return (
     <main>
       <h1>{t('options.title')}</h1>
+      <Onboarding />
       <RemoteTargets />
+      <RulesForm />
       <section aria-labelledby="diagnostics-title">
         <h2 id="diagnostics-title">{t('options.diagnostics.title')}</h2>
         <p>{t('options.diagnostics.help')}</p>
