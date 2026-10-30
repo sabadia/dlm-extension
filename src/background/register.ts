@@ -1,6 +1,7 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
 import type { LinksService } from '../lib/links/service';
+import type { MediaService } from '../lib/media/service';
 import { createHandlers } from './handlers';
 import { createServices, type Environment } from './services';
 
@@ -42,6 +43,7 @@ export function registerBackground(
     lifecycle.menus.attach(services.links);
     void services.links.install();
   }
+  if (services.media && lifecycle.media) lifecycle.media.attach(services.media);
 }
 
 /** The alarm that looks at the connection once a minute. */
@@ -66,6 +68,10 @@ export interface Lifecycle {
   /** Registers the context-menu listener synchronously, then the service fills the menus. */
   menus?: {
     attach(links: LinksService): void;
+  };
+  /** A second webRequest listener for the media list. Registered with the others, before any await. */
+  media?: {
+    attach(media: MediaService): void;
   };
 }
 
@@ -155,6 +161,38 @@ export function attachMenus(browser: MenuBrowser, links: LinksService): void {
       ...(tab?.id !== undefined ? { tabId: tab.id } : {}),
     });
   });
+}
+
+/** Registers the media listener on the same webRequest events. It never cancels a request. */
+export function attachMedia(browser: InterceptBrowser, media: MediaService): void {
+  browser.webRequest.onHeadersReceived.addListener(
+    (details) => {
+      const request = toRequest(details);
+      const mime = headerValue(request.responseHeaders, 'content-type');
+      const sizeBytes = contentLength(headerValue(request.responseHeaders, 'content-length'));
+      void media.observe({
+        url: request.url,
+        tabId: request.tabId,
+        ...(mime ? { mime } : {}),
+        ...(sizeBytes !== undefined ? { sizeBytes } : {}),
+        ...(request.documentUrl ? { pageUrl: request.documentUrl } : {}),
+      });
+    },
+    { urls: [...INTERCEPT_URLS] },
+    ['responseHeaders'],
+  );
+}
+
+function headerValue(
+  headers: { name?: string | undefined; value?: string | undefined }[] | undefined,
+  name: string,
+): string | undefined {
+  return headers?.find((header) => header.name?.toLowerCase() === name)?.value;
+}
+
+function contentLength(value: string | undefined): number | undefined {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 /** Registers the hand-off listeners. Firefox also asks to cancel attachments before they become downloads. */

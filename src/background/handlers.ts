@@ -2,6 +2,7 @@ import type { Handlers, SenderLike } from '../lib/bus/bus';
 import { buildDiagnostics } from '../lib/log/diagnostics';
 import { describeState } from '../lib/connection/service';
 import type { AskChoice } from '../lib/intercept/service';
+import type { PageSnapshot } from '../lib/media/page';
 import type { Services } from './services';
 
 function tabIdOf(sender: SenderLike): number | undefined {
@@ -111,5 +112,42 @@ export function createHandlers(services: Services): Handlers {
         return (await services.links?.sendMany(urls)) ?? { ok: 0, failed: urls.length };
       },
     },
+    'media.list': {
+      handle: ({ tabId }) =>
+        services.media?.forTab(tabId) ??
+        Promise.resolve({ items: [], protectedMedia: false, blobOrMse: false, pageUrl: '' }),
+    },
+    'media.scan': {
+      fromContent: true,
+      handle: (input, sender) => {
+        const tabId = tabIdOf(sender);
+        if (tabId === undefined || !isSnapshot(input?.snapshot)) return null;
+        return (
+          services.media?.scan(tabId, input.snapshot, input.visible === true).then(() => null) ??
+          null
+        );
+      },
+    },
+    'media.download': {
+      handle: (input) =>
+        services.media?.download(input) ?? Promise.resolve({ ok: false, error: 'no media' }),
+    },
+    'media.variants': {
+      handle: ({ url }) => services.media?.variants(url) ?? Promise.resolve([]),
+    },
+    'media.probe': {
+      handle: ({ urls }) =>
+        services.media?.probe(urls.filter((url) => typeof url === 'string')) ?? Promise.resolve([]),
+    },
   };
+}
+
+function isSnapshot(value: unknown): value is PageSnapshot {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.pageUrl === 'string' &&
+    Array.isArray(record.videos) &&
+    Array.isArray(record.audios)
+  );
 }

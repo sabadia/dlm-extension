@@ -7,6 +7,7 @@ import type { SecretStore, SettingsStore } from '../settings/store';
 import type { KeyValueArea } from '../storage/area';
 import { StoredValue } from '../storage/state';
 import { HANDOFF_COUNT_KEY, parseHandoffCount } from '../intercept/count';
+import { MEDIA_BADGE_KEY } from '../media/service';
 import { probe, resolveConnection, type ProbeClient, type ResolveDeps } from './resolve';
 import { badgeFor, STATE_TEXT, type ConnectionState } from './state';
 
@@ -143,8 +144,9 @@ export class ConnectionService {
 
   /** Puts the state on the toolbar button. Never throws: a missing action API must not break the check. */
   private async paint(state: ConnectionState, badgeEnabled: boolean): Promise<void> {
+    const media = parseHandoffCount(await this.deps.area.get(MEDIA_BADGE_KEY));
     const handoffs = parseHandoffCount(await this.deps.area.get(HANDOFF_COUNT_KEY));
-    const badge = badgeFor(state, badgeEnabled, handoffs);
+    const badge = badgeFor(state, badgeEnabled, media > 0 ? media : handoffs);
     try {
       await this.deps.action.setBadgeText({ text: badge.text });
       await this.deps.action.setBadgeBackgroundColor({ color: badge.color });

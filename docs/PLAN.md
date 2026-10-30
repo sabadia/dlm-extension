@@ -168,12 +168,12 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 ### E4 Media detection
 
-- [ ] E4.1 Network media classifier and per-tab store — `webRequest` response headers: content type, extension, `.m3u8`/`.mpd`, size; group segments under their manifest; ignore ads, trackers and tiny files; per-tab store with cleanup on navigation.
-- [ ] E4.2 Page scan content script — `<video>`, `<audio>`, `<source>`, file links, og:video, JSON-LD VideoObject; observe DOM changes cheaply.
-- [ ] E4.3 Media list in the popup and badge — Grouped list per tab with name, type, size, quality; one-click download with DLM; badge count.
-- [ ] E4.4 HLS and DASH variants and quality picker — Parse master playlists and MPD in the extension; let the user choose a variant; send the chosen manifest with headers and cookies. Needs backend: sabadia/dlm-server#141 (P14.5)
-- [ ] E4.5 Page modes and protected content — 'Download this page' via yt-dlp or the daemon's headless browser for blob/MSE pages; detect EME/DRM and say it cannot be downloaded. Needs backend: sabadia/dlm-server#140 (P14.4)
-- [ ] E4.6 Probing and duplicate hints — Lazy `POST /v1/resolve` on popup open for name, size and duplicates. Needs backend: sabadia/dlm-server#141 (P14.5)
+- [x] E4.1 Network media classifier and per-tab store — `webRequest` response headers: content type, extension, `.m3u8`/`.mpd`, size; group segments under their manifest; ignore ads, trackers and tiny files; per-tab store with cleanup on navigation.
+- [x] E4.2 Page scan content script — `<video>`, `<audio>`, `<source>`, file links, og:video, JSON-LD VideoObject; observe DOM changes cheaply.
+- [x] E4.3 Media list in the popup and badge — Grouped list per tab with name, type, size, quality; one-click download with DLM; badge count.
+- [x] E4.4 HLS and DASH variants and quality picker — Parse master playlists and MPD in the extension; let the user choose a variant; send the chosen manifest with headers and cookies. Needs backend: sabadia/dlm-server#141 (P14.5)
+- [x] E4.5 Page modes and protected content — 'Download this page' via yt-dlp or the daemon's headless browser for blob/MSE pages; detect EME/DRM and say it cannot be downloaded. Needs backend: sabadia/dlm-server#140 (P14.4)
+- [x] E4.6 Probing and duplicate hints — Lazy `POST /v1/resolve` on popup open for name, size and duplicates. Needs backend: sabadia/dlm-server#141 (P14.5)
 
 ### E5 Popup, options and onboarding
 

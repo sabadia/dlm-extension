@@ -8,6 +8,7 @@ import {
   type WindowsPort,
 } from '../lib/intercept/service';
 import { LinksService, type MenuPort, type TaskPort } from '../lib/links/service';
+import { MediaService } from '../lib/media/service';
 import { RingLog } from '../lib/log/log';
 import { RemoteService } from '../lib/remote/service';
 import { NativeHost, type NativeRuntime } from '../lib/native/host';
@@ -53,6 +54,8 @@ export interface Environment {
   linksUrl?: (tabId: number) => string;
   /** Reads a cookie-gated `.torrent` file. */
   fetchFile?: (url: string) => Promise<Uint8Array>;
+  /** Reads a playlist for the quality picker. */
+  fetchText?: (url: string) => Promise<string>;
 }
 
 /**
@@ -73,6 +76,8 @@ export interface Services {
   intercept?: InterceptService;
   /** Context menus, direct links and batches (E3). */
   links?: LinksService;
+  /** Per-tab media list (E4). */
+  media?: MediaService;
 }
 
 export function createServices(env: Environment): Services {
@@ -117,6 +122,27 @@ export function createServices(env: Environment): Services {
       addTorrent: (bytes, query) => client.addTorrentFile(bytes, query),
     };
   };
+  const media = new MediaService({
+    secrets,
+    connection,
+    session: env.session,
+    log,
+    tasks: (baseUrl, token) => {
+      const client = new DlmClient({ baseUrl, token, log });
+      return {
+        create: (body) => client.createTask(body),
+        resolve: async (url) => {
+          const result = await client.resolve({ url });
+          return {
+            name: result.name,
+            size: result.resource.size,
+            ...(result.duplicateOf ? { duplicate: result.duplicateOf.name } : {}),
+          };
+        },
+      };
+    },
+    ...(env.fetchText ? { fetchText: env.fetchText } : {}),
+  });
   const links =
     env.menus && env.linksUrl
       ? new LinksService({
@@ -165,5 +191,6 @@ export function createServices(env: Environment): Services {
     remote,
     ...(intercept ? { intercept } : {}),
     ...(links ? { links } : {}),
+    media,
   };
 }

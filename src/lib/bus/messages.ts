@@ -1,6 +1,9 @@
 import type { ConnectionState } from '../connection/state';
 import type { PairingView } from '../pairing/service';
 import type { AskChoice } from '../intercept/service';
+import type { PageSnapshot } from '../media/page';
+import type { DownloadRequest, TabView } from '../media/service';
+import type { Variant } from '../media/playlist';
 import type { AddResult, RemoteTestResult, RemoteView } from '../remote/service';
 
 /**
@@ -44,6 +47,19 @@ export interface MessageMap {
   'links.add': { request: { url: string }; response: boolean };
   /** The addresses the person picked on the links page. */
   'links.send': { request: { urls: string[] }; response: { ok: number; failed: number } };
+  /** The media list of one tab. */
+  'media.list': { request: { tabId: number }; response: TabView };
+  /** A content script reporting what it found on its document. */
+  'media.scan': { request: { snapshot: PageSnapshot; visible: boolean }; response: null };
+  /** Sends one item, a chosen quality, or the page via yt-dlp or the daemon's browser. */
+  'media.download': { request: DownloadRequest; response: { ok: boolean; error?: string } };
+  /** Qualities of an HLS master playlist or a DASH manifest. */
+  'media.variants': { request: { url: string }; response: Variant[] };
+  /** Lazy name, size and duplicate hints for the open popup. */
+  'media.probe': {
+    request: { urls: string[] };
+    response: { url: string; name?: string; size?: number; duplicate?: string }[];
+  };
 }
 
 export type MessageType = keyof MessageMap;

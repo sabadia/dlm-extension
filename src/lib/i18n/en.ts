@@ -105,6 +105,20 @@ export const en = {
   'links.sentSome': 'Sent {ok} to DLM. {failed} could not be sent.',
   'links.offline': 'DLM is not connected.',
   'links.added': 'Sent to DLM.',
+  'media.title': 'On this page',
+  'media.empty': 'No media found on this page.',
+  'media.download': 'Download with DLM',
+  'media.qualities': 'Qualities',
+  'media.protected': 'This page uses protected video. It cannot be downloaded.',
+  'media.pageYtdlp': 'Download this page with yt-dlp',
+  'media.pageBrowser': 'Download this page with the browser',
+  'media.sent': 'Sent to DLM.',
+  'media.duplicate': 'Already in DLM ({name}).',
+  'media.kind.hls': 'HLS',
+  'media.kind.dash': 'DASH',
+  'media.kind.video': 'Video',
+  'media.kind.audio': 'Audio',
+  'media.kind.file': 'File',
 } as const;
 
 export type MessageKey = keyof typeof en;

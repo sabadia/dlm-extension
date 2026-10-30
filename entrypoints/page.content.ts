@@ -1,7 +1,8 @@
 import { browser } from 'wxt/browser';
+import { sendMessage } from '../src/lib/bus/bus';
 import { isDirectScheme } from '../src/lib/links/classify';
 import type { PageLink } from '../src/lib/links/filter';
-import { sendMessage } from '../src/lib/bus/bus';
+import type { PageSnapshot } from '../src/lib/media/page';
 
 /**
  * Collects the links and media on the page for the preview, and sends magnet and eD2K clicks straight to DLM so the
@@ -22,6 +23,28 @@ export default defineContentScript({
       sendResponse(collect());
       return true;
     });
+    let protectedMedia = false;
+    const schedule = debounce(() => {
+      void sendMessage(browser.runtime, 'media.scan', {
+        snapshot: snapshot(protectedMedia),
+        visible: document.visibilityState === 'visible',
+      }).catch(() => undefined);
+    });
+    document.addEventListener(
+      'encrypted',
+      () => {
+        protectedMedia = true;
+        schedule();
+      },
+      true,
+    );
+    schedule();
+    new MutationObserver(schedule).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['src', 'href'],
+    });
     window.addEventListener(
       'click',
       (event) => {
@@ -38,6 +61,47 @@ export default defineContentScript({
     );
   },
 });
+
+function debounce(run: () => void): () => void {
+  let pending = 0;
+  return () => {
+    window.clearTimeout(pending);
+    pending = window.setTimeout(run, 400);
+  };
+}
+
+function snapshot(protectedMedia: boolean): PageSnapshot {
+  const media = (selector: string) =>
+    [...document.querySelectorAll(selector)].map((element) => ({
+      src: element.getAttribute('src') ?? undefined,
+      sources: [...element.querySelectorAll('source[src]')].map(
+        (source) => source.getAttribute('src') ?? '',
+      ),
+    }));
+  const videos = media('video');
+  const blobOrMse = [...document.querySelectorAll('video')].some(
+    (video) => video.currentSrc.startsWith('blob:') || video.srcObject !== null,
+  );
+  return {
+    pageUrl: location.href,
+    protectedMedia,
+    blobOrMse,
+    videos,
+    audios: media('audio'),
+    links: [...document.querySelectorAll('a[href]')].map((anchor) => ({
+      href: anchor.getAttribute('href') ?? '',
+      text: anchor.textContent ?? '',
+    })),
+    openGraph: [
+      ...document.querySelectorAll('meta[property="og:video"], meta[property="og:video:url"]'),
+    ]
+      .map((meta) => meta.getAttribute('content') ?? '')
+      .filter((url) => url !== ''),
+    jsonLd: [...document.querySelectorAll('script[type="application/ld+json"]')].map(
+      (script) => script.textContent ?? '',
+    ),
+  };
+}
 
 function collect(): PageLink[] {
   const found: PageLink[] = [];
