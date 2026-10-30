@@ -66,6 +66,7 @@ describe('page scan', () => {
   it('collects video, file links, open graph and JSON-LD, and skips blob addresses', () => {
     const items = mediaFromPage({
       pageUrl: 'https://example.test/watch',
+      title: 'Watch',
       protectedMedia: false,
       blobOrMse: true,
       videos: [{ src: 'blob:https://example.test/id', sources: ['/clip.mp4'] }],
@@ -192,6 +193,7 @@ describe('MediaService', () => {
 
   function setup(over: { cookies?: boolean } = {}) {
     const captured: unknown[] = [];
+    const imported: unknown[] = [];
     const painted: [number, number][] = [];
     const cookieCalls: CookieQuery[] = [];
     let clock = 1000;
@@ -215,6 +217,11 @@ describe('MediaService', () => {
           captured.push(body);
           return Promise.resolve({ task: { id: 't' } });
         },
+        listQueues: () => Promise.resolve([{ id: 'main', name: 'Main' }]),
+        importCookies: (cookies) => {
+          imported.push(cookies);
+          return Promise.resolve({ imported: cookies.length, skipped: 0, rejected: 0 });
+        },
         resolve: () => Promise.resolve({ name: 'Clip', size: 10, duplicate: 'Old' }),
       }),
       ...(over.cookies
@@ -237,11 +244,12 @@ describe('MediaService', () => {
       fetchText: () =>
         Promise.resolve('#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100,RESOLUTION=1280x720\nmid.m3u8\n'),
     });
-    return { service, captured, painted, cookieCalls, area };
+    return { service, captured, imported, painted, cookieCalls, area };
   }
 
   const snapshot = (over = {}) => ({
     pageUrl: 'https://example.test/watch',
+    title: 'Watch',
     protectedMedia: false,
     blobOrMse: false,
     videos: [{ sources: ['https://cdn.example.test/master.m3u8'] }],
@@ -387,9 +395,65 @@ describe('MediaService', () => {
       userAgent: 'x',
       tasks: () => ({
         capture: () => Promise.resolve(),
+        listQueues: () => Promise.resolve([]),
+        importCookies: () => Promise.reject(new Error('x')),
         resolve: () => Promise.reject(new Error('x')),
       }),
     });
     expect((await offline.download({ url: 'https://a.test/x.mp4' })).ok).toBe(false);
+    expect(await offline.queues()).toEqual([]);
+    expect(await offline.sendSiteCookies({ url: 'https://a.test/' })).toMatchObject({ ok: false });
+  });
+
+  it('sends a file as a capture with its chosen name, real address, size, queue and cookies of the real address', async () => {
+    const { service, captured, cookieCalls } = setup({ cookies: true });
+    await service.download({
+      url: 'https://short.example.test/get?id=1',
+      finalUrl: 'https://cdn.example.test/files/a.zip',
+      name: 'My page.zip',
+      sizeBytes: 5_000_000,
+      mime: 'application/zip',
+      queueId: 'night',
+      paused: true,
+      pageUrl: 'https://example.test/page',
+      tabId: 3,
+    });
+    expect(captured[0]).toMatchObject({
+      url: 'https://short.example.test/get?id=1',
+      finalUrl: 'https://cdn.example.test/files/a.zip',
+      name: 'My page.zip',
+      size: 5_000_000,
+      mime: 'application/zip',
+      queueId: 'night',
+      paused: true,
+    });
+    expect(cookieCalls[0]?.url).toBe('https://cdn.example.test/files/a.zip');
+  });
+
+  it('lists the queues, and sends the cookies of the site of a tab (its own domain only)', async () => {
+    const { service, imported } = setup({ cookies: true });
+    expect(await service.queues()).toEqual([{ id: 'main', name: 'Main' }]);
+    const found = await service.siteCookies({ url: 'https://cdn.example.test/page' });
+    expect(found.host).toBe('cdn.example.test');
+    expect(found.cookies.map((c) => c.name)).toEqual(['sid']); // the other.test cookie is not this site's
+    const sent = await service.sendSiteCookies({ url: 'https://cdn.example.test/page' });
+    expect(sent).toEqual({
+      ok: true,
+      host: 'cdn.example.test',
+      imported: 1,
+      skipped: 0,
+      rejected: 0,
+    });
+    expect(imported).toHaveLength(1);
+  });
+
+  it('sends no cookies from a private window unless allowed, and says when there are none', async () => {
+    const { service, imported } = setup({ cookies: true });
+    const result = await service.sendSiteCookies({
+      url: 'https://cdn.example.test/',
+      incognito: true,
+    });
+    expect(result).toMatchObject({ ok: false });
+    expect(imported).toEqual([]);
   });
 });

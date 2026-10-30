@@ -227,6 +227,7 @@ describe('what a content script may ask', () => {
     const { from } = setup({ media });
     const snapshot = {
       pageUrl: 'https://victim.example/',
+      title: 'Victim',
       protectedMedia: false,
       blobOrMse: false,
       videos: [],

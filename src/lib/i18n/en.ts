@@ -203,6 +203,7 @@ export const en = {
   'options.fixErrors': 'Fix the marked fields first.',
   'intercept.toggledOn': 'DLM takes over browser downloads again.',
   'intercept.toggledOff': 'DLM leaves browser downloads alone until you turn it on again.',
+  'cookies.none': 'This site has no cookies in this browser.',
 } as const;
 
 export type MessageKey = keyof typeof en;

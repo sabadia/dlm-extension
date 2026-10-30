@@ -158,6 +158,16 @@ export function createServices(env: Environment): Services {
       const client = new DlmClient({ baseUrl, token, log });
       return {
         capture: (body) => client.capture(body),
+        listQueues: async () =>
+          ((await client.listQueues()).queues ?? []).map((q) => ({ id: q.id, name: q.name })),
+        importCookies: async (cookies) => {
+          const result = await client.importCookies(cookies);
+          return {
+            imported: result.imported,
+            skipped: result.skipped,
+            rejected: result.errors?.length ?? 0,
+          };
+        },
         resolve: async (url) => {
           const result = await client.resolve({ url });
           return {

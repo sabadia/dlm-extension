@@ -49,5 +49,8 @@
   },
   "stream-events": {
     "reads": []
+  },
+  "import-cookies": {
+    "reads": ["imported", "skipped", "errors"]
   }
 }

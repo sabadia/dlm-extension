@@ -73,6 +73,7 @@ const KIND_KEY: Record<
 function MediaList() {
   const [view, setView] = useState<TabView>({
     items: [],
+    title: '',
     protectedMedia: false,
     blobOrMse: false,
     pageUrl: '',

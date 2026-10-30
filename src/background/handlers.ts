@@ -181,7 +181,13 @@ export function createHandlers(services: Services): Handlers {
     'media.list': {
       handle: ({ tabId }) =>
         services.media?.forTab(tabId) ??
-        Promise.resolve({ items: [], protectedMedia: false, blobOrMse: false, pageUrl: '' }),
+        Promise.resolve({
+          items: [],
+          title: '',
+          protectedMedia: false,
+          blobOrMse: false,
+          pageUrl: '',
+        }),
     },
     'media.scan': {
       fromContent: true,
