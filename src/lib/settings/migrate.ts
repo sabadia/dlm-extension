@@ -4,10 +4,15 @@ import { SETTINGS_VERSION } from './schema';
 export type Migration = (old: Record<string, unknown>) => Record<string, unknown>;
 
 /**
- * The steps, keyed by the version they start from. Version 1 is the first shape, so there are none yet. A change to
- * the shape of the settings adds `1: (old) => …` here, raises `SETTINGS_VERSION`, and adds a test with a stored v1 file.
+ * The steps, keyed by the version they start from. A change to the shape of the settings adds a step here, raises
+ * `SETTINGS_VERSION`, and adds a test with a stored file of the previous version.
+ *
+ * Version 2 adds the interception lists (`alwaysSites`, `fileTypes`, `mimeTypes`). They are filled in by parsing, so
+ * the step keeps the stored fields as they are.
  */
-export const MIGRATIONS: Readonly<Record<number, Migration>> = {};
+export const MIGRATIONS: Readonly<Record<number, Migration>> = {
+  1: (old) => old,
+};
 
 export class SettingsTooNewError extends Error {
   constructor(readonly found: number) {

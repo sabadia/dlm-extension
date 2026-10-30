@@ -1,5 +1,12 @@
 import { ConnectionService, type ActionApi } from '../lib/connection/service';
 import { DlmClient } from '../lib/api/client';
+import {
+  InterceptService,
+  type CookiesPort,
+  type DownloadsPort,
+  type NotificationsPort,
+  type WindowsPort,
+} from '../lib/intercept/service';
 import { RingLog } from '../lib/log/log';
 import { RemoteService } from '../lib/remote/service';
 import { NativeHost, type NativeRuntime } from '../lib/native/host';
@@ -25,6 +32,20 @@ export interface Environment {
   action: ActionApi;
   /** Whether the browser lets the extension call an address (`permissions.contains`); yes when omitted. */
   hasAccess?: (baseUrl: string) => Promise<boolean>;
+  /** This extension's id. Needed to recognise downloads it started itself. */
+  extensionId?: string;
+  /** `chrome-extension://<id>` or `moz-extension://<internal UUID>`. */
+  extensionOrigin?: string;
+  /** Firefox cancels an attachment before a download entry exists. */
+  firefox?: boolean;
+  /** Shown on a notification. */
+  iconUrl?: string;
+  downloads?: DownloadsPort;
+  cookies?: CookiesPort;
+  notifications?: NotificationsPort;
+  windows?: WindowsPort;
+  /** Address of the small ask window, including the pending id. */
+  askUrl?: (id: string) => string;
 }
 
 /**
@@ -41,6 +62,8 @@ export interface Services {
   pairing: PairingService;
   connection: ConnectionService;
   remote: RemoteService;
+  /** Present once the download, cookie, notification and window ports are wired (E2). */
+  intercept?: InterceptService;
 }
 
 export function createServices(env: Environment): Services {
@@ -73,6 +96,27 @@ export function createServices(env: Environment): Services {
     log,
     changed: () => void connection.refresh(),
   });
+  const intercept =
+    env.downloads && env.cookies && env.notifications && env.windows && env.askUrl
+      ? new InterceptService({
+          settings,
+          secrets,
+          connection,
+          session: env.session,
+          log,
+          extensionId: env.extensionId ?? '',
+          extensionOrigin: env.extensionOrigin ?? '',
+          userAgent: env.userAgent,
+          firefox: env.firefox ?? false,
+          ...(env.iconUrl ? { iconUrl: env.iconUrl } : {}),
+          downloads: env.downloads,
+          cookies: env.cookies,
+          notifications: env.notifications,
+          windows: env.windows,
+          askUrl: env.askUrl,
+          client: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
+        })
+      : undefined;
   return {
     log,
     settings,
@@ -83,5 +127,6 @@ export function createServices(env: Environment): Services {
     pairing,
     connection,
     remote,
+    ...(intercept ? { intercept } : {}),
   };
 }

@@ -6,6 +6,7 @@ import type { PairingService } from '../pairing/service';
 import type { SecretStore, SettingsStore } from '../settings/store';
 import type { KeyValueArea } from '../storage/area';
 import { StoredValue } from '../storage/state';
+import { HANDOFF_COUNT_KEY, parseHandoffCount } from '../intercept/count';
 import { probe, resolveConnection, type ProbeClient, type ResolveDeps } from './resolve';
 import { badgeFor, STATE_TEXT, type ConnectionState } from './state';
 
@@ -134,9 +135,16 @@ export class ConnectionService {
     return state;
   }
 
+  /** Paints the toolbar button again without looking at the daemon (the hand-off count changed). */
+  async repaint(): Promise<void> {
+    const settings = await this.deps.settings.get().catch(() => undefined);
+    await this.paint(await this.get(), settings?.preferences.badge ?? true);
+  }
+
   /** Puts the state on the toolbar button. Never throws: a missing action API must not break the check. */
   private async paint(state: ConnectionState, badgeEnabled: boolean): Promise<void> {
-    const badge = badgeFor(state, badgeEnabled);
+    const handoffs = parseHandoffCount(await this.deps.area.get(HANDOFF_COUNT_KEY));
+    const badge = badgeFor(state, badgeEnabled, handoffs);
     try {
       await this.deps.action.setBadgeText({ text: badge.text });
       await this.deps.action.setBadgeBackgroundColor({ color: badge.color });

@@ -16,7 +16,20 @@ type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
 const bool = (v: unknown, fallback: boolean): boolean => (typeof v === 'boolean' ? v : fallback);
 
-/** Normalises a host name typed for an exclusion: lower case, no scheme, no path, no leading `*.` or dot. */
+/** An extension typed in the rules: lower case, no leading dot or `*.`. */
+export function normalizeFileType(input: string): string | undefined {
+  const text = input.trim().toLowerCase().replace(/^\*\./, '').replace(/^\./, '');
+  return /^[a-z0-9]+$/.test(text) ? text : undefined;
+}
+
+/** A MIME type or a group (`video/`). Parameters (`text/plain; charset=utf-8`) are dropped. */
+export function normalizeMimeType(input: string): string | undefined {
+  const text = input.trim().toLowerCase().split(';')[0]?.trim() ?? '';
+  if (/^[a-z0-9!#$&^_.+-]+\/$/.test(text)) return text;
+  return /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(text) ? text : undefined;
+}
+
+/** Normalises a host name typed for a site rule: lower case, no scheme, no path, no leading `*.` or dot. */
 export function normalizeSite(input: string): string | undefined {
   const text = input
     .trim()
@@ -28,25 +41,43 @@ export function normalizeSite(input: string): string | undefined {
   return text && /^[a-z0-9.-]+$/.test(text) ? text : undefined;
 }
 
+function siteList(raw: unknown): string[] {
+  const sites = Array.isArray(raw) ? raw : [];
+  return [
+    ...new Set(
+      sites
+        .flatMap((s) => (typeof s === 'string' ? [normalizeSite(s)] : []))
+        .filter((s): s is string => s !== undefined),
+    ),
+  ];
+}
+
+function tokenList(raw: unknown, normalize: (input: string) => string | undefined): string[] {
+  const items = Array.isArray(raw) ? raw : [];
+  return [
+    ...new Set(
+      items
+        .flatMap((s) => (typeof s === 'string' ? [normalize(s)] : []))
+        .filter((s): s is string => s !== undefined),
+    ),
+  ];
+}
+
 function parseRules(raw: unknown): Rules {
   const d = defaultSettings().rules;
   if (!isObj(raw)) return d;
   const size = raw.minSizeBytes;
   const bypass = raw.bypassKey;
-  const sites = Array.isArray(raw.excludedSites) ? raw.excludedSites : [];
   return {
     intercept: bool(raw.intercept, d.intercept),
     minSizeBytes:
       typeof size === 'number' && Number.isFinite(size) && size >= 0
         ? Math.floor(size)
         : DEFAULT_MIN_SIZE_BYTES,
-    excludedSites: [
-      ...new Set(
-        sites
-          .flatMap((s) => (typeof s === 'string' ? [normalizeSite(s)] : []))
-          .filter((s): s is string => s !== undefined),
-      ),
-    ],
+    excludedSites: siteList(raw.excludedSites),
+    alwaysSites: siteList(raw.alwaysSites),
+    fileTypes: tokenList(raw.fileTypes, normalizeFileType),
+    mimeTypes: tokenList(raw.mimeTypes, normalizeMimeType),
     bypassKey: bypass === 'alt' || bypass === 'shift' || bypass === 'none' ? bypass : d.bypassKey,
     askFirst: bool(raw.askFirst, d.askFirst),
     privateWindows: bool(raw.privateWindows, d.privateWindows),

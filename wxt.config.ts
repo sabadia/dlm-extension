@@ -20,11 +20,29 @@ export default defineConfig({
   manifest: ({ browser }) => ({
     name: 'DLM',
     description: 'Send downloads, media, magnet links and torrents from your browser to DLM.',
-    // The permission set grows with the features (docs/PLAN.md, "Permissions"); each addition is a plan change.
-    permissions: ['storage', 'nativeMessaging', 'alarms'],
-    // The daemon of this computer. Remote servers are asked for one by one (optional host permissions), when the person
-    // adds them.
-    host_permissions: ['http://127.0.0.1/*', 'http://localhost/*'],
+    // The permission set grows with the features (docs/PLAN.md, "Permissions"). E2 adds downloads, webRequest,
+    // cookies and notifications, and host access to every site so a download's headers and cookies can be read.
+    // Firefox also gets webRequestBlocking so an attachment can be cancelled before a download entry appears.
+    permissions: [
+      'storage',
+      'nativeMessaging',
+      'alarms',
+      'downloads',
+      'webRequest',
+      'cookies',
+      'notifications',
+      ...(browser === 'firefox' ? ['webRequestBlocking' as const] : []),
+    ],
+    icons: { '16': '/icon-16.png', '128': '/icon.png' },
+    // The daemon of this computer, plus every site a download can come from. Remote servers are still asked for one
+    // by one when the person adds one that the required host access does not already cover.
+    host_permissions: [
+      'http://127.0.0.1/*',
+      'http://localhost/*',
+      'http://*/*',
+      'https://*/*',
+      'ftp://*/*',
+    ],
     optional_host_permissions: ['https://*/*', 'http://*/*'],
     ...(browser === 'firefox' ? {} : { key: CHROME_PUBLIC_KEY }),
     ...(browser === 'firefox'

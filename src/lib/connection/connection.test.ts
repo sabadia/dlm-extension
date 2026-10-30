@@ -8,6 +8,7 @@ import { SecretStore, SettingsStore, withRemoteTarget } from '../settings/store'
 import { memoryArea } from '../storage/area';
 import { resolveConnection, type ProbeClient, type ResolveDeps } from './resolve';
 import { ConnectionService, describeState, type ActionApi } from './service';
+import { HANDOFF_COUNT_KEY } from '../intercept/count';
 import { badgeFor, type ConnectionState } from './state';
 
 const health = (over: Partial<Health> = {}): Health => ({
@@ -178,6 +179,16 @@ describe('badgeFor', () => {
       color: '#c62828',
     });
     expect(badgeFor({ kind: 'needs-pairing' }, true).text).toBe('…');
+    expect(
+      badgeFor({ kind: 'connected', targetId: 'local', baseUrl: 'x', version: '1' }, true, 3).text,
+    ).toBe('3');
+    expect(
+      badgeFor({ kind: 'connected', targetId: 'local', baseUrl: 'x', version: '1' }, true, 120)
+        .text,
+    ).toBe('99+');
+    expect(
+      badgeFor({ kind: 'connected', targetId: 'local', baseUrl: 'x', version: '1' }, false, 3).text,
+    ).toBe('');
     expect(badgeFor({ kind: 'token-revoked' }, false).text).toBe('');
   });
 });
@@ -229,11 +240,11 @@ describe('ConnectionService', () => {
         whoami: () => Promise.resolve({ scope: 'extension' }),
       }),
     });
-    return { service, local, calls, discoveries: () => discoveries };
+    return { service, local, session, calls, discoveries: () => discoveries };
   }
 
   it('starts as checking, stores the result and paints the toolbar button', async () => {
-    const { service, local, calls } = setup();
+    const { service, local, session, calls } = setup();
     expect((await service.get()).kind).toBe('checking');
     expect((await service.refresh()).kind).toBe('needs-pairing');
     await new SecretStore(local).set('local', 'dlmt_AbCdEf0123456789xyz');
@@ -241,6 +252,9 @@ describe('ConnectionService', () => {
     expect((await service.get()).kind).toBe('connected');
     expect(calls).toContain('text:…');
     expect(calls.at(-1)).toBe('title:DLM: Connected to DLM 0.6.0.');
+    await session.set(HANDOFF_COUNT_KEY, 2);
+    await service.repaint();
+    expect(calls.at(-3)).toBe('text:2');
   });
 
   it('does not start the host again while the last address still works', async () => {
