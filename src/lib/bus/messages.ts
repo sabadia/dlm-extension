@@ -90,8 +90,8 @@ export interface MessageMap {
   'downloads.resume': { request: { id: string }; response: null };
   'downloads.move': { request: { id: string; queueId: string }; response: null };
   'downloads.turbo': { request: { on: boolean }; response: boolean };
-  /** Sends one address as a test that the connection works. */
-  'downloads.test': { request: { url: string }; response: { ok: boolean; error?: string } };
+  /** Has DLM download a small file of its own (its health report) to show that the whole way works. */
+  'downloads.test': { request: undefined; response: { ok: boolean; error?: string } };
 }
 
 export type MessageType = keyof MessageMap;

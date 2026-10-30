@@ -87,7 +87,10 @@ export class ConnectionService {
    * The address and token of one target, when this extension can call it. A remote target uses its saved address.
    * The local target uses the address from the last successful check, or asks the native host.
    */
-  async endpoint(targetId: string): Promise<{ baseUrl: string; token: string } | undefined> {
+  async endpoint(
+    targetId: string,
+    options: { discover?: boolean } = {},
+  ): Promise<{ baseUrl: string; token: string } | undefined> {
     const settings = await this.deps.settings.get();
     const target = settings.targets.find((item) => item.id === targetId);
     if (!target) return undefined;
@@ -98,6 +101,8 @@ export class ConnectionService {
     if (state.kind === 'connected' && state.targetId === target.id) {
       return { baseUrl: state.baseUrl, token };
     }
+    // A background look (the expired-link poll) must not start the native host every half minute.
+    if (options.discover === false) return undefined;
     try {
       const found = await this.deps.host.connect();
       if (found.state === 'found') return { baseUrl: found.baseUrl, token };
@@ -108,11 +113,13 @@ export class ConnectionService {
   }
 
   /** Every target that currently has an address and a token. */
-  async endpoints(): Promise<{ baseUrl: string; token: string }[]> {
+  async endpoints(
+    options: { discover?: boolean } = {},
+  ): Promise<{ baseUrl: string; token: string }[]> {
     const settings = await this.deps.settings.get();
     const out: { baseUrl: string; token: string }[] = [];
     for (const target of settings.targets) {
-      const endpoint = await this.endpoint(target.id);
+      const endpoint = await this.endpoint(target.id, options);
       if (endpoint) out.push(endpoint);
     }
     return out;

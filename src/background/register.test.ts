@@ -25,7 +25,6 @@ function fakeBrowser() {
     headers?: Registered;
     response?: Registered;
     closed?: (id: number) => void;
-    clicked?: (id: string) => void;
   } = {};
   const record = (slot: 'body' | 'headers' | 'response') => ({
     addListener: (
@@ -44,7 +43,6 @@ function fakeBrowser() {
       onHeadersReceived: record('response'),
     },
     windows: { onRemoved: { addListener: (listener) => (listeners.closed = listener) } },
-    notifications: { onClicked: { addListener: (listener) => (listeners.clicked = listener) } },
   };
   return { browser, listeners };
 }
@@ -65,10 +63,6 @@ function fakeService() {
     onWindowRemoved: (arg: number) => {
       seen.push({ name: 'closed', arg });
       return Promise.resolve();
-    },
-    onNotificationClicked: (arg: string) => {
-      seen.push({ name: 'clicked', arg });
-      return Promise.resolve(true);
     },
   } as unknown as InterceptService;
   return { service, seen };
@@ -105,14 +99,13 @@ describe('attachIntercept', () => {
     expect(listeners.response?.listener(details())).toEqual({ cancel: true });
   });
 
-  it('forwards downloads, window closings and notification clicks', () => {
+  it('forwards downloads and window closings', () => {
     const { browser, listeners } = fakeBrowser();
     const { service, seen } = fakeService();
     attachIntercept(browser, service, false);
     listeners.created?.({ id: 1, url: 'https://example.test/a' });
     listeners.closed?.(5);
-    listeners.clicked?.('n1');
-    expect(seen.map((entry) => entry.name)).toEqual(['created', 'closed', 'clicked']);
+    expect(seen.map((entry) => entry.name)).toEqual(['created', 'closed']);
   });
 
   it('reports an unknown download size as unknown', () => {

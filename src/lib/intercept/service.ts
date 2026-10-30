@@ -365,6 +365,13 @@ export interface InterceptDeps {
       cookies?: CaptureBody['cookies'];
     }): Promise<'taken' | 'duplicate' | 'failed'>;
   };
+  /**
+   * The server that is waiting for a download from this page (an expired task being renewed), if any. Such a download is
+   * taken whatever the rules say, and sent to that server.
+   */
+  refreshTarget?: (
+    pageUrl: string | undefined,
+  ) => Promise<{ baseUrl: string; token: string } | undefined>;
   now?: () => number;
   id?: () => string;
 }
@@ -381,6 +388,8 @@ interface Prepared {
   replay: Replay;
   /** False in a private window or a container: a torrent fetched by the extension would use the wrong cookies. */
   defaultStore: boolean;
+  /** Set when an expired task of one server is waiting for exactly this download. */
+  endpoint?: { baseUrl: string; token: string } | undefined;
 }
 
 function originOf(url: string | undefined): string | undefined {
@@ -785,7 +794,15 @@ export class InterceptService {
     if (filename) facts.filename = filename;
     const mime = item?.mime ?? observed?.mime;
     if (mime) facts.mime = mime;
-    const decision = decide(settings.rules, facts);
+    let decision = decide(settings.rules, facts);
+    // An expired task waits for a download from this page: it is taken and sent to that server, whatever the rules say
+    // about size, type, sites, private windows or the bypass key. Our own downloads and addresses that cannot be
+    // handed over (blob:, a method we do not replay) stay what they are.
+    const endpoint =
+      decision.action === 'leave' && ['own', 'scheme', 'method'].includes(decision.reason)
+        ? undefined
+        : await this.deps.refreshTarget?.(observed?.documentUrl);
+    if (endpoint) decision = { action: 'take' };
     // The referrer is what the browser sent. The page address is its own field; it is not made into a referrer.
     const referrer = item?.referrer || observed?.requestHeaders.referer;
     const pageUrl = observed?.documentUrl || referrer;
@@ -824,6 +841,10 @@ export class InterceptService {
         });
       }
     }
+    // A renewal carries no checksum or mirror list to review: it only has to reach the server that is waiting.
+    const hinted = endpoint
+      ? draft
+      : await this.applyHints(draft, settings, originOf(observed?.documentUrl));
     const address = finalUrl ?? url;
     const contentType = observed?.requestHeaders['content-type'];
     const replay: Replay = {
@@ -836,11 +857,12 @@ export class InterceptService {
     };
     return {
       decision,
-      draft: await this.applyHints(draft, settings, originOf(observed?.documentUrl)),
+      draft: hinted,
       name: displayName(filename, address),
       site: observed?.documentUrl ? downloadHost(observed.documentUrl) : undefined,
       replay,
       defaultStore: !incognito && (storeId === undefined || /default$/.test(storeId)),
+      ...(endpoint ? { endpoint } : {}),
     };
   }
 
@@ -917,12 +939,13 @@ export class InterceptService {
   private async dispatch(
     body: CaptureBody,
     name: string,
-    prepared: Pick<Prepared, 'defaultStore'>,
+    prepared: Pick<Prepared, 'defaultStore' | 'endpoint'>,
   ): Promise<SendResult> {
     const address = body.finalUrl ?? body.url ?? '';
     if (
       this.deps.torrents &&
       prepared.defaultStore &&
+      !prepared.endpoint &&
       isTorrent({
         url: address,
         ...(body.filename ? { filename: body.filename } : {}),
@@ -946,7 +969,7 @@ export class InterceptService {
       await this.notify('intercept.sent', name);
       return 'taken';
     }
-    return this.send(body, name);
+    return this.send(body, name, prepared.endpoint);
   }
 
   private async finish(body: CaptureBody, pending: PendingAsk): Promise<void> {
@@ -961,8 +984,14 @@ export class InterceptService {
     if (result === 'failed') await this.fallback(pending.fallback);
   }
 
-  private async send(body: CaptureBody, name: string): Promise<SendResult> {
-    const routed = await this.routedClient(body.url ?? '');
+  private async send(
+    body: CaptureBody,
+    name: string,
+    endpoint?: { baseUrl: string; token: string },
+  ): Promise<SendResult> {
+    const routed = endpoint
+      ? this.deps.client(endpoint.baseUrl, endpoint.token)
+      : await this.routedClient(body.url ?? '');
     if (!routed) {
       await this.notify('intercept.failed', name, t('intercept.reason.offline'));
       return 'failed';

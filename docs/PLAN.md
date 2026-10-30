@@ -224,3 +224,27 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 An AMO account and API key (signed XPI) for E8; Chrome Web Store ($5) and Edge Add-ons accounts for E9; the choice
 of extra languages after English.
+
+## Review of E2 to E6 (2026-10-30)
+
+E2 to E6 were implemented by another agent and reviewed against this plan, the conventions and the E0 spikes; the defects
+found were fixed on `fix/e2-e6-review`. What the review changed in how the plan is met (the boxes stay ticked; this is
+what "done" means now):
+
+- **E2.** Request details are cached in memory for seconds, not written to storage per request (see
+  `docs/browser-differences.md`); one request is handled once; a size the browser reports as 0 or -1 is unknown; site rules
+  also apply to the page a download started on. A capture DLM answers with 409 leaves a notification that adds it
+  again when clicked (decision of 2026-10-30). POST replay: only small text bodies (url-encoded or raw) of responses that
+  look like downloads, restarted in the browser as POST when DLM cannot take them.
+- **E3/E4.** Magnet and eD2K links need a real click. A media download is a `/v1/capture` with the page, referrer, cookies
+  of its own store and the stream kind; a chosen quality is sent with the manifest as `mediaCandidates[].variant` (the
+  daemon reads the playlist, picks the stream and adds the audio). The list keeps manifests (segments are not stored), follows
+  navigation and tab closing, and the badge is per tab. Checksums and mirrors are bound to the reporting page and reviewed.
+- **E5.1.** "Open in DLM" opens the app, not the task: the app's `dlm:` links only know how to add a download (dlm-app
+  v0.2.0). Opening one task needs a link for it in the app.
+- **E5.3.** The setup checks itself every few seconds, asks for access to every site (Firefox), embeds the pairing, and sends a
+  real test download (DLM fetches its own health report). A fresh install opens it.
+- **E6.1.** A notification per expired task; clicking it opens the stored page (nothing opens by itself); a switch turns the
+  poll off (`preferences.refresh`, settings version 4); the next download from that page goes to the waiting server whatever
+  the rules say.
+- **E6.4.** Routes are edited as rows (site and DLM), not as ids in text.

@@ -43,7 +43,8 @@ export function downloadHost(url: string): string | undefined {
   try {
     const parsed = new URL(url);
     if (!HANDED_SCHEMES.has(parsed.protocol) || parsed.hostname === '') return undefined;
-    return parsed.hostname.toLowerCase();
+    // `example.com.` (a trailing dot) is the same host as `example.com`.
+    return parsed.hostname.toLowerCase().replace(/\.$/, '');
   } catch {
     return undefined;
   }

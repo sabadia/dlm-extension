@@ -194,6 +194,17 @@ export function createServices(env: Environment): Services {
           ...(env.fetchFile ? { fetchFile: env.fetchFile } : {}),
         })
       : undefined;
+  const refresh = new RefreshService({
+    endpoints: () => connection.endpoints({ discover: false }),
+    settings,
+    notifications: env.notifications ?? { create: () => undefined },
+    open: env.open ?? (() => Promise.resolve()),
+    local: env.local,
+    session: env.session,
+    log,
+    tasks: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
+    ...(env.iconUrl ? { iconUrl: env.iconUrl } : {}),
+  });
   const intercept =
     env.downloads && env.cookies && env.notifications && env.windows && env.askUrl
       ? new InterceptService({
@@ -214,19 +225,10 @@ export function createServices(env: Environment): Services {
           windows: env.windows,
           askUrl: env.askUrl,
           client: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
+          refreshTarget: (pageUrl) => refresh.endpointFor(pageUrl),
           ...(links ? { torrents: links } : {}),
         })
       : undefined;
-  const refresh = new RefreshService({
-    endpoints: () => connection.endpoints(),
-    settings,
-    notifications: env.notifications ?? { create: () => undefined },
-    open: env.open ?? (() => Promise.resolve()),
-    session: env.session,
-    log,
-    tasks: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
-    ...(env.iconUrl ? { iconUrl: env.iconUrl } : {}),
-  });
   return {
     log,
     settings,

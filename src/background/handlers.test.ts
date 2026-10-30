@@ -174,6 +174,20 @@ describe('what a content script may ask', () => {
     expect(seen).toEqual(['magnet:?xt=urn:btih:abc', 'ed2k://|file|a|1|h|/']);
   });
 
+  it('links.add hands over at most five links a tab in a short time', async () => {
+    const { seen, fake } = links();
+    const { from } = setup({ links: fake });
+    const results = [];
+    for (let i = 0; i < 7; i += 1) {
+      results.push(await sendMessage(from(TOP), 'links.add', { url: `magnet:?xt=urn:btih:${i}` }));
+    }
+    expect(results).toEqual([true, true, true, true, true, false, false]);
+    expect(seen).toHaveLength(5);
+    // Another tab has its own allowance.
+    const other = from({ ...TOP, tab: { id: 8 } });
+    expect(await sendMessage(other, 'links.add', { url: 'magnet:?xt=urn:btih:x' })).toBe(true);
+  });
+
   it('links.send, from the links page, drops addresses that are not web or magnet links and caps the batch', async () => {
     const { seen, fake } = links();
     const { from } = setup({ links: fake });

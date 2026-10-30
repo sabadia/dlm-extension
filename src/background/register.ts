@@ -7,6 +7,7 @@ import type { InterceptService, RequestEvent } from '../lib/intercept/service';
 import type { LinksService } from '../lib/links/service';
 import type { MediaService } from '../lib/media/service';
 import { REFRESH_PERIOD_MINUTES } from '../lib/refresh/watch';
+import { t } from '../lib/i18n';
 import { createHandlers } from './handlers';
 import { createServices, type Environment } from './services';
 
@@ -39,10 +40,12 @@ export function registerBackground(
     void services.links?.install();
     check('startup');
   });
-  lifecycle.onInstalled.addListener(() => {
+  lifecycle.onInstalled.addListener((details) => {
     ensureAlarm(lifecycle.alarms);
     void services.links?.install();
     check('installed');
+    // A new installation opens the setup; an update does not.
+    if (details?.reason === 'install') lifecycle.commands?.openOptions();
   });
   lifecycle.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === CHECK_ALARM) check('alarm');
@@ -57,6 +60,14 @@ export function registerBackground(
   // The menus are built when the extension is installed or the browser starts, not each time the worker wakes.
   if (services.links && lifecycle.menus) lifecycle.menus.attach(services.links);
   if (services.media && lifecycle.media) lifecycle.media.attach(services.media);
+  // One listener for every notification that asks for a click: "already in DLM" (add it again), "link expired" (open
+  // the page).
+  lifecycle.notifications?.onClicked.addListener((id) => {
+    void (async () => {
+      if (await services.intercept?.onNotificationClicked(id)) return;
+      await services.refresh.onNotificationClicked(id);
+    })();
+  });
   lifecycle.tabs?.onRemoved.addListener((tabId) => {
     void services.media?.closed(tabId);
   });
@@ -69,14 +80,38 @@ export function registerBackground(
     }
     const controller = new AbortController();
     port.onDisconnect.addListener(() => controller.abort());
-    void services.downloads.watch((snapshot) => port.postMessage(snapshot), controller.signal);
+    const send = (snapshot: LiveSnapshot) => {
+      try {
+        port.postMessage(snapshot);
+      } catch {
+        // The popup closed between two messages.
+        controller.abort();
+      }
+    };
+    services.downloads.watch(send, controller.signal).catch((error: unknown) => {
+      services.log.warn('downloads', 'the live list stopped', { error });
+    });
   });
   lifecycle.commands?.onCommand.addListener((command) => {
     if (command === 'toggle-intercept') {
-      void services.settings.update((settings) => ({
-        ...settings,
-        rules: { ...settings.rules, intercept: !settings.rules.intercept },
-      }));
+      void services.settings
+        .update((settings) => ({
+          ...settings,
+          rules: { ...settings.rules, intercept: !settings.rules.intercept },
+        }))
+        .then(
+          // The shortcut changes something the person cannot see: say what it is now.
+          async (settings) => {
+            await env.notifications?.create('dlm-toggle', {
+              title: t('intercept.notify.title'),
+              message: t(settings.rules.intercept ? 'intercept.toggledOn' : 'intercept.toggledOff'),
+              ...(env.iconUrl ? { iconUrl: env.iconUrl } : {}),
+            });
+          },
+        )
+        .catch((error: unknown) => {
+          services.log.warn('commands', 'could not toggle interception', { error });
+        });
     }
     if (command === 'open-options') void lifecycle.commands?.openOptions();
   });
@@ -91,7 +126,7 @@ export const REFRESH_ALARM = 'link-refresh';
 /** The parts of `browser.runtime` and `browser.alarms` the background lifecycle uses. */
 export interface Lifecycle {
   onStartup: { addListener(listener: () => void): void };
-  onInstalled: { addListener(listener: () => void): void };
+  onInstalled: { addListener(listener: (details: { reason: string }) => void): void };
   alarms: {
     get(name: string): Promise<unknown>;
     create(name: string, info: { periodInMinutes: number }): Promise<void> | void;
@@ -117,6 +152,9 @@ export interface Lifecycle {
     onConnect: {
       addListener(listener: (port: LivePort) => void): void;
     };
+  };
+  notifications?: {
+    onClicked: { addListener(listener: (notificationId: string) => void): void };
   };
   /** A closed tab's media list is forgotten. */
   tabs?: {
@@ -157,9 +195,6 @@ export interface InterceptBrowser {
   };
   windows: {
     onRemoved: { addListener(listener: (windowId: number) => void): void };
-  };
-  notifications: {
-    onClicked: { addListener(listener: (notificationId: string) => void): void };
   };
 }
 
@@ -306,9 +341,6 @@ export function attachIntercept(
   );
   browser.windows.onRemoved.addListener((windowId) => {
     void intercept.onWindowRemoved(windowId);
-  });
-  browser.notifications.onClicked.addListener((id) => {
-    void intercept.onNotificationClicked(id);
   });
 }
 

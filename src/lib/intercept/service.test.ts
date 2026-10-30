@@ -887,3 +887,53 @@ describe('InterceptService torrents', () => {
     expect(harness.captured).toHaveLength(1);
   });
 });
+
+describe('InterceptService renewing an expired task', () => {
+  it('takes a download from the waiting page, whatever the rules say, and sends it to that server', async () => {
+    const sentTo: string[] = [];
+    const harness = deps({
+      refreshTarget: (page) =>
+        Promise.resolve(
+          page?.startsWith('https://example.test')
+            ? { baseUrl: 'http://other:1', token: 'other-token' }
+            : undefined,
+        ),
+      client: (baseUrl) => ({
+        capture: () => {
+          sentTo.push(baseUrl);
+          return Promise.resolve({});
+        },
+      }),
+    });
+    harness.settingsState.current = {
+      ...harness.settingsState.current,
+      rules: {
+        ...harness.settingsState.current.rules,
+        intercept: false,
+        askFirst: true,
+        minSizeBytes: 100_000_000,
+      },
+    };
+    harness.service.onBeforeSendHeaders({
+      requestId: 'r1',
+      url: ZIP,
+      method: 'GET',
+      tabId: 3,
+      documentUrl: 'https://example.test/page',
+    });
+    await harness.service.onHeadersReceived(response({ url: ZIP }));
+    await harness.service.onCreated(item({ sizeBytes: 10 }));
+    expect(sentTo).toEqual(['http://other:1']);
+    expect(harness.windows).toEqual([]); // no ask-first prompt for a renewal
+  });
+
+  it('leaves a download of another page alone', async () => {
+    const harness = deps({ refreshTarget: () => Promise.resolve(undefined) });
+    harness.settingsState.current = {
+      ...harness.settingsState.current,
+      rules: { ...harness.settingsState.current.rules, intercept: false },
+    };
+    await harness.service.onCreated(item());
+    expect(harness.captured).toEqual([]);
+  });
+});

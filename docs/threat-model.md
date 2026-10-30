@@ -22,3 +22,23 @@
 6. A downloaded file name or URL tricks a log, a notification or a path (sanitised; the daemon chooses paths).
 7. A remote server impersonates the user's server (HTTPS with a trusted certificate recommended; warn on plain HTTP;
    pinning is not possible from a browser).
+
+## How E2 to E6 answer them (reviewed)
+
+- **Messages from pages (1).** Content-script handlers are opt-in (`fromContent`), accept only the top frame (media, links,
+  hints; an iframe may only say that it plays protected media), take the page address from the sender and never from the
+  message, check and cap the payload, and take a magnet or eD2K link only from a real click (`isTrusted`, main button),
+  at most five a few seconds per tab. A link DLM does not accept goes back to the browser.
+- **Checksums and mirrors from pages (1).** A hint belongs to the origin of the page that reported it and is used only for a
+  download that started on that page; mirrors and checksums are shown for review before they are sent, and mirrors are off
+  until the person turns them on.
+- **Settings import (2).** A file cannot re-point a known server at another address and keep its token: a changed or new server
+  gets a new id and no token, is not active, and no route may use it. Tokens of servers that are gone are deleted.
+- **Tokens in memory and storage (2).** Request headers (allow-listed, `Authorization` among them) are held in memory only
+  for a few seconds and are dropped for requests of the extension itself; session storage holds observations of download
+  candidates only. `Authorization` is not repeated on a redirect to another origin.
+- **Private windows (5).** No cookies unless the person allowed private windows; then those of that window's own store (Chrome:
+  found through the tab; Firefox: the request's store), and a restarted download stays in that window or container.
+- **Rate limits (4).** Per-token limits are the daemon's (P14.8); the extension adds none for downloads, a limit per tab for
+  magnet links, and caps on every list it sends.
+- **Remote servers (7).** Unchanged; `http://` to another computer is warned about before and after adding it.

@@ -15,6 +15,10 @@ function tabIdOf(sender: SenderLike): number | undefined {
   return typeof tab.id === 'number' ? tab.id : undefined;
 }
 
+/** A tab may hand over this many magnet links in this long. */
+const ADD_LIMIT = 5;
+const ADD_WINDOW_MS = 10_000;
+
 const MAX_URL = 8192;
 
 function originOfSender(sender: SenderLike): string | undefined {
@@ -43,6 +47,19 @@ const ASK_CHOICES: readonly AskChoice[] = ['dlm', 'browser', 'always', 'omit'];
 
 /** The answers the background gives to its pages (docs: `src/lib/bus/messages.ts` lists the messages). */
 export function createHandlers(services: Services): Handlers {
+  // Magnet links a tab handed over lately. Only a real click can make one (the content script checks), so this is a
+  // second wall against a page that finds a way; losing it with the worker costs nothing.
+  const recentAdds = new Map<number, number[]>();
+  const allowAdd = (tabId: number): boolean => {
+    const now = Date.now();
+    const recent = (recentAdds.get(tabId) ?? []).filter((at) => now - at < ADD_WINDOW_MS);
+    if (recent.length >= ADD_LIMIT) {
+      recentAdds.set(tabId, recent);
+      return false;
+    }
+    recentAdds.set(tabId, [...recent, now]);
+    return true;
+  };
   return {
     'ext.info': { handle: () => ({ version: services.version }) },
     'diagnostics.get': {
@@ -143,6 +160,8 @@ export function createHandlers(services: Services): Handlers {
         if (!isTopFrame(sender)) return false;
         if (typeof input?.url !== 'string' || input.url.length > MAX_URL) return false;
         if (!isDirectScheme(input.url)) return false;
+        const tabId = tabIdOf(sender);
+        if (tabId === undefined || !allowAdd(tabId)) return false;
         return (await services.links?.addDirect(input.url)) ?? false;
       },
     },
@@ -234,9 +253,9 @@ export function createHandlers(services: Services): Handlers {
     },
     'downloads.turbo': { handle: ({ on }) => services.downloads.setTurbo(on) },
     'downloads.test': {
-      handle: async ({ url }) => {
+      handle: async () => {
         try {
-          await services.downloads.test(url);
+          await services.downloads.test();
           return { ok: true };
         } catch (error) {
           return { ok: false, error: error instanceof Error ? error.message : t('error.failed') };

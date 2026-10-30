@@ -157,6 +157,7 @@ export default defineBackground(() => {
         attach: (media) => attachMedia(browser as unknown as InterceptBrowser, media),
       },
       tabs: { onRemoved: browser.tabs.onRemoved },
+      notifications: { onClicked: browser.notifications.onClicked },
       live: { onConnect: browser.runtime.onConnect },
       commands: {
         onCommand: browser.commands.onCommand,

@@ -49,10 +49,39 @@ describe('live events', () => {
 });
 
 describe('setup steps', () => {
-  it('follows the connection', () => {
-    expect(setupSteps('host-not-installed').find((step) => step.id === 'host')?.done).toBe(false);
-    expect(setupSteps('needs-pairing').find((step) => step.id === 'host')?.done).toBe(true);
-    expect(setupSteps('needs-pairing').find((step) => step.id === 'pair')?.done).toBe(false);
-    expect(setupSteps('connected').every((step) => step.done)).toBe(true);
+  const done = (kind: Parameters<typeof setupSteps>[0], access = true) =>
+    setupSteps(kind, access)
+      .map((step) => `${step.id}:${step.done ? 'x' : '-'}`)
+      .join(' ');
+
+  it.each([
+    ['checking', 'app:- host:- pair:- access:x test:-'],
+    ['host-not-installed', 'app:x host:- pair:- access:x test:-'],
+    ['app-not-running', 'app:- host:- pair:- access:x test:-'],
+    ['needs-pairing', 'app:x host:x pair:- access:x test:-'],
+    ['pairing', 'app:x host:x pair:- access:x test:-'],
+    ['token-revoked', 'app:x host:x pair:- access:x test:-'],
+    ['access-needed', 'app:x host:x pair:- access:- test:-'],
+    ['local-unreachable', 'app:x host:x pair:x access:x test:-'],
+    ['connected', 'app:x host:x pair:x access:x test:x'],
+    // A server added by URL needs no host and no pairing.
+    ['remote-needs-token', 'app:x host:x pair:x access:x test:-'],
+    ['remote-unreachable', 'app:x host:x pair:x access:x test:-'],
+  ] as const)('%s: %s', (kind, expected) => {
+    expect(done(kind)).toBe(expected);
+  });
+
+  it('wants the permission for every site, which Firefox grants only when asked', () => {
+    expect(done('connected', false)).toBe('app:x host:x pair:x access:- test:x');
+  });
+});
+
+describe('what a task can be told to do', () => {
+  it('offers pause and resume only where the daemon accepts them', async () => {
+    const { canPause, canResume } = await import('./live');
+    expect(['running', 'queued', 'awaiting_link'].every(canPause)).toBe(true);
+    expect(['paused', 'completed', 'error'].some(canPause)).toBe(false);
+    expect(['paused', 'error'].every(canResume)).toBe(true);
+    expect(['running', 'completed', 'queued'].some(canResume)).toBe(false);
   });
 });

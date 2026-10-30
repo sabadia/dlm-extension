@@ -381,3 +381,37 @@ describe('the toolbar button of a tab with media', () => {
     expect(calls).toEqual([{ text: '5', tabId: 7 }]);
   });
 });
+
+describe('endpoints for a background look', () => {
+  it('does not start the native host to find the local DLM, and uses the address of the last check', async () => {
+    const local = memoryArea();
+    const session = memoryArea();
+    let hostStarts = 0;
+    await new SecretStore(local).set('local', 'dlmt_AbCdEf0123456789xyz');
+    const service = new ConnectionService({
+      settings: new SettingsStore(local),
+      secrets: new SecretStore(local),
+      host: { connect: () => ((hostStarts += 1), Promise.resolve(found)) },
+      pairing: { view: () => Promise.resolve({ phase: 'idle' }) },
+      area: session,
+      action: {
+        setBadgeText: () => undefined,
+        setBadgeBackgroundColor: () => undefined,
+        setTitle: () => undefined,
+      },
+      log: new RingLog(session),
+      client: (): ProbeClient => ({
+        health: () => Promise.resolve(health()),
+        whoami: () => Promise.resolve({ scope: 'extension' }),
+      }),
+    });
+    expect(await service.endpoints({ discover: false })).toEqual([]);
+    expect(hostStarts).toBe(0);
+    await service.refresh(); // connects, starting the host once
+    const starts = hostStarts;
+    expect(await service.endpoints({ discover: false })).toEqual([
+      { baseUrl: 'http://127.0.0.1:50123', token: 'dlmt_AbCdEf0123456789xyz' },
+    ]);
+    expect(hostStarts).toBe(starts);
+  });
+});

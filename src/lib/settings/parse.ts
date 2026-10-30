@@ -30,16 +30,29 @@ export function normalizeMimeType(input: string): string | undefined {
   return /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/.test(text) ? text : undefined;
 }
 
-/** Normalises a host name typed for a site rule: lower case, no scheme, no path, no leading `*.` or dot. */
+/**
+ * Normalises a host name typed for a site rule: lower case, no scheme, port, path, trailing dot, leading `*.` or dot,
+ * and a name with non-ASCII letters in its punycode form (the one a request has). A bare name such as `com` is refused,
+ * because a rule for it would cover a whole top-level domain; `localhost` and addresses are fine.
+ */
 export function normalizeSite(input: string): string | undefined {
-  const text = input
+  const typed = input
     .trim()
     .toLowerCase()
     .replace(/^[a-z][a-z0-9+.-]*:\/\//, '')
     .replace(/^\*?\./, '')
     .split(/[/?#]/)[0]
-    ?.replace(/:\d+$/, '');
-  return text && /^[a-z0-9.-]+$/.test(text) ? text : undefined;
+    ?.replace(/:\d+$/, '')
+    .replace(/\.$/, '');
+  if (!typed) return undefined;
+  let host: string;
+  try {
+    host = new URL(`http://${typed}`).hostname.replace(/\.$/, '');
+  } catch {
+    return undefined;
+  }
+  if (!/^[a-z0-9.-]+$/.test(host)) return undefined;
+  return host.includes('.') || host === 'localhost' ? host : undefined;
 }
 
 function siteList(raw: unknown): string[] {
@@ -92,6 +105,7 @@ function parsePreferences(raw: unknown): Preferences {
     badge: bool(raw.badge, d.badge),
     notifications: bool(raw.notifications, d.notifications),
     mirrors: bool(raw.mirrors, d.mirrors),
+    refresh: bool(raw.refresh, d.refresh),
   };
 }
 

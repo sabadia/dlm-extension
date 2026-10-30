@@ -156,7 +156,7 @@ describe('the background lifecycle', () => {
     const { registerBackground, CHECK_ALARM, REFRESH_ALARM } = await import('./register');
     const listeners = {
       startup: [] as (() => void)[],
-      installed: [] as (() => void)[],
+      installed: [] as ((details: { reason: string }) => void)[],
       alarm: [] as ((a: { name: string }) => void)[],
     };
     const created: string[] = [];
@@ -247,7 +247,10 @@ describe('the background lifecycle', () => {
       '6': { pageUrl: 'y', items: [], at: 1 },
     });
     let removedTab: ((id: number) => void) | undefined;
-    const listeners = { startup: [] as (() => void)[], installed: [] as (() => void)[] };
+    const listeners = {
+      startup: [] as (() => void)[],
+      installed: [] as ((details: { reason: string }) => void)[],
+    };
     registerBackground(
       fakeRuntime(),
       {
@@ -284,5 +287,59 @@ describe('the background lifecycle', () => {
     removedTab?.(5);
     await new Promise((r) => setTimeout(r, 10));
     expect(Object.keys((await session.get('media.tabs')) as object)).toEqual(['6']);
+  });
+
+  it('opens the setup after a fresh install only, and says what the interception shortcut did', async () => {
+    const { registerBackground } = await import('./register');
+    const notes: string[] = [];
+    let opened = 0;
+    const local = memoryArea();
+    const handlers = {
+      installed: [] as ((details: { reason: string }) => void)[],
+      command: [] as ((command: string) => void)[],
+    };
+    registerBackground(
+      fakeRuntime(),
+      {
+        local,
+        session: memoryArea(),
+        version: '1',
+        userAgent: 'u',
+        native: noHost,
+        action: noAction,
+        notifications: {
+          create: (_id, options) => {
+            notes.push(options.message);
+          },
+        },
+      },
+      {
+        onStartup: { addListener: () => undefined },
+        onInstalled: { addListener: (l) => handlers.installed.push(l) },
+        alarms: {
+          get: () => Promise.resolve({}),
+          create: () => undefined,
+          onAlarm: { addListener: () => undefined },
+        },
+        commands: {
+          onCommand: { addListener: (l) => handlers.command.push(l) },
+          openOptions: () => {
+            opened += 1;
+          },
+        },
+      },
+    );
+    handlers.installed[0]?.({ reason: 'update' });
+    expect(opened).toBe(0);
+    handlers.installed[0]?.({ reason: 'install' });
+    expect(opened).toBe(1);
+    handlers.command[0]?.('toggle-intercept');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(notes).toEqual(['DLM leaves browser downloads alone until you turn it on again.']);
+    handlers.command[0]?.('toggle-intercept');
+    await new Promise((r) => setTimeout(r, 20));
+    expect(notes.at(-1)).toBe('DLM takes over browser downloads again.');
+    handlers.command[0]?.('open-options');
+    expect(opened).toBe(2);
   });
 });

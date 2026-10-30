@@ -1,46 +1,99 @@
 import { useEffect, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import { sendMessage } from '../../src/lib/bus/bus';
-import { formatBytes, openInAppUrl, type LiveTask } from '../../src/lib/downloads/live';
+import {
+  canPause,
+  canResume,
+  formatBytes,
+  OPEN_APP_URL,
+  type LiveTask,
+} from '../../src/lib/downloads/live';
 import type { LiveSnapshot } from '../../src/lib/downloads/service';
 import { statusText, t } from '../../src/lib/i18n';
 
-/** The downloads DLM is working on. The stream lives only while this popup is open. */
+const EMPTY: LiveSnapshot = { tasks: [], queues: [], turbo: false, reachable: true };
+
+/** The text of a failed action. */
+const errorText = (error: unknown): string =>
+  error instanceof Error ? error.message : t('error.failed');
+
+/**
+ * The downloads DLM is working on. The stream runs in the background only while this popup is open; when the
+ * connection to the background drops (the worker was stopped), the popup connects again.
+ */
 export function LiveList() {
-  const [snapshot, setSnapshot] = useState<LiveSnapshot>({ tasks: [], queues: [], turbo: false });
+  const [snapshot, setSnapshot] = useState<LiveSnapshot>(EMPTY);
+  const [note, setNote] = useState('');
 
   useEffect(() => {
-    const port = browser.runtime.connect({ name: 'downloads' });
-    const onMessage = (message: unknown) => {
-      if (isSnapshot(message)) setSnapshot(message);
+    let port: ReturnType<typeof browser.runtime.connect> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let closed = false;
+    let delay = 500;
+    const connect = () => {
+      if (closed) return;
+      port = browser.runtime.connect({ name: 'downloads' });
+      port.onMessage.addListener((message: unknown) => {
+        delay = 500;
+        if (isSnapshot(message)) setSnapshot(message);
+      });
+      port.onDisconnect.addListener(() => {
+        port = undefined;
+        if (closed) return;
+        setSnapshot((current) => ({ ...current, reachable: false }));
+        timer = setTimeout(connect, delay);
+        delay = Math.min(delay * 2, 10_000);
+      });
     };
-    port.onMessage.addListener(onMessage);
-    return () => port.disconnect();
+    connect();
+    return () => {
+      closed = true;
+      clearTimeout(timer);
+      port?.disconnect();
+    };
   }, []);
 
   const refresh = () => {
-    void sendMessage(browser.runtime, 'downloads.list').then(setSnapshot, () => undefined);
+    void sendMessage(browser.runtime, 'downloads.list').then(setSnapshot, (e: unknown) =>
+      setNote(errorText(e)),
+    );
+  };
+
+  /** Runs an action and shows what went wrong, if anything. */
+  const act = (run: Promise<unknown>) => {
+    setNote('');
+    run.then(refresh, (e: unknown) => {
+      setNote(errorText(e));
+      // A checkbox that was flipped by the click goes back to what DLM says.
+      setSnapshot((current) => ({ ...current }));
+    });
   };
 
   return (
     <section aria-labelledby="live-title">
       <h2 id="live-title">{t('live.title')}</h2>
+      {snapshot.reachable ? null : <p role="status">{t('live.reconnecting')}</p>}
       <label>
         <input
           type="checkbox"
           checked={snapshot.turbo}
-          onChange={(event) => {
-            void sendMessage(browser.runtime, 'downloads.turbo', {
-              on: event.currentTarget.checked,
-            }).then(refresh, () => undefined);
-          }}
+          aria-describedby="live-turbo-help"
+          onChange={(event) =>
+            act(
+              sendMessage(browser.runtime, 'downloads.turbo', {
+                on: event.currentTarget.checked,
+              }),
+            )
+          }
         />{' '}
-        {t('live.turbo')} <span>{t('live.turboHelp')}</span>
-      </label>
+        {t('live.turbo')} <span id="live-turbo-help">{t('live.turboHelp')}</span>
+      </label>{' '}
+      <a href={OPEN_APP_URL}>{t('live.open')}</a>
+      <p role="alert">{note}</p>
       {snapshot.tasks.length === 0 ? <p>{t('live.empty')}</p> : null}
       <ul>
         {snapshot.tasks.map((task) => (
-          <TaskRow key={task.id} task={task} queues={snapshot.queues} onChanged={refresh} />
+          <TaskRow key={task.id} task={task} queues={snapshot.queues} act={act} />
         ))}
       </ul>
     </section>
@@ -50,13 +103,12 @@ export function LiveList() {
 function TaskRow({
   task,
   queues,
-  onChanged,
+  act,
 }: {
   task: LiveTask;
   queues: { id: string; name: string }[];
-  onChanged: () => void;
+  act: (run: Promise<unknown>) => void;
 }) {
-  const running = task.status === 'running';
   const fraction =
     task.size > 0 ? Math.min(100, Math.round((task.downloaded / task.size) * 100)) : 0;
   return (
@@ -68,27 +120,37 @@ function TaskRow({
           : ''}
         {task.speed > 0 ? ` · ${formatBytes(task.speed)}/s` : ''}
       </p>
-      <button
-        type="button"
-        onClick={() => {
-          void sendMessage(browser.runtime, running ? 'downloads.pause' : 'downloads.resume', {
-            id: task.id,
-          }).then(onChanged, () => undefined);
-        }}
-      >
-        {running ? t('live.pause') : t('live.resume')}
-      </button>{' '}
-      {task.url ? <a href={openInAppUrl(task.url)}>{t('live.open')}</a> : null}{' '}
+      {task.size > 0 ? (
+        <progress value={task.downloaded} max={task.size} aria-label={task.name} />
+      ) : null}
+      {canPause(task.status) ? (
+        <button
+          type="button"
+          onClick={() => act(sendMessage(browser.runtime, 'downloads.pause', { id: task.id }))}
+        >
+          {t('live.pause')}
+        </button>
+      ) : null}
+      {canResume(task.status) ? (
+        <button
+          type="button"
+          onClick={() => act(sendMessage(browser.runtime, 'downloads.resume', { id: task.id }))}
+        >
+          {t('live.resume')}
+        </button>
+      ) : null}{' '}
       <label>
         {t('live.queue')}{' '}
         <select
           value={task.queueId}
-          onChange={(event) => {
-            void sendMessage(browser.runtime, 'downloads.move', {
-              id: task.id,
-              queueId: event.currentTarget.value,
-            }).then(onChanged, () => undefined);
-          }}
+          onChange={(event) =>
+            act(
+              sendMessage(browser.runtime, 'downloads.move', {
+                id: task.id,
+                queueId: event.currentTarget.value,
+              }),
+            )
+          }
         >
           {queues.map((queue) => (
             <option key={queue.id} value={queue.id}>

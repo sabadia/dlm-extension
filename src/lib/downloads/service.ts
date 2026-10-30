@@ -1,6 +1,7 @@
 import { DlmClient, type Task } from '../api/client';
 import type { SseEvent } from '../api/sse';
 import type { ConnectionService } from '../connection/service';
+import { t } from '../i18n';
 import type { Logger } from '../log/log';
 import type { SecretStore } from '../settings/store';
 import { applyLiveEvent, liveFromTask, type LiveTask } from './live';
@@ -10,10 +11,12 @@ export interface LiveSnapshot {
   queues: { id: string; name: string }[];
   /** True while a temporary unlimited speed limit is in force. */
   turbo: boolean;
+  /** False while DLM cannot be reached and the list may be out of date. */
+  reachable: boolean;
 }
 
 interface LivePort {
-  list(): Promise<LiveSnapshot>;
+  list(): Promise<Omit<LiveSnapshot, 'reachable'>>;
   pause(id: string): Promise<void>;
   resume(id: string): Promise<void>;
   move(id: string, queueId: string): Promise<void>;
@@ -34,7 +37,10 @@ export class DownloadsService {
   constructor(private readonly deps: DownloadsDeps) {}
 
   list(): Promise<LiveSnapshot> {
-    return this.withPort((port) => port.list(), emptySnapshot());
+    return this.withPort(
+      async (port) => ({ ...(await port.list()), reachable: true }),
+      emptySnapshot(),
+    );
   }
 
   pause(id: string): Promise<void> {
@@ -53,44 +59,78 @@ export class DownloadsService {
     return this.withPort((port) => port.setTurbo(on), false);
   }
 
-  test(url: string): Promise<void> {
-    return this.withPort((port) => port.add(url), undefined);
+  /**
+   * A test download: DLM fetches its own health report. It is a real file from a real address that DLM can reach from
+   * where it runs (a made-up address never resolves), it needs no login, and it is small.
+   */
+  async test(): Promise<void> {
+    const state = await this.deps.connection.get();
+    if (state.kind !== 'connected') throw new Error(t('links.offline'));
+    await this.withPort((port) => port.add(`${state.baseUrl}/v1/health`), undefined);
   }
 
-  /** Pushes the list, then each relevant event, until `signal` aborts (the popup closed). */
-  async watch(send: (snapshot: LiveSnapshot) => void, signal: AbortSignal): Promise<void> {
-    const port = await this.port();
-    if (!port) {
-      send(emptySnapshot());
-      return;
+  /**
+   * Pushes the list and then every relevant event until `signal` aborts (the popup closed). When the stream ends or
+   * DLM goes away it tries again with a growing wait, and loads the list again each time, so the list is never left
+   * stale without saying so (`reachable`). It also loads the list every `pollMs`: this closes any gap between loading
+   * and the stream starting, and the traffic keeps a Chrome service worker from being stopped while the popup is open.
+   * A send that fails (the popup closed meanwhile) ends the watch.
+   */
+  async watch(
+    send: (snapshot: LiveSnapshot) => void,
+    signal: AbortSignal,
+    options: { pollMs?: number; wait?: (ms: number, signal: AbortSignal) => Promise<void> } = {},
+  ): Promise<void> {
+    const pollMs = options.pollMs ?? POLL_MS;
+    const wait = options.wait ?? abortableWait;
+    let snapshot = emptySnapshot();
+    const emit = (next: LiveSnapshot) => {
+      snapshot = next;
+      send(next);
+    };
+    let delay = FIRST_RETRY_MS;
+    while (!signal.aborted) {
+      const port = await this.port();
+      if (!port) {
+        // Not connected to DLM at all (not set up, not running): there is no list to be stale. The popup says why.
+        emit(emptySnapshot());
+        await wait(NO_PORT_RETRY_MS, signal);
+        continue;
+      }
+      const attempt = new AbortController();
+      const stop = () => attempt.abort();
+      signal.addEventListener('abort', stop, { once: true });
+      const relist = async () => {
+        try {
+          emit({ ...(await port.list()), reachable: true });
+        } catch (error) {
+          this.deps.log.debug('downloads', 'could not load the list', { error });
+        }
+      };
+      const timer = setInterval(() => void relist(), pollMs);
+      try {
+        emit({ ...(await port.list()), reachable: true });
+        delay = FIRST_RETRY_MS;
+        await port.watch((event) => {
+          const next = applyLiveEvent(snapshot.tasks, event);
+          if (next.reset || event.event === 'limits.changed') {
+            void relist();
+            return;
+          }
+          emit({ ...snapshot, tasks: next.tasks });
+        }, attempt.signal);
+      } catch (error) {
+        if (signal.aborted) break;
+        this.deps.log.debug('downloads', 'the live stream stopped', { error });
+        emit({ ...snapshot, reachable: false });
+      } finally {
+        clearInterval(timer);
+        signal.removeEventListener('abort', stop);
+        attempt.abort();
+      }
+      await wait(delay, signal);
+      delay = Math.min(delay * 2, MAX_RETRY_MS);
     }
-    let snapshot = await port.list();
-    send(snapshot);
-    await port.watch((event) => {
-      const next = applyLiveEvent(snapshot.tasks, event);
-      snapshot = { ...snapshot, tasks: next.tasks };
-      if (next.reset) {
-        void port.list().then(
-          (fresh) => {
-            snapshot = fresh;
-            send(fresh);
-          },
-          () => undefined,
-        );
-        return;
-      }
-      if (event.event === 'limits.changed') {
-        void port.list().then(
-          (fresh) => {
-            snapshot = { ...snapshot, turbo: fresh.turbo };
-            send(snapshot);
-          },
-          () => undefined,
-        );
-        return;
-      }
-      send(snapshot);
-    }, signal);
   }
 
   private async withPort<T>(run: (port: LivePort) => Promise<T>, fallback: T): Promise<T> {
@@ -108,8 +148,27 @@ export class DownloadsService {
   }
 }
 
+const POLL_MS = 15_000;
+const FIRST_RETRY_MS = 1_000;
+const MAX_RETRY_MS = 15_000;
+const NO_PORT_RETRY_MS = 5_000;
+
 function emptySnapshot(): LiveSnapshot {
-  return { tasks: [], queues: [], turbo: false };
+  return { tasks: [], queues: [], turbo: false, reachable: true };
+}
+
+/** Waits `ms`, or less when `signal` aborts. */
+function abortableWait(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) return resolve();
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener('abort', done, { once: true });
+  });
 }
 
 function daemonPort(baseUrl: string, token: string): LivePort {
