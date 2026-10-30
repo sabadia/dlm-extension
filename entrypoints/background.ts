@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import {
   attachIntercept,
+  attachMedia,
   attachMenus,
   registerBackground,
   type InterceptBrowser,
@@ -76,6 +77,11 @@ export default defineBackground(() => {
       linksUrl: (tabId) => browser.runtime.getURL(`/links.html?tab=${tabId}`),
       fetchFile: async (url) =>
         new Uint8Array(await (await fetch(url, { credentials: 'include' })).arrayBuffer()),
+      fetchText: async (url) => {
+        const response = await fetch(url, { credentials: 'include' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.text();
+      },
     },
     {
       onStartup: browser.runtime.onStartup,
@@ -87,6 +93,9 @@ export default defineBackground(() => {
       },
       menus: {
         attach: (links) => attachMenus(browser.contextMenus as unknown as MenuBrowser, links),
+      },
+      media: {
+        attach: (media) => attachMedia(browser as unknown as InterceptBrowser, media),
       },
     },
   );
