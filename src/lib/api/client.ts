@@ -83,6 +83,41 @@ export class DlmClient {
     return this.json('POST', '/v1/tasks', body, { signal });
   }
 
+  /** Adds many tasks. One failure does not stop the others. */
+  createTasks(
+    body: Schemas['CreateTasksBody'],
+    signal?: AbortSignal,
+  ): Promise<Schemas['BatchOutputBody']> {
+    return this.json('POST', '/v1/tasks/batch', body, { signal });
+  }
+
+  /** The queues a context menu can offer. An extension token may list them. */
+  listQueues(signal?: AbortSignal): Promise<Schemas['QueueList']> {
+    return this.json('GET', '/v1/queues', undefined, { signal });
+  }
+
+  /**
+   * Sends a `.torrent` file as the body (up to 16 MiB). Used when the file is behind cookies the daemon cannot send.
+   * A public torrent URL goes through {@link createTask} instead.
+   */
+  async addTorrentFile(
+    bytes: Uint8Array,
+    query: { queueId?: string; name?: string; paused?: boolean } = {},
+    signal?: AbortSignal,
+  ): Promise<Task> {
+    const params = new URLSearchParams();
+    if (query.queueId) params.set('queueId', query.queueId);
+    if (query.name) params.set('name', query.name);
+    if (query.paused) params.set('paused', 'true');
+    const qs = params.toString();
+    const res = await this.send('POST', `/v1/tasks/torrent${qs ? `?${qs}` : ''}`, {
+      headers: { Accept: 'application/json', 'Content-Type': 'application/x-bittorrent' },
+      body: new Blob([Uint8Array.from(bytes)]),
+      signal,
+    });
+    return (await res.json()) as Task;
+  }
+
   pauseTasks(selector: TaskSelector, signal?: AbortSignal): Promise<unknown> {
     return this.json('POST', '/v1/tasks/pause', selector, { signal });
   }
@@ -127,7 +162,7 @@ export class DlmClient {
     opts: { signal?: AbortSignal | undefined; auth?: boolean },
   ): Promise<T> {
     const headers: Record<string, string> = { Accept: 'application/json' };
-    let payload: string | undefined;
+    let payload: BodyInit | undefined;
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
       payload = JSON.stringify(body);
@@ -146,7 +181,7 @@ export class DlmClient {
     path: string,
     opts: {
       headers: Record<string, string>;
-      body?: string | undefined;
+      body?: BodyInit | undefined;
       signal?: AbortSignal | undefined;
       auth?: boolean;
       timeout?: boolean;

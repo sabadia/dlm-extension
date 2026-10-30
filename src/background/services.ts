@@ -7,6 +7,7 @@ import {
   type NotificationsPort,
   type WindowsPort,
 } from '../lib/intercept/service';
+import { LinksService, type MenuPort, type TaskPort } from '../lib/links/service';
 import { RingLog } from '../lib/log/log';
 import { RemoteService } from '../lib/remote/service';
 import { NativeHost, type NativeRuntime } from '../lib/native/host';
@@ -46,6 +47,12 @@ export interface Environment {
   windows?: WindowsPort;
   /** Address of the small ask window, including the pending id. */
   askUrl?: (id: string) => string;
+  /** Context menus (E3). */
+  menus?: MenuPort;
+  /** Address of the "all links" preview for one tab. */
+  linksUrl?: (tabId: number) => string;
+  /** Reads a cookie-gated `.torrent` file. */
+  fetchFile?: (url: string) => Promise<Uint8Array>;
 }
 
 /**
@@ -64,6 +71,8 @@ export interface Services {
   remote: RemoteService;
   /** Present once the download, cookie, notification and window ports are wired (E2). */
   intercept?: InterceptService;
+  /** Context menus, direct links and batches (E3). */
+  links?: LinksService;
 }
 
 export function createServices(env: Environment): Services {
@@ -96,6 +105,32 @@ export function createServices(env: Environment): Services {
     log,
     changed: () => void connection.refresh(),
   });
+  const taskPort = (baseUrl: string, token: string): TaskPort => {
+    const client = new DlmClient({ baseUrl, token, log });
+    return {
+      listQueues: () => client.listQueues(),
+      create: (body) => client.createTask(body),
+      createMany: async (items) => {
+        const result = await client.createTasks({ items });
+        return (result.results ?? []).map((item) => ({ ok: item.ok }));
+      },
+      addTorrent: (bytes, query) => client.addTorrentFile(bytes, query),
+    };
+  };
+  const links =
+    env.menus && env.linksUrl
+      ? new LinksService({
+          settings,
+          secrets,
+          connection,
+          session: env.session,
+          log,
+          menus: env.menus,
+          tasks: taskPort,
+          linksUrl: env.linksUrl,
+          ...(env.fetchFile ? { fetchFile: env.fetchFile } : {}),
+        })
+      : undefined;
   const intercept =
     env.downloads && env.cookies && env.notifications && env.windows && env.askUrl
       ? new InterceptService({
@@ -115,6 +150,7 @@ export function createServices(env: Environment): Services {
           windows: env.windows,
           askUrl: env.askUrl,
           client: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
+          ...(links ? { torrents: links } : {}),
         })
       : undefined;
   return {
@@ -128,5 +164,6 @@ export function createServices(env: Environment): Services {
     connection,
     remote,
     ...(intercept ? { intercept } : {}),
+    ...(links ? { links } : {}),
   };
 }

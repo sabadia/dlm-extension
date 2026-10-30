@@ -115,8 +115,8 @@ connection check) and host access to the loopback addresses of the daemon (`http
 remote servers are optional host permissions, asked for one server at a time when the person adds it (E1.7). E2 adds
 `downloads`, `webRequest`, `cookies` and `notifications`, and host access to `http://*/*`, `https://*/*` and
 `ftp://*/*`, so a download's headers and cookies can be read on any site. Firefox also declares `webRequestBlocking`
-so an attachment can be cancelled before a download entry appears. The remaining permissions arrive with the features
-that need them.
+so an attachment can be cancelled before a download entry appears. E3 adds `contextMenus` for the right-click menus.
+The remaining permissions arrive with the features that need them.
 No remote code, no analytics, no data leaves the computer except to the user's own DLM server.
 
 ## Order of work
@@ -161,10 +161,10 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 ### E3 Links and menus
 
-- [ ] E3.1 Context menus — Link, selection, image, audio, video; queue submenu; 'add paused'; 'download page with DLM'.
-- [ ] E3.2 Download all links on a page — Collect links and media with filters (extension, regex, size), preview list with select-all, send via `/v1/tasks/batch`.
-- [ ] E3.3 Magnet and ed2k links — Capture user clicks on `magnet:` and `ed2k:` links and send them directly (no 'open external app' prompt).
-- [ ] E3.4 Torrent files — Intercept `.torrent` downloads (mime or extension) and send by URL, or as bytes when cookie-gated. Needs backend: sabadia/dlm-server#143 (P14.7)
+- [x] E3.1 Context menus — Link, selection, image, audio, video; queue submenu; 'add paused'; 'download page with DLM'.
+- [x] E3.2 Download all links on a page — Collect links and media with filters (extension, regex, size), preview list with select-all, send via `/v1/tasks/batch`.
+- [x] E3.3 Magnet and ed2k links — Capture user clicks on `magnet:` and `ed2k:` links and send them directly (no 'open external app' prompt).
+- [x] E3.4 Torrent files — Intercept `.torrent` downloads (mime or extension) and send by URL, or as bytes when cookie-gated. Needs backend: sabadia/dlm-server#143 (P14.7)
 
 ### E4 Media detection
 
