@@ -45,7 +45,12 @@ export function FilesView({ api }: { api: FilesApi }) {
   const [queueId, setQueueId] = useState('');
   const [paused, setPaused] = useState(false);
   const [qualities, setQualities] = useState<Record<string, Variant[]>>({});
-  const [cookies, setCookies] = useState<{ host: string; count: number }>();
+  const [cookies, setCookies] = useState<{
+    host: string;
+    count: number;
+    /** What was previewed: the same request is sent, even if the active tab has changed since. */
+    request: ReturnType<typeof cookieRequest>;
+  }>();
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -146,19 +151,21 @@ export function FilesView({ api }: { api: FilesApi }) {
   const askCookies = async () => {
     if (!tab) return;
     try {
-      const found = await api.cookiesPreview(cookieRequest(tab));
+      const request = cookieRequest(tab);
+      const found = await api.cookiesPreview(request);
       if (found.count === 0) toasts.show(t('files.cookiesNone'));
-      else setCookies(found);
+      else setCookies({ ...found, request });
     } catch (error) {
       toasts.show(t('files.failed', { message: message(error) }), 'error');
     }
   };
 
   const sendCookies = async () => {
+    const previewed = cookies;
     setCookies(undefined);
-    if (!tab) return;
+    if (!previewed) return;
     try {
-      const result = await api.sendCookies(cookieRequest(tab));
+      const result = await api.sendCookies(previewed.request);
       if (result.ok) {
         const refused =
           result.rejected > 0 ? ` ${t('files.cookiesRefused', { rejected: result.rejected })}` : '';

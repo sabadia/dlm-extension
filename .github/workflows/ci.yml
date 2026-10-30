@@ -56,26 +56,31 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: ./.github/actions/setup-node-pnpm
-      - name: Fetch the pinned DLM release and check its checksum
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          tag="$(cat e2e/DLM_VERSION)"
-          version="${tag#v}"
-          dir="$RUNNER_TEMP/dlm"
-          mkdir -p "$dir"
-          gh release download "$tag" --repo sabadia/dlm-server --dir "$dir" \
-            --pattern "dlm_${version}_checksums.txt" --pattern "dlm_${version}_linux_amd64.tar.gz"
-          (cd "$dir" && grep "dlm_${version}_linux_amd64.tar.gz" "dlm_${version}_checksums.txt" | sha256sum --check -)
-          tar -xzf "$dir/dlm_${version}_linux_amd64.tar.gz" -C "$dir" dlm
-          echo "DLM=$dir/dlm" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/fetch-dlm
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
-      - run: pnpm exec playwright test
+      - run: pnpm exec playwright test --project=chromium
       - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:
           name: e2e-traces
+          path: test-results
+
+  e2e-firefox:
+    name: end-to-end (Firefox, real daemon)
+    needs: [check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-node-pnpm
+      - uses: ./.github/actions/fetch-dlm
+      # Selenium Manager fetches Firefox and geckodriver when the runner has none that fit.
+      - run: pnpm build:firefox
+      - run: pnpm exec playwright test --project=firefox
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: e2e-firefox-traces
           path: test-results
 
   licences:

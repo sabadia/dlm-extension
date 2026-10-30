@@ -68,6 +68,13 @@ export default defineBackground(() => {
   const brave = 'brave' in navigator;
   const firefox = detectBrowser(navigator.userAgent, brave) === 'firefox';
   const extensionOrigin = new URL(browser.runtime.getURL('/')).origin;
+  // The tokens are in `storage.local`, which content scripts can read unless the extension says otherwise: no
+  // content script of ours reads it, and a page's script cannot, but the access level is closed all the same.
+  // Firefox has no such setting (its content scripts cannot reach this storage area).
+  const local = browser.storage.local as {
+    setAccessLevel?: (options: { accessLevel: string }) => Promise<void>;
+  };
+  void local.setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' })?.catch(() => undefined);
   registerBackground(
     browser.runtime,
     {

@@ -28,11 +28,12 @@ test('the background wakes quickly', async ({ extension, profile, until }) => {
   await cdp.send('ServiceWorker.enable', {}, session);
   const times: number[] = [];
   for (let i = 0; i < 5; i++) {
-    await cdp.send('ServiceWorker.stopAllWorkers', {}, session);
-    await until(
-      'the background to stop',
-      async () => (await cdp.targets('service_worker')).length === 0,
-    );
+    // Asked again until it is stopped: a worker that is just starting does not always stop at the first request.
+    await until('the background to stop', async () => {
+      await cdp.send('ServiceWorker.stopAllWorkers', {}, session);
+      await sleep(100);
+      return (await cdp.targets('service_worker')).length === 0;
+    });
     const started = performance.now();
     await extension.send('ext.info');
     times.push(performance.now() - started);

@@ -25,7 +25,8 @@ Works with Chrome and Chromium-based browsers (Edge, Brave, Opera, Vivaldi) and 
 corepack enable && pnpm install --frozen-lockfile
 pnpm dev            # Chrome, with hot reload
 pnpm dev:firefox
-pnpm test           # unit tests
+pnpm test           # unit tests (pnpm test:coverage adds the coverage thresholds)
+pnpm e2e            # end-to-end tests in Chromium and Firefox against a real `dlm` (set DLM=/path/to/dlm)
 pnpm build          # both browsers into .output/
 ```
 

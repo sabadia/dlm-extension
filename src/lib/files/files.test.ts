@@ -1,3 +1,4 @@
+import { probePolicy } from './policy';
 import { describe, expect, it } from 'vitest';
 import type { MediaView } from '../media/service';
 import { memoryArea } from '../storage/area';
@@ -154,7 +155,19 @@ describe('probeFile', () => {
       seen.push(init ?? {});
       return Promise.resolve(response(200, { 'content-length': '10' }));
     });
-    expect(seen[0]).toMatchObject({ method: 'HEAD', credentials: 'include', redirect: 'follow' });
+    expect(seen[0]).toMatchObject({ method: 'HEAD', credentials: 'omit', redirect: 'follow' });
+  });
+
+  it('sends the cookies only when it is told to', async () => {
+    const seen: RequestInit[] = [];
+    await probeFile('https://a.test/x.zip', {
+      fetch: (_url, init) => {
+        seen.push(init ?? {});
+        return Promise.resolve(response(200, { 'content-length': '10' }));
+      },
+      credentials: 'include',
+    });
+    expect(seen[0]).toMatchObject({ credentials: 'include' });
   });
 
   it('refuses a web page, an error, and a file with no size', async () => {
@@ -398,5 +411,57 @@ describe('looksLikeDownload', () => {
     ['not a url', undefined, false],
   ])('%s %j is %s', (url, text, expected) => {
     expect(looksLikeDownload(url, text)).toBe(expected);
+  });
+});
+
+describe('probePolicy', () => {
+  const page = 'https://shop.example.test/page';
+
+  it('sends the cookies only to the page’s own site, and never from a private window', () => {
+    expect(probePolicy(page, 'https://shop.example.test/a.zip', false)).toEqual({
+      allowed: true,
+      credentials: 'include',
+    });
+    expect(probePolicy(page, 'https://cdn.shop.example.test/a.zip', false)).toMatchObject({
+      credentials: 'include',
+    });
+    expect(probePolicy(page, 'https://elsewhere.test/a.zip', false)).toMatchObject({
+      credentials: 'omit',
+    });
+    expect(probePolicy(page, 'https://shop.example.test/a.zip', true)).toMatchObject({
+      credentials: 'omit',
+    });
+  });
+
+  it('does not let a public page make the panel ask this computer or the local network', () => {
+    for (const url of [
+      'http://127.0.0.1:17171/v1/tasks',
+      'http://localhost/a.zip',
+      'http://192.168.1.1/a.zip',
+      'http://10.0.0.5/a.zip',
+      'http://172.20.0.1/a.zip',
+      'http://169.254.169.254/latest',
+      'http://[::1]/a.zip',
+      'http://printer.local/a.zip',
+    ]) {
+      expect(probePolicy(page, url, false)).toEqual({ allowed: false, reason: 'blocked' });
+    }
+    // A page that is itself on the local network can have files there.
+    expect(probePolicy('http://192.168.1.2/page', 'http://192.168.1.3/a.zip', false)).toMatchObject(
+      {
+        allowed: true,
+      },
+    );
+    expect(probePolicy(page, 'file:///etc/passwd', false)).toEqual({
+      allowed: false,
+      reason: 'blocked',
+    });
+  });
+});
+
+describe('names that read differently from what they are', () => {
+  it('drops right-to-left overrides and zero-width characters', () => {
+    expect(sanitizeFileName('invoice\u202Efdp.exe')).toBe('invoicefdp.exe');
+    expect(sanitizeFileName('re\u200Bport')).toBe('report');
   });
 });

@@ -208,12 +208,12 @@ watched).
 
 ### E7 Quality
 
-- [ ] E7.1 Unit and contract tests — Rules, classifier, playlist parsing, client, storage migrations; coverage on the pure logic.
-- [ ] E7.2 E2E in Chromium against a real daemon — Playwright with the built extension, fixture site (attachment, redirect, cookie-gated file, magnet page, HLS page, expiring link), real daemon fetched with a checksum; pairing approve/deny/revoke.
-- [ ] E7.3 E2E in Firefox — Same scenarios through `web-ext` and geckodriver where possible; the rest in the manual checklist.
-- [ ] E7.4 Performance and memory budgets — Worker wake time, per-request overhead, memory with 100 tabs; budgets and numbers in `docs/performance.md`.
-- [ ] E7.5 Security review, threat model and privacy statement — Token handling, page-to-extension attacks, cookie scope, permissions justification, what is collected (nothing).
-- [ ] E7.6 Manual test checklists — Per browser (Chrome, Edge, Brave, Firefox) and OS (macOS, Windows, Linux).
+- [x] E7.1 Unit and contract tests — Rules, classifier, playlist parsing, client, storage migrations; coverage on the pure logic.
+- [x] E7.2 E2E in Chromium against a real daemon — Playwright with the built extension, fixture site (attachment, redirect, cookie-gated file, magnet page, HLS page, expiring link), real daemon fetched with a checksum; pairing approve/deny/revoke.
+- [x] E7.3 E2E in Firefox — Same scenarios through `web-ext` and geckodriver where possible; the rest in the manual checklist.
+- [x] E7.4 Performance and memory budgets — Worker wake time, per-request overhead, memory with 100 tabs; budgets and numbers in `docs/performance.md`.
+- [x] E7.5 Security review, threat model and privacy statement — Token handling, page-to-extension attacks, cookie scope, permissions justification, what is collected (nothing).
+- [x] E7.6 Manual test checklists — Per browser (Chrome, Edge, Brave, Firefox) and OS (macOS, Windows, Linux).
 
 ### E8 GitHub release
 
