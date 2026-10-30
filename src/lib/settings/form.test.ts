@@ -27,7 +27,12 @@ describe('draftFrom and settingsFrom', () => {
     const result = settingsFrom(draftFrom(settings), settings, ['local']);
     expect(result).toEqual({
       ok: true,
-      patch: { rules: settings.rules, preferences: settings.preferences, routes: [] },
+      patch: {
+        rules: settings.rules,
+        preferences: settings.preferences,
+        routes: [],
+        files: settings.files,
+      },
     });
   });
 

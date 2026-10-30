@@ -51,6 +51,7 @@ export class SettingsStore {
       rules: patch.rules,
       preferences: patch.preferences,
       routes: patch.routes,
+      files: patch.files,
     }));
   }
 

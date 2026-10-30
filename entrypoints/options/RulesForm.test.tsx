@@ -133,12 +133,12 @@ describe('RulesForm', () => {
     expect(root.querySelector('input[aria-label="Site"]')).toBeNull();
   });
 
-  it('saves only the rules, preferences and routes, never the targets', async () => {
+  it('saves only the rules, preferences, routes and files settings, never the targets', async () => {
     const { api, saved } = fakeApi();
     const root = await mount(api);
     await click(button(root, 'Save'));
     await settle();
-    expect(Object.keys(saved[0] ?? {}).sort()).toEqual(['preferences', 'routes', 'rules']);
+    expect(Object.keys(saved[0] ?? {}).sort()).toEqual(['files', 'preferences', 'routes', 'rules']);
   });
 
   it('says why a save failed, and keeps what was typed', async () => {

@@ -177,11 +177,26 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 ### E5 Popup, options and onboarding
 
-- [x] E5.1 Live downloads in the popup — SSE while the popup is open, progress list, pause/resume, open in DLM, queue picker, turbo toggle.
+- [x] E5.1 Live downloads in the popup (removed by E5b.4) — SSE while the popup is open, progress list, pause/resume, open in DLM, queue picker, turbo toggle.
 - [x] E5.2 Options pages — Connection and targets, rules and per-site settings, interception defaults, private windows, notifications.
 - [x] E5.3 Onboarding and permissions — Step-by-step: install the app, install the native host, pair, grant access (Firefox host permissions), test download. Needs app: sabadia/dlm-app#116 (F9.4)
 - [x] E5.4 Shortcuts and settings import/export — Keyboard shortcuts via the commands API; export and import settings without secrets.
 - [x] E5.5 i18n, accessibility and theming — Message catalogue (English first), keyboard-operable and labelled UI, light and dark, high contrast and text scaling.
+
+### E5b Files panel and redesign
+
+Added 2026-10-30 after the first hands-on use of the extension: the toolbar view was a plain, mixed list, file names came from
+the site instead of the page, files without a size or that were not downloads were listed, and the options were an unstyled form.
+Decisions of the same day: page-title naming applies to the Files panel, the menus and the all-links page only (a browser download
+DLM takes over keeps the site's name); the live download list is removed from the extension (the DLM app is where downloads are
+watched).
+
+- [ ] E5b.1 Settings for the Files panel (#63) — Surface (side panel, default, or popup), naming (page title, default, or file name), follow redirects (on), sort (size, largest first). Settings version 5 with a migration.
+- [ ] E5b.2 UI kit, theme and real icons (#64) — Reusable components, light, dark and high-contrast theme, inline icons, the app's icon set for the toolbar; no new runtime dependency.
+- [ ] E5b.3 Files logic (#65) — Candidates (page media, network files, links that look like downloads), a check of each (HEAD with credentials, redirects followed, ranged GET when HEAD is refused) that keeps only valid files with a known size, title naming with collision handling, sort and filter, capture with DLM's browser, and a site's cookies sent to DLM.
+- [ ] E5b.4 Side panel and popup surfaces (#66) — The toolbar button opens a side panel (Chrome `sidePanel`, Firefox `sidebar_action`); the popup is a setting; the live download list and its plumbing are removed.
+- [ ] E5b.5 Files view (#67) — Search, type chips, sort, rename, selection with a queue picker and add paused, per-file and per-page DLM's browser, send cookies, rescan, states.
+- [ ] E5b.6 Options redesign (#68) — Navigation, cards, switches and chip inputs, a Get started card, Servers cards.
 
 ### E6 Refresh and advanced
 

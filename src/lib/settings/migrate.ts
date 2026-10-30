@@ -14,11 +14,14 @@ export type Migration = (old: Record<string, unknown>) => Record<string, unknown
  * so the step keeps the stored fields as they are.
  *
  * Version 4 adds the expired-link switch (`preferences.refresh`, on). Parsing fills it in.
+ *
+ * Version 5 adds the Files panel settings (`files`: surface, naming, redirects, sort). Parsing fills them in.
  */
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: (old) => old,
   2: (old) => old,
   3: (old) => old,
+  4: (old) => old,
 };
 
 export class SettingsTooNewError extends Error {

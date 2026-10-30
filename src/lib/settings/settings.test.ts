@@ -111,7 +111,7 @@ describe('parseSettings', () => {
       rules: { askFirst: true, excludedSites: ['example.test'] },
     });
     const settings = parseSettings(stored);
-    expect(settings.version).toBe(4);
+    expect(settings.version).toBe(5);
     expect(settings.rules.askFirst).toBe(true);
     expect(settings.rules.excludedSites).toEqual(['example.test']);
     expect(settings.rules.alwaysSites).toEqual([]);
@@ -190,7 +190,7 @@ describe('SettingsStore', () => {
   });
 
   it('refuses settings of a newer version and keeps working on damaged ones', async () => {
-    const newer = new SettingsStore(memoryArea({ [SETTINGS_KEY]: { version: 5 } }));
+    const newer = new SettingsStore(memoryArea({ [SETTINGS_KEY]: { version: 9 } }));
     await expect(newer.get()).rejects.toBeInstanceOf(SettingsTooNewError);
     const damaged = new SettingsStore(memoryArea({ [SETTINGS_KEY]: { targets: 7, rules: 'x' } }));
     expect(await damaged.get()).toEqual(defaultSettings());
@@ -331,7 +331,7 @@ describe('settings written by earlier versions', () => {
 
   it('reads version 2: keeps what was set, and fills in routes, mirrors and the expired-link switch', () => {
     const s = parseSettings(migrateSettings(v2));
-    expect(s.version).toBe(4);
+    expect(s.version).toBe(5);
     expect(s.rules).toMatchObject({
       intercept: false,
       minSizeBytes: 2048,
@@ -349,7 +349,7 @@ describe('settings written by earlier versions', () => {
 
   it('reads version 3: keeps routes and mirrors, and turns the expired-link switch on', () => {
     const s = parseSettings(migrateSettings(v3));
-    expect(s.version).toBe(4);
+    expect(s.version).toBe(5);
     expect(s.routes).toEqual([{ site: 'files.test', targetId: 'home' }]);
     expect(s.preferences).toEqual({
       badge: false,
@@ -362,6 +362,36 @@ describe('settings written by earlier versions', () => {
   it('reads version 1 data as well, through every step', () => {
     const s = parseSettings(migrateSettings({ version: 1, rules: { askFirst: true } }));
     expect(s.rules.askFirst).toBe(true);
-    expect(s.version).toBe(4);
+    expect(s.version).toBe(5);
+  });
+
+  it('reads version 4: keeps everything and fills in the Files panel settings', () => {
+    const v4 = {
+      ...v3,
+      version: 4,
+      preferences: { badge: true, notifications: true, mirrors: false, refresh: false },
+    };
+    const s = parseSettings(migrateSettings(v4));
+    expect(s.version).toBe(5);
+    expect(s.preferences.refresh).toBe(false);
+    expect(s.files).toEqual({
+      surface: 'panel',
+      naming: 'title',
+      followRedirects: true,
+      sort: 'size-desc',
+    });
+  });
+
+  it('repairs Files panel settings field by field', () => {
+    const s = parseSettings({
+      version: 5,
+      files: { surface: 'popup', naming: 'nonsense', followRedirects: 'yes', sort: 'name' },
+    });
+    expect(s.files).toEqual({
+      surface: 'popup',
+      naming: 'title',
+      followRedirects: true,
+      sort: 'name',
+    });
   });
 });
