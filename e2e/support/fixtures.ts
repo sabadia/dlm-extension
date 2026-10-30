@@ -8,7 +8,8 @@ import { startSite, type Site } from './site';
 
 /** The id the manifest key gives the extension in every Chromium browser. */
 export const EXTENSION_ID = 'gfjgahdobbldpjiijaakihgmmjemdalg';
-const EXTENSION_DIR = path.resolve('.output/chrome-mv3');
+// The build under test; E2E_CHROME_DIR points at an unzipped release asset instead (docs/install.md).
+const EXTENSION_DIR = path.resolve(process.env.E2E_CHROME_DIR ?? '.output/chrome-mv3');
 
 export interface Extension {
   /** Sends a message to the background, as an extension page does, and returns what it answered. */

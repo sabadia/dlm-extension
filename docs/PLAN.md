@@ -217,8 +217,8 @@ watched).
 
 ### E8 GitHub release
 
-- [ ] E8.1 Release assets, signed Firefox XPI and install guide — Chrome zip (load unpacked) and Firefox XPI signed as unlisted through AMO; install guide including the Chrome developer-mode caveat. Needs from the maintainer: AMO API key
-- [ ] E8.2 First release v0.1.0 and verification — Tag, release, install from the assets in Chrome and Firefox, pair with the app, intercept a real download. Needs backend: sabadia/dlm-server#137 (P14.1), sabadia/dlm-server#138 (P14.2), sabadia/dlm-server#139 (P14.3) Needs app: sabadia/dlm-app#113 (F9.1)
+- [x] E8.1 Release assets, signed Firefox XPI and install guide — Chrome zip (load unpacked) and Firefox XPI signed as unlisted through AMO; install guide including the Chrome developer-mode caveat. Needs from the maintainer: AMO API key
+- [x] E8.2 First release v0.1.0 and verification — Tag, release, install from the assets in Chrome and Firefox, pair with the app, intercept a real download. Needs backend: sabadia/dlm-server#137 (P14.1), sabadia/dlm-server#138 (P14.2), sabadia/dlm-server#139 (P14.3) Needs app: sabadia/dlm-app#113 (F9.1)
 
 ### E9 Stores (gated)
 

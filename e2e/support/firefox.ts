@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Builder, type WebDriver } from 'selenium-webdriver';
@@ -8,7 +8,10 @@ import { test as base } from './fixtures';
 
 /** The address the extension page of the test browser has: set below, so the page can be opened by address. */
 const UUID = '11111111-2222-4333-8444-555555555555';
-const BUILD = path.resolve('.output/firefox-mv3');
+// The build under test; E2E_FIREFOX_ADDON points at a signed `.xpi` (a release asset) instead, which Firefox then
+// installs for real, signature check included.
+const BUILD = path.resolve(process.env.E2E_FIREFOX_ADDON ?? '.output/firefox-mv3');
+const ADDON_ID = 'dlm-extension@sabadia.github.io';
 
 export interface Firefox {
   driver: WebDriver;
@@ -49,16 +52,10 @@ async function openExtensionPage(webdriver: WebDriver, file: string): Promise<st
 
 export const test = base.extend<{ firefox: Firefox }>({
   firefox: async ({}, use) => {
-    const manifest = JSON.parse(readFileSync(path.join(BUILD, 'manifest.json'), 'utf8')) as {
-      browser_specific_settings: { gecko: { id: string } };
-    };
     const downloads = mkdtempSync(path.join(tmpdir(), 'dlm-e2e-firefox-downloads-'));
     const options = new firefox.Options();
     options.addArguments('-headless');
-    options.setPreference(
-      'extensions.webextensions.uuids',
-      JSON.stringify({ [manifest.browser_specific_settings.gecko.id]: UUID }),
-    );
+    options.setPreference('extensions.webextensions.uuids', JSON.stringify({ [ADDON_ID]: UUID }));
     // Downloads that the extension leaves in the browser go to a temporary folder, never to the person's own.
     options.setPreference('browser.download.folderList', 2);
     options.setPreference('browser.download.dir', downloads);
@@ -74,7 +71,7 @@ export const test = base.extend<{ firefox: Firefox }>({
     const installer = driver as unknown as {
       installAddon(dir: string, temporary: boolean): Promise<string>;
     };
-    await installer.installAddon(BUILD, true);
+    await installer.installAddon(BUILD, !BUILD.endsWith('.xpi'));
     const extensionHandle = await openExtensionPage(driver, 'options.html');
     const send: Firefox['send'] = async (type, ...payload) => {
       await driver.switchTo().window(extensionHandle);
