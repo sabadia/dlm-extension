@@ -7,7 +7,7 @@ import {
   LOCAL_TARGET,
   type RemoteTarget,
   type Settings,
-  type SettingsPatch,
+  type SettingsSave,
 } from './schema';
 
 export const SETTINGS_KEY = 'settings';
@@ -45,13 +45,14 @@ export class SettingsStore {
    * Saves what the options page edited (rules, preferences, routes) on top of the current settings, so a server added
    * or a target chosen meanwhile is not undone by a form that was loaded earlier.
    */
-  save(patch: SettingsPatch): Promise<Settings> {
+  save(patch: SettingsSave): Promise<Settings> {
+    const { base } = patch;
     return this.update((current) => ({
       ...current,
-      rules: patch.rules,
-      preferences: patch.preferences,
-      routes: patch.routes,
-      files: patch.files,
+      rules: mergeEdits(current.rules, patch.rules, base?.rules),
+      preferences: mergeEdits(current.preferences, patch.preferences, base?.preferences),
+      routes: same(patch.routes, base?.routes) && base ? current.routes : patch.routes,
+      files: mergeEdits(current.files, patch.files, base?.files),
     }));
   }
 
@@ -157,4 +158,18 @@ export function withoutTarget(settings: Settings, id: string): Settings {
     routes: settings.routes.filter((route) => route.targetId !== id),
     activeTargetId: settings.activeTargetId === id ? LOCAL_TARGET.id : settings.activeTargetId,
   };
+}
+
+function same(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** `current` with the fields of `edited` that differ from `base`; all of `edited` when there is no base. */
+function mergeEdits<T extends object>(current: T, edited: T, base: T | undefined): T {
+  if (!base) return edited;
+  const out: Record<string, unknown> = { ...(current as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(edited as Record<string, unknown>)) {
+    if (!same(value, (base as Record<string, unknown>)[key])) out[key] = value;
+  }
+  return out as T;
 }

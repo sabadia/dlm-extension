@@ -161,4 +161,23 @@ describe('RefreshService', () => {
     clock.advance(61 * 60 * 1000);
     expect(await refresh.endpointFor('https://files.example.test/')).toBeUndefined();
   });
+
+  it('stops naming a server once it no longer lists the task, but keeps one that did not answer', async () => {
+    const { refresh, servers } = build();
+    const server = servers[0] as Server;
+    await refresh.scan();
+    server.tasks = 'down';
+    await refresh.scan();
+    expect(await refresh.endpointFor('https://files.example.test/')).toBeDefined();
+    server.tasks = [];
+    await refresh.scan();
+    expect(await refresh.endpointFor('https://files.example.test/')).toBeUndefined();
+  });
+
+  it('forgets the page once its download was handed over', async () => {
+    const { refresh } = build();
+    await refresh.scan();
+    await refresh.done('https://files.example.test/setup');
+    expect(await refresh.endpointFor('https://files.example.test/')).toBeUndefined();
+  });
 });

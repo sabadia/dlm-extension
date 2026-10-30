@@ -52,10 +52,11 @@ export const browserFilesApi: FilesApi = {
   },
   mediaList: (tabId) => sendMessage(browser.runtime, 'media.list', { tabId }),
   async probe(url, context, force) {
+    const scope = context.incognito ? 'private:' : '';
     const policy = probePolicy(context.pageUrl, url, context.incognito);
     if (!policy.allowed) return { ok: false, reason: policy.reason };
     if (!force) {
-      const known = await cache.get(url);
+      const known = await cache.get(url, scope);
       if (known) return known;
     }
     const result = await probeFile(url, {
@@ -63,7 +64,7 @@ export const browserFilesApi: FilesApi = {
       credentials: policy.credentials,
     });
     // A network failure is not a verdict on the file: it is asked again next time.
-    if (!(!result.ok && result.reason === 'network')) await cache.put(url, result);
+    if (!(!result.ok && result.reason === 'network')) await cache.put(url, result, scope);
     return result;
   },
   settings: () => sendMessage(browser.runtime, 'settings.get'),

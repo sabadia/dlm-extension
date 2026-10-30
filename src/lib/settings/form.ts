@@ -1,5 +1,5 @@
 import { normalizeFileType, normalizeMimeType, normalizeSite } from './parse';
-import type { BypassKey, Settings, SettingsPatch } from './schema';
+import type { BypassKey, Settings, SettingsSave } from './schema';
 
 /**
  * What the options form holds while it is edited: the raw text of every field. Text is parsed when the person saves,
@@ -82,7 +82,7 @@ export function settingsFrom(
   draft: FormDraft,
   current: Settings,
   targetIds: readonly string[],
-): { ok: true; patch: SettingsPatch } | { ok: false; errors: FormErrors } {
+): { ok: true; patch: SettingsSave } | { ok: false; errors: FormErrors } {
   const errors: FormErrors = {};
   const size = draft.minSize.trim();
   if (!/^\d{1,15}$/.test(size)) errors.minSize = [draft.minSize];
@@ -131,6 +131,12 @@ export function settingsFrom(
       },
       routes,
       files: { ...current.files, ...draft.files },
+      base: {
+        rules: current.rules,
+        preferences: current.preferences,
+        routes: current.routes,
+        files: current.files,
+      },
     },
   };
 }

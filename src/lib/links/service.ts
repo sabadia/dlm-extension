@@ -2,6 +2,7 @@ import type { CaptureCookie } from '../api/client';
 import { ApiError, NetworkError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
 import { fileExtension, sanitizeFileName } from '../files/naming';
+import { downloadHost, siteListed } from '../intercept/rules';
 import { targetFor } from '../settings/routing';
 import { chunk } from './filter';
 import { t } from '../i18n';
@@ -44,11 +45,15 @@ export interface TaskPort {
     name?: string;
     checksum?: { algorithm: string; expected: string };
     mirrors?: string[];
+    allowDuplicate?: boolean;
   }): Promise<unknown>;
   createMany(
     items: { url: string; queueId?: string; paused?: boolean }[],
   ): Promise<{ ok: boolean }[]>;
-  addTorrent(bytes: Uint8Array, query: { name?: string; paused?: boolean }): Promise<unknown>;
+  addTorrent(
+    bytes: Uint8Array,
+    query: { name?: string; paused?: boolean; allowDuplicate?: boolean },
+  ): Promise<unknown>;
 }
 
 /** Reads a cookie-gated torrent the daemon could not fetch itself. */
@@ -150,7 +155,24 @@ export class LinksService {
   }
 
   /** A magnet or eD2K link the content script caught. */
-  addDirect(url: string): Promise<boolean> {
+  async addDirect(
+    url: string,
+    where: {
+      pageUrl?: string | undefined;
+      incognito?: boolean;
+      alt?: boolean;
+      shift?: boolean;
+    } = {},
+  ): Promise<boolean> {
+    // The same rules as for a download: the switch, private windows, the bypass key and the excluded sites. A link
+    // that is not taken here goes to the browser, which opens its application.
+    const { rules } = await this.deps.settings.get();
+    if (!rules.intercept) return false;
+    if (where.incognito && !rules.privateWindows) return false;
+    if ((rules.bypassKey === 'alt' && where.alt) || (rules.bypassKey === 'shift' && where.shift))
+      return false;
+    const host = where.pageUrl ? downloadHost(where.pageUrl) : undefined;
+    if (host !== undefined && siteListed(host, rules.excludedSites)) return false;
     return this.add(url, { paused: false }).then(
       () => true,
       () => false,
@@ -224,6 +246,8 @@ export class LinksService {
     url: string;
     filename?: string;
     cookies?: CaptureCookie[];
+    /** The person asked to add it again. */
+    allowDuplicate?: boolean;
   }): Promise<'taken' | 'duplicate' | 'failed'> {
     const tasks = await this.client(facts.url);
     if (!tasks) return 'failed';
@@ -232,15 +256,16 @@ export class LinksService {
       if (facts.cookies && facts.cookies.length > 0 && this.deps.fetchFile) {
         const bytes = await this.deps.fetchFile(facts.url);
         if (bytes.byteLength > TORRENT_LIMIT) return 'failed';
+        // No name: the torrent has its own, and the file's (`….torrent`) is not what its content is called.
         await tasks.addTorrent(bytes, {
-          ...(facts.filename ? { name: facts.filename } : {}),
           paused,
+          ...(facts.allowDuplicate ? { allowDuplicate: true } : {}),
         });
       } else {
         await tasks.create({
           url: facts.url,
           paused,
-          ...(facts.filename ? { name: facts.filename } : {}),
+          ...(facts.allowDuplicate ? { allowDuplicate: true } : {}),
         });
       }
       return 'taken';

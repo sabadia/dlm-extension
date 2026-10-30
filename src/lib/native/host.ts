@@ -1,8 +1,16 @@
 import { silentLog, type Logger } from '../log/log';
 import { redactText } from '../log/redact';
-import { checkCompatibility, type Compatibility } from './compat';
+import { atLeast, checkCompatibility, type Compatibility } from './compat';
 
 /** The Native Messaging host the daemon installs (`dlm native-host install`). */
+/**
+ * A daemon from 0.7 on reports its API version, but the native host may leave it out when it found the daemon by its
+ * address. Only a daemon older than that is taken as too old for lacking it.
+ */
+function missingApiVersion(version: string | undefined): number | undefined {
+  return version !== undefined && atLeast(version, '0.7.0') ? undefined : 0;
+}
+
 export const HOST_NAME = 'dev.sabadia.dlm';
 
 /** The part of `browser.runtime` used to talk to the host. */
@@ -214,7 +222,10 @@ export class NativeHost {
     }
     const version = str(reply.version);
     const apiVersion = typeof reply.apiVersion === 'number' ? reply.apiVersion : undefined;
-    const compatibility = checkCompatibility({ version, apiVersion: apiVersion ?? 0 });
+    const compatibility = checkCompatibility({
+      version,
+      apiVersion: apiVersion ?? missingApiVersion(version),
+    });
     if (!compatibility.ok) {
       this.log.warn('native', 'daemon is not compatible', {
         version,

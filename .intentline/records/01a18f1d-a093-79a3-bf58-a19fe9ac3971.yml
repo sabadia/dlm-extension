@@ -1,0 +1,143 @@
+schema_version: 1
+id: 01a18f1d-a093-79a3-bf58-a19fe9ac3971
+status: draft
+created_at: '2026-10-30T23:20:45Z'
+updated_at: '2026-10-30T23:20:45Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: human
+  name: null
+  tool: null
+goal: 'Fix the extension findings of the 2026-10-31 deep review (E1-E30): page address and redirects, no lost downloads when DLM is offline or a prompt goes stale, rules applied to magnet links, cookie limits, renewal state, settings save that keeps changes made elsewhere'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: docs/browser-differences.md
+  start_line: null
+  end_line: null
+- path: docs/threat-model.md
+  start_line: null
+  end_line: null
+- path: entrypoints/background.ts
+  start_line: null
+  end_line: null
+- path: entrypoints/links/App.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/options/Onboarding.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/options/RulesForm.test.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/options/RulesForm.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/page.content.ts
+  start_line: null
+  end_line: null
+- path: src/background/handlers.ts
+  start_line: null
+  end_line: null
+- path: src/background/register.ts
+  start_line: null
+  end_line: null
+- path: src/background/services.ts
+  start_line: null
+  end_line: null
+- path: src/lib/api/client.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/api/client.ts
+  start_line: null
+  end_line: null
+- path: src/lib/bus/messages.ts
+  start_line: null
+  end_line: null
+- path: src/lib/files/files.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/files/probe.ts
+  start_line: null
+  end_line: null
+- path: src/lib/i18n/en.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/cookies.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/cookies.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/metadata.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/metadata.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/observations.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/observations.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/rules.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/service.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/links/links.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/links/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/media/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/native/host.ts
+  start_line: null
+  end_line: null
+- path: src/lib/native/native.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/refresh/service.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/refresh/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/form.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/form.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/schema.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/settings.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/store.ts
+  start_line: null
+  end_line: null
+- path: src/ui/files/browser-api.ts
+  start_line: null
+  end_line: null
+- path: wxt.config.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

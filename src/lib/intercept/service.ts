@@ -35,7 +35,7 @@ import {
 import { isTorrent } from '../links/classify';
 import type { HintStore } from '../page/store';
 import { targetFor } from '../settings/routing';
-import { CookieReader, type CookiesPort } from './cookies';
+import { CookieReader, fitCaptureLimits, type CookiesPort } from './cookies';
 import { decodeBase64Text, isMultipart } from './post';
 import { decide, downloadHost, type DownloadFacts } from './rules';
 
@@ -59,6 +59,8 @@ export interface RequestEvent {
   url: string;
   method: string;
   tabId: number;
+  /** The status of a response event; a redirect (3xx) continues the same request instead of ending it. */
+  statusCode?: number | undefined;
   documentUrl?: string | undefined;
   initiator?: string | undefined;
   incognito?: boolean | undefined;
@@ -244,6 +246,29 @@ function parseGestureMap(raw: unknown): Record<string, Gesture> {
   return map;
 }
 
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+function isRedirect(event: RequestEvent): boolean {
+  return (
+    event.statusCode !== undefined &&
+    REDIRECT_STATUSES.has(event.statusCode) &&
+    headerValue(event.responseHeaders, 'location') !== undefined
+  );
+}
+
+/** A file name the browsers accept for `downloads.download`: no path, none of the characters Windows forbids. */
+function downloadFilename(value: string | undefined): string | undefined {
+  const name = basename(value)
+    // eslint-disable-next-line no-control-regex -- control characters are exactly what is being removed
+    ?.replace(/[<>:"|?*\u0000-\u001f]/g, '_')
+    .replace(/[. ]+$/, '');
+  return name ? name : undefined;
+}
+
+function downloadName(replay: Replay): string {
+  return downloadFilename(replay.filename) ?? displayName(undefined, replay.url);
+}
+
 function claimResult(value: unknown): ClaimResult {
   if (value === 'taken' || value === 'failed') return value;
   return 'working';
@@ -343,6 +368,8 @@ export interface InterceptDeps {
   /** `chrome-extension://<id>` or `moz-extension://<uuid>`, so a request we started is left alone. */
   extensionOrigin: string;
   userAgent: string;
+  /** The address of the page shown in a tab, when the browser still knows it. */
+  tabUrl?: (tabId: number) => Promise<string | undefined>;
   /** Firefox may cancel an attachment in `webRequest` before a download exists. */
   firefox: boolean;
   /** Icon shown on a notification. Omitted when the extension has none. */
@@ -363,6 +390,7 @@ export interface InterceptDeps {
       url: string;
       filename?: string | undefined;
       cookies?: CaptureBody['cookies'];
+      allowDuplicate?: boolean | undefined;
     }): Promise<'taken' | 'duplicate' | 'failed'>;
   };
   /**
@@ -372,6 +400,8 @@ export interface InterceptDeps {
   refreshTarget?: (
     pageUrl: string | undefined,
   ) => Promise<{ baseUrl: string; token: string } | undefined>;
+  /** A download for the waiting server was handed over; the page stops forcing captures. */
+  refreshDone?: (pageUrl: string | undefined) => Promise<void>;
   now?: () => number;
   id?: () => string;
 }
@@ -385,6 +415,7 @@ interface Prepared {
   name: string;
   /** The page the download started on, when known. */
   site: string | undefined;
+  pageUrl?: string | undefined;
   replay: Replay;
   /** False in a private window or a container: a torrent fetched by the extension would use the wrong cookies. */
   defaultStore: boolean;
@@ -433,6 +464,7 @@ export class InterceptService {
   private readonly cookieReader: CookieReader;
   /** Every write of an observation, in order. `onCreated` waits for it so it never reads before the response is in. */
   private writes: Promise<unknown> = Promise.resolve();
+  private counting: Promise<unknown> = Promise.resolve();
   private readonly now: () => number;
   private readonly id: () => string;
 
@@ -477,6 +509,9 @@ export class InterceptService {
    * at once, so the browser is never held back.
    */
   onHeadersReceived(event: RequestEvent): Promise<{ cancel: true } | void> | void {
+    // A redirect is not the end of the request: the next hop continues it, and the first address (the link the user
+    // clicked, the one a rule or a renewal can recognise) has to survive until the final response.
+    if (isRedirect(event)) return;
     const next = this.toObservation(event, true);
     const merged = withReplayableBody(mergeObservation(this.requests.get(event.requestId), next));
     this.requests.delete(event.requestId);
@@ -492,6 +527,8 @@ export class InterceptService {
   }
 
   private async captureBlocking(current: Observation): Promise<{ cancel: true } | void> {
+    // A download this extension started again after DLM could not take it must not be captured a second time.
+    if (await this.wasReleased([current.url, current.finalUrl])) return;
     const prepared = await this.prepare(current);
     // A checksum or a mirror list is reviewed on the download item, so the request is not cancelled here.
     if (!prepared || prepared.decision.action !== 'take') return;
@@ -539,6 +576,12 @@ export class InterceptService {
       return;
     }
     if (claim !== 'won') return;
+    // DLM that cannot be reached would only hand the file back after the browser's copy is gone (and a link that can
+    // be used once, or needs the Referer, is spent by then). Leave the download alone in that case.
+    if (prepared.decision.action === 'take' && !(await this.reachable(prepared))) {
+      await this.settle(key, 'failed');
+      return;
+    }
     if (!(await this.erase(item.id))) {
       await this.settle(key, 'failed');
       return;
@@ -563,6 +606,17 @@ export class InterceptService {
       });
       await this.settle(key, 'failed');
       await this.fallback(prepared.replay);
+    }
+  }
+
+  /** Whether a server is there to take the download. A renewal brings its own server. */
+  private async reachable(prepared: Prepared): Promise<boolean> {
+    if (prepared.endpoint) return true;
+    try {
+      return (await this.routedClient(prepared.draft.url)) !== undefined;
+    } catch (error) {
+      this.deps.log.warn('intercept', 'could not tell whether DLM is reachable', { error });
+      return false;
     }
   }
 
@@ -648,16 +702,7 @@ export class InterceptService {
       stale = list.filter((ask) => now - ask.at > ASK_TTL_MS);
       return list.filter((ask) => !stale.includes(ask));
     });
-    for (const ask of stale) {
-      if (ask.windowId !== undefined) {
-        try {
-          await this.deps.windows.remove?.(ask.windowId);
-        } catch {
-          // The window is gone already.
-        }
-      }
-      await this.resolveUnanswered(ask);
-    }
+    await this.settleDropped(stale);
     await this.duplicates.update((list) =>
       list.filter((item) => now - item.at <= DUPLICATE_TTL_MS),
     );
@@ -673,9 +718,25 @@ export class InterceptService {
       return list.filter((item) => item !== found);
     });
     if (found && this.now() - found.at <= DUPLICATE_TTL_MS) {
-      await this.send({ ...found.body, allowDuplicate: true }, found.name);
+      // Through the same path as the first time, so a torrent is still added as a torrent.
+      await this.dispatch({ ...found.body, allowDuplicate: true }, found.name, {
+        defaultStore: true,
+      });
     }
     return true;
+  }
+
+  private async settleDropped(asks: readonly PendingAsk[]): Promise<void> {
+    for (const ask of asks) {
+      if (ask.windowId !== undefined) {
+        try {
+          await this.deps.windows.remove?.(ask.windowId);
+        } catch {
+          // The window is gone already.
+        }
+      }
+      await this.resolveUnanswered(ask);
+    }
   }
 
   /** A prompt that was never answered: a checksum review still sends the file, ask-first goes to the browser. */
@@ -764,6 +825,27 @@ export class InterceptService {
     return fresh.some((item) => urls.includes(item.url));
   }
 
+  /**
+   * The page a download started on. `webRequest` rarely says (Chrome has no `documentUrl`, Firefox leaves it empty for
+   * a top-level navigation), so the tab's address comes next, then the initiator. A page that is the extension itself
+   * is not a page.
+   */
+  private async pageOf(observed: Observation | undefined): Promise<string | undefined> {
+    if (!observed) return undefined;
+    if (observed.documentUrl) return observed.documentUrl;
+    if (observed.tabId >= 0 && this.deps.tabUrl) {
+      try {
+        const url = await this.deps.tabUrl(observed.tabId);
+        if (url && /^https?:/i.test(url)) return url;
+      } catch {
+        // The tab is gone.
+      }
+    }
+    const initiator = observed.initiator;
+    if (initiator && /^https?:/i.test(initiator) && !this.ownRequest(observed)) return initiator;
+    return undefined;
+  }
+
   private async prepare(
     observed: Observation | undefined,
     item?: DownloadSnapshot,
@@ -772,6 +854,7 @@ export class InterceptService {
     const settings = await this.deps.settings.get();
     const url = observed?.url ?? item?.url;
     if (!url) return undefined;
+    const page = await this.pageOf(observed);
     const finalUrl = item?.finalUrl ?? observed?.finalUrl ?? (item ? item.url : observed?.finalUrl);
     const gesture = readGesture(await this.gestures.get(), observed?.tabId, this.now());
     // The browser reports 0 (or -1) for a size it does not know; that is not a small file.
@@ -786,7 +869,7 @@ export class InterceptService {
       own: own ?? (observed !== undefined && this.ownRequest(observed)),
     };
     if (finalUrl) facts.finalUrl = finalUrl;
-    if (observed?.documentUrl) facts.pageUrl = observed.documentUrl;
+    if (page) facts.pageUrl = page;
     if (observed?.method) facts.method = observed.method;
     if (observed?.postBody) facts.postBody = observed.postBody;
     if (size !== undefined) facts.sizeBytes = size;
@@ -796,16 +879,17 @@ export class InterceptService {
     if (mime) facts.mime = mime;
     let decision = decide(settings.rules, facts);
     // An expired task waits for a download from this page: it is taken and sent to that server, whatever the rules say
-    // about size, type, sites, private windows or the bypass key. Our own downloads and addresses that cannot be
-    // handed over (blob:, a method we do not replay) stay what they are.
+    // about size, type or sites. Our own downloads, addresses that cannot be handed over (blob:, a method we do not
+    // replay), private windows that are not allowed and a download started with the bypass key stay what they are.
     const endpoint =
-      decision.action === 'leave' && ['own', 'scheme', 'method'].includes(decision.reason)
+      decision.action === 'leave' &&
+      ['own', 'scheme', 'method', 'private', 'bypass'].includes(decision.reason)
         ? undefined
-        : await this.deps.refreshTarget?.(observed?.documentUrl);
+        : await this.deps.refreshTarget?.(page);
     if (endpoint) decision = { action: 'take' };
     // The referrer is what the browser sent. The page address is its own field; it is not made into a referrer.
     const referrer = item?.referrer || observed?.requestHeaders.referer;
-    const pageUrl = observed?.documentUrl || referrer;
+    const pageUrl = page || referrer;
     const draft: CaptureDraft = { url };
     if (finalUrl) draft.finalUrl = finalUrl;
     if (pageUrl) draft.pageUrl = pageUrl;
@@ -830,7 +914,7 @@ export class InterceptService {
     if (decision.action !== 'leave') {
       const host = downloadHost(finalUrl ?? url);
       if (host) {
-        draft.cookies = await this.cookieReader.read({
+        const read = await this.cookieReader.read({
           url: finalUrl ?? url,
           pageUrl,
           storeId,
@@ -839,16 +923,18 @@ export class InterceptService {
           allowPrivate: settings.rules.privateWindows,
           host,
         });
+        draft.cookies = fitCaptureLimits(read);
       }
     }
     // A renewal carries no checksum or mirror list to review: it only has to reach the server that is waiting.
-    const hinted = endpoint
-      ? draft
-      : await this.applyHints(draft, settings, originOf(observed?.documentUrl));
+    const hinted = endpoint ? draft : await this.applyHints(draft, settings, originOf(page));
     const address = finalUrl ?? url;
+    // A restart in the browser starts from the link the user clicked: the final address is often a signed one that has
+    // expired or can be used once. A form (POST) is replayed as it was sent.
+    const restartUrl = replayBody ? address : url;
     const contentType = observed?.requestHeaders['content-type'];
     const replay: Replay = {
-      url: address,
+      url: restartUrl,
       ...(filename ? { filename } : {}),
       ...(replayBody ? { method: 'POST' as const, body: replayBody } : {}),
       ...(replayBody && contentType ? { contentType } : {}),
@@ -859,7 +945,8 @@ export class InterceptService {
       decision,
       draft: hinted,
       name: displayName(filename, address),
-      site: observed?.documentUrl ? downloadHost(observed.documentUrl) : undefined,
+      site: page ? downloadHost(page) : undefined,
+      ...(page ? { pageUrl: page } : {}),
       replay,
       defaultStore: !incognito && (storeId === undefined || /default$/.test(storeId)),
       ...(endpoint ? { endpoint } : {}),
@@ -939,7 +1026,7 @@ export class InterceptService {
   private async dispatch(
     body: CaptureBody,
     name: string,
-    prepared: Pick<Prepared, 'defaultStore' | 'endpoint'>,
+    prepared: Pick<Prepared, 'defaultStore' | 'endpoint' | 'pageUrl'>,
   ): Promise<SendResult> {
     const address = body.finalUrl ?? body.url ?? '';
     if (
@@ -956,6 +1043,7 @@ export class InterceptService {
         url: address,
         ...(body.filename ? { filename: body.filename } : {}),
         ...(body.cookies ? { cookies: body.cookies } : {}),
+        ...(body.allowDuplicate ? { allowDuplicate: true } : {}),
       });
       if (outcome === 'failed') {
         await this.notify('intercept.failed', name, t('intercept.reason.rejected'));
@@ -969,14 +1057,22 @@ export class InterceptService {
       await this.notify('intercept.sent', name);
       return 'taken';
     }
-    return this.send(body, name, prepared.endpoint);
+    const result = await this.send(body, name, prepared.endpoint);
+    // The waiting task has its link: later downloads from the page are ordinary ones again.
+    if (prepared.endpoint && result !== 'failed') {
+      await this.deps.refreshDone?.(prepared.pageUrl).catch(() => undefined);
+    }
+    return result;
   }
 
   private async finish(body: CaptureBody, pending: PendingAsk): Promise<void> {
     let result: SendResult = 'failed';
     try {
       result = await this.dispatch(body, pending.name, {
-        defaultStore: !pending.fallback.incognito && pending.fallback.cookieStoreId === undefined,
+        defaultStore:
+          !pending.fallback.incognito &&
+          (pending.fallback.cookieStoreId === undefined ||
+            /default$/.test(pending.fallback.cookieStoreId)),
       });
     } catch (error) {
       this.deps.log.error('intercept', 'the hand-off failed', { error });
@@ -1026,7 +1122,14 @@ export class InterceptService {
         { url: replay.url, at: now },
       ].slice(-100),
     );
-    const name = basename(replay.filename);
+    // Chrome cannot start a download in a private window from here: it would be fetched with the wrong cookies and
+    // recorded in the normal history. The person starts it again in their window.
+    if (replay.incognito && !this.deps.firefox) {
+      this.deps.log.warn('intercept', 'a private download cannot be restarted in the browser');
+      await this.notify('intercept.failed', downloadName(replay), t('intercept.reason.private'));
+      return;
+    }
+    const name = downloadFilename(replay.filename);
     const options: DownloadOptions = { url: replay.url, ...(name ? { filename: name } : {}) };
     if (replay.method === 'POST' && replay.body !== undefined) {
       options.method = 'POST';
@@ -1039,10 +1142,22 @@ export class InterceptService {
     try {
       await this.deps.downloads.download(options);
     } catch (error) {
+      // Often the file name: the browser refuses some. Let it choose.
+      if (options.filename) {
+        try {
+          const plain: DownloadOptions = { ...options };
+          delete plain.filename;
+          await this.deps.downloads.download(plain);
+          return;
+        } catch {
+          // Fall through to the report.
+        }
+      }
       this.deps.log.error('intercept', 'could not restart the download in the browser', {
         error,
         url: redactUrl(replay.url),
       });
+      await this.notify('intercept.failed', downloadName(replay), t('intercept.reason.restart'));
     }
   }
 
@@ -1072,10 +1187,16 @@ export class InterceptService {
       purpose,
       at: now,
     };
-    // Prompts that are still open stay: a page can start two downloads at once.
-    await this.asks.update((list) =>
-      [...list.filter((ask) => now - ask.at <= ASK_TTL_MS), pending].slice(-20),
-    );
+    // Prompts that are still open stay: a page can start two downloads at once. One nobody answered in time, or one
+    // pushed out by the limit, is settled like a closed window: its download goes to the browser, it is not lost.
+    let dropped: PendingAsk[] = [];
+    await this.asks.update((list) => {
+      const fresh = list.filter((ask) => now - ask.at <= ASK_TTL_MS);
+      const kept = [...fresh, pending].slice(-20);
+      dropped = list.filter((ask) => !kept.includes(ask));
+      return kept;
+    });
+    await this.settleDropped(dropped);
     try {
       const created = await this.deps.windows.create({
         url: this.deps.askUrl(pending.id),
@@ -1095,8 +1216,16 @@ export class InterceptService {
   }
 
   private async bump(): Promise<void> {
-    const next = parseHandoffCount(await this.deps.session.get(HANDOFF_COUNT_KEY)) + 1;
-    await this.deps.session.set(HANDOFF_COUNT_KEY, next);
+    // One after the other: two hand-offs at once must both be counted.
+    this.counting = this.counting
+      .then(async () => {
+        const next = parseHandoffCount(await this.deps.session.get(HANDOFF_COUNT_KEY)) + 1;
+        await this.deps.session.set(HANDOFF_COUNT_KEY, next);
+      })
+      .catch((error: unknown) => {
+        this.deps.log.warn('intercept', 'could not count a hand-off', { error });
+      });
+    await this.counting;
     await this.deps.connection.repaint();
   }
 

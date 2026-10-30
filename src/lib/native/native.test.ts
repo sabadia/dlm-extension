@@ -101,6 +101,11 @@ describe('NativeHost.connect', () => {
       ok({ baseUrl: 'http://127.0.0.1:1', running: true, version: '0.6.0' }),
     ).native.connect();
     expect(bare).toMatchObject({ state: 'incompatible' });
+    // A current daemon found by its address may leave the API version out; that is not "too old".
+    const current = await host(
+      ok({ baseUrl: 'http://127.0.0.1:1', running: true, version: '0.7.0' }),
+    ).native.connect();
+    expect(current).toMatchObject({ state: 'found' });
   });
 
   it('maps browser errors to states', async () => {

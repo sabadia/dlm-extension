@@ -100,6 +100,8 @@ export const en = {
   'intercept.failed': 'DLM could not take "{name}", so the browser is downloading it. {reason}',
   'intercept.reason.offline': 'DLM is not connected.',
   'intercept.reason.rejected': 'DLM did not accept it.',
+  'intercept.reason.private': 'It was started in a private window; start it again there.',
+  'intercept.reason.restart': 'The browser could not start it again; open the link once more.',
   'intercept.ask.prompt': 'Download "{name}" from {host} with DLM?',
   'intercept.ask.dlm': 'Download with DLM',
   'intercept.ask.browser': 'With the browser',

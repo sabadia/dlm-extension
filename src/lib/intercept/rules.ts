@@ -55,6 +55,11 @@ export function hostCoveredBy(host: string, rule: string): boolean {
   return host === rule || host.endsWith(`.${rule}`);
 }
 
+/** Whether a host is on a list of sites (a listed site covers its subdomains). */
+export function siteListed(host: string, rules: readonly string[]): boolean {
+  return listed(host, rules);
+}
+
 function listed(host: string, rules: readonly string[]): boolean {
   return rules.some((rule) => hostCoveredBy(host, rule));
 }

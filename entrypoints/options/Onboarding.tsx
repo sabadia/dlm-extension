@@ -27,8 +27,12 @@ const STEP_TEXT: Record<SetupStep, MessageKey> = {
 
 const APP_RELEASES = 'https://github.com/sabadia/dlm-app/releases/latest';
 
-/** How often the steps are checked again while setup is not finished. */
+/**
+ * How often the steps are checked again while setup is not finished. Every check may start the native host, so it
+ * slows down the longer nothing changes.
+ */
 const CHECK_MS = 3000;
+const CHECK_MAX_MS = 30_000;
 
 /**
  * The setup, step by step: install the app, register the browser, pair, allow access, send a test download. Each step
@@ -52,8 +56,17 @@ export function Onboarding({ api }: { api: OnboardingApi }) {
 
   useEffect(() => {
     if (kind === 'connected' && siteAccess) return undefined;
-    const timer = setInterval(check, CHECK_MS);
-    return () => clearInterval(timer);
+    let wait = CHECK_MS;
+    let timer: ReturnType<typeof setTimeout>;
+    const again = () => {
+      timer = setTimeout(() => {
+        check();
+        wait = Math.min(wait * 1.5, CHECK_MAX_MS);
+        again();
+      }, wait);
+    };
+    again();
+    return () => clearTimeout(timer);
   }, [kind, siteAccess]);
 
   const steps = setupSteps(kind, siteAccess);

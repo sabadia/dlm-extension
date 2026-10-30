@@ -296,3 +296,11 @@ describe('DlmClient requests', () => {
     await expect(client.events().next()).rejects.toBeInstanceOf(NetworkError);
   });
 });
+
+describe('DlmClient empty responses', () => {
+  it('accepts a 204 without a body', async () => {
+    const { fetch } = recorder(() => new Response(null, { status: 204 }));
+    const client = new DlmClient({ baseUrl: 'http://127.0.0.1:1', token: 't', fetch });
+    await expect(client.turbo(false)).resolves.toBeUndefined();
+  });
+});

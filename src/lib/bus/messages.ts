@@ -4,7 +4,7 @@ import type { AskChoice, AskPurpose } from '../intercept/service';
 import type { PageHint } from '../page/hints';
 import type { PageSnapshot } from '../media/page';
 import type { CookiesRequest, DownloadRequest, TabView } from '../media/service';
-import type { Settings, SettingsPatch } from '../settings/schema';
+import type { Settings, SettingsSave } from '../settings/schema';
 import type { Variant } from '../media/playlist';
 import type { AddResult, RemoteTestResult, RemoteView } from '../remote/service';
 
@@ -57,7 +57,7 @@ export interface MessageMap {
   /** The person's choice on the ask page. */
   'ask.choose': { request: { id: string; choice: AskChoice }; response: null };
   /** A magnet or eD2K link a content script caught before the browser could prompt. */
-  'links.add': { request: { url: string }; response: boolean };
+  'links.add': { request: { url: string; alt?: boolean; shift?: boolean }; response: boolean };
   /** The addresses the person picked on the links page. */
   'links.send': { request: { urls: string[] }; response: { ok: number; failed: number } };
   /** The media list of one tab. */
@@ -89,7 +89,7 @@ export interface MessageMap {
   /** The settings, without tokens. */
   'settings.get': { request: undefined; response: Settings };
   /** Saves the rules, preferences and routes. It is parsed again, so a bad field falls back to the default. */
-  'settings.save': { request: SettingsPatch; response: Settings };
+  'settings.save': { request: SettingsSave; response: Settings };
   /** The settings as a file. It contains no token. */
   'settings.export': { request: undefined; response: string };
   /** Replaces the settings from an exported file. A server with a new address starts without its token. */

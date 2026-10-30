@@ -70,7 +70,9 @@ export default defineBackground(() => {
   const extensionOrigin = new URL(browser.runtime.getURL('/')).origin;
   // The tokens are in `storage.local`, which content scripts can read unless the extension says otherwise: no
   // content script of ours reads it, and a page's script cannot, but the access level is closed all the same.
-  // Firefox has no such setting (its content scripts cannot reach this storage area).
+  // Firefox has no such setting, and its content scripts can reach `storage.local`: the same two facts hold there (no
+  // content script of ours reads it, a page's script cannot), but nothing closes the area, so a compromised renderer
+  // of a page we inject into is the one thing the token is not protected from.
   const local = browser.storage.local as {
     setAccessLevel?: (options: { accessLevel: string }) => Promise<void>;
   };
@@ -151,6 +153,7 @@ export default defineBackground(() => {
         remove: (id) => browser.windows.remove(id),
       },
       askUrl: (id) => browser.runtime.getURL(`/ask.html?id=${encodeURIComponent(id)}`),
+      tabUrl: async (tabId) => (await browser.tabs.get(tabId)).url,
       menus: {
         removeAll: () => browser.contextMenus.removeAll(),
         create: (spec: MenuSpec) => {
