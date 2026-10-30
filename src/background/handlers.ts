@@ -2,6 +2,7 @@ import type { Handlers, SenderLike } from '../lib/bus/bus';
 import { buildDiagnostics } from '../lib/log/diagnostics';
 import { describeState } from '../lib/connection/service';
 import type { AskChoice } from '../lib/intercept/service';
+import { acceptedHints } from '../lib/page/hints';
 import type { PageSnapshot } from '../lib/media/page';
 import type { Services } from './services';
 
@@ -11,7 +12,7 @@ function tabIdOf(sender: SenderLike): number | undefined {
   return typeof tab.id === 'number' ? tab.id : undefined;
 }
 
-const ASK_CHOICES: readonly AskChoice[] = ['dlm', 'browser', 'always'];
+const ASK_CHOICES: readonly AskChoice[] = ['dlm', 'browser', 'always', 'omit'];
 
 /** The answers the background gives to its pages (docs: `src/lib/bus/messages.ts` lists the messages). */
 export function createHandlers(services: Services): Handlers {
@@ -94,6 +95,13 @@ export function createHandlers(services: Services): Handlers {
       handle: async ({ id, choice }) => {
         if (!ASK_CHOICES.includes(choice)) return null;
         await services.intercept?.choose(id, choice);
+        return null;
+      },
+    },
+    'page.hints': {
+      fromContent: true,
+      handle: async (input) => {
+        await services.intercept?.noteHints(acceptedHints(input?.hints));
         return null;
       },
     },

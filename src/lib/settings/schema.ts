@@ -5,7 +5,14 @@
  */
 
 /** The version of the stored shape. Raise it together with a migration in `migrate.ts`. */
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
+
+/** Downloads from one site go to this target instead of the default. */
+export interface DomainRoute {
+  /** Host name. Subdomains follow the same rule as the site lists. */
+  site: string;
+  targetId: string;
+}
 
 /** The DLM on this computer, found through the native host. There is exactly one. */
 export interface LocalTarget {
@@ -56,6 +63,8 @@ export interface Preferences {
   badge: boolean;
   /** Notify about things that need the user (an expired link, a lost connection). */
   notifications: boolean;
+  /** Send mirror links found on a download page. Off until the user turns it on. */
+  mirrors: boolean;
 }
 
 export interface Settings {
@@ -63,6 +72,8 @@ export interface Settings {
   /** The target downloads go to when no site rule says otherwise. */
   activeTargetId: string;
   targets: Target[];
+  /** Sites that use a target other than {@link Settings.activeTargetId}. */
+  routes: DomainRoute[];
   rules: Rules;
   preferences: Preferences;
 }
@@ -77,6 +88,7 @@ export function defaultSettings(): Settings {
     version: SETTINGS_VERSION,
     activeTargetId: LOCAL_TARGET.id,
     targets: [{ ...LOCAL_TARGET }],
+    routes: [],
     rules: {
       intercept: true,
       minSizeBytes: DEFAULT_MIN_SIZE_BYTES,
@@ -88,6 +100,6 @@ export function defaultSettings(): Settings {
       askFirst: false,
       privateWindows: false,
     },
-    preferences: { badge: true, notifications: true },
+    preferences: { badge: true, notifications: true, mirrors: false },
   };
 }

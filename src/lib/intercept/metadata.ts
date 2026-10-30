@@ -1,4 +1,5 @@
 import type { CaptureBody, CaptureCookie } from '../api/client';
+import type { Checksum } from '../page/hints';
 
 /**
  * Request headers repeated on the capture. `Cookie` and `Host` are refused by the daemon; the user agent and the
@@ -166,6 +167,12 @@ export interface CaptureDraft {
   userAgent?: string | undefined;
   headers?: Record<string, string> | undefined;
   cookies?: CaptureCookie[] | undefined;
+  /** Set for a POST whose body is small enough to replay. GET is omitted. */
+  method?: string | undefined;
+  /** Base64 body of that POST. */
+  body?: string | undefined;
+  checksum?: Checksum | undefined;
+  mirrors?: string[] | undefined;
 }
 
 /** The capture body. Cookies are kept for this task only (`cookieScope: task`). GET is omitted: it is the default. */
@@ -182,7 +189,19 @@ export function buildCaptureBody(draft: CaptureDraft): CaptureBody {
   if (draft.userAgent) body.userAgent = draft.userAgent;
   if (draft.headers && Object.keys(draft.headers).length > 0) body.headers = draft.headers;
   if (draft.cookies && draft.cookies.length > 0) body.cookies = draft.cookies;
+  if (draft.method && draft.method.toUpperCase() !== 'GET')
+    body.method = draft.method.toUpperCase();
+  if (draft.body) body.body = draft.body;
+  if (draft.checksum) body.checksum = draft.checksum;
+  if (draft.mirrors && draft.mirrors.length > 0) body.mirrors = draft.mirrors.slice(0, 16);
   return body;
+}
+
+/** The same capture without the checksum the user chose not to send. */
+export function withoutChecksum(body: CaptureBody): CaptureBody {
+  const rest = { ...body };
+  delete rest.checksum;
+  return rest;
 }
 
 /** A short name for a notification. Never the query string, where a token might sit. */

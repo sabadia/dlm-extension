@@ -12,6 +12,7 @@ import {
   basename,
   buildCaptureBody,
   contentLength,
+  withoutChecksum,
   displayName,
   filenameFromDisposition,
   headerValue,
@@ -32,6 +33,8 @@ import {
   type Observation,
 } from './observations';
 import { isTorrent } from '../links/classify';
+import type { HintStore } from '../page/store';
+import { targetFor } from '../settings/routing';
 import { decide, downloadHost, type DownloadFacts } from './rules';
 
 /** A browser download, reduced to what the hand-off reads. */
@@ -60,6 +63,8 @@ export interface RequestEvent {
   cookieStoreId?: string | undefined;
   requestHeaders?: RawHeader[] | undefined;
   responseHeaders?: RawHeader[] | undefined;
+  /** Base64 body of a small POST, already size-checked. */
+  postBody?: string | undefined;
 }
 
 export interface DownloadsPort {
@@ -99,12 +104,16 @@ export interface CaptureClient {
   capture(body: CaptureBody): Promise<unknown>;
 }
 
-export type AskChoice = 'dlm' | 'browser' | 'always';
+export type AskChoice = 'dlm' | 'browser' | 'always' | 'omit';
+
+export type AskPurpose = 'ask' | 'checksum';
 
 export interface PendingAsk {
   id: string;
   host: string;
   name: string;
+  /** `ask` is ask-first. `checksum` reviews a hash and still sends the download when the window closes. */
+  purpose: AskPurpose;
   fallbackUrl: string;
   filename?: string | undefined;
   body: CaptureBody;
@@ -180,6 +189,7 @@ function parseObservation(raw: unknown): Observation | undefined {
     ...(typeof record.filename === 'string' ? { filename: record.filename } : {}),
     ...(typeof record.userAgent === 'string' ? { userAgent: record.userAgent } : {}),
     ...(typeof record.cookieStoreId === 'string' ? { cookieStoreId: record.cookieStoreId } : {}),
+    ...(typeof record.postBody === 'string' ? { postBody: record.postBody } : {}),
   };
 }
 
@@ -226,24 +236,31 @@ function parseAsks(raw: unknown): PendingAsk[] {
       return undefined;
     const body = asRecord(record.body);
     if (!body || typeof body.url !== 'string') return undefined;
-    return {
+    const purpose: AskPurpose = record.purpose === 'checksum' ? 'checksum' : 'ask';
+    const pending: PendingAsk = {
       id: record.id,
       host: record.host,
       name: record.name,
+      purpose,
       fallbackUrl: record.fallbackUrl,
-      body: body as unknown as CaptureBody,
+      body,
       resolved: record.resolved === true,
       at: record.at,
       ...(typeof record.filename === 'string' ? { filename: record.filename } : {}),
       ...(typeof record.windowId === 'number' ? { windowId: record.windowId } : {}),
     };
+    return pending;
   })(raw);
 }
 
 export interface InterceptDeps {
   settings: Pick<SettingsStore, 'get' | 'update'>;
   secrets: Pick<SecretStore, 'get'>;
-  connection: Pick<ConnectionService, 'get' | 'repaint'>;
+  connection: Pick<ConnectionService, 'get' | 'repaint'> & {
+    endpoint?(targetId: string): Promise<{ baseUrl: string; token: string } | undefined>;
+  };
+  /** Checksums and mirrors a page reported. Absent in tests that do not exercise them. */
+  hints?: Pick<HintStore, 'find' | 'note'>;
   session: KeyValueArea;
   log: Logger;
   /** This extension's id, compared with `byExtensionId`. */
@@ -302,12 +319,22 @@ export class InterceptService {
     this.id = deps.id ?? (() => crypto.randomUUID());
   }
 
+  /** A content script reporting checksums and mirror links it saw. It cannot ask for a download. */
+  noteHints(hints: Parameters<HintStore['note']>[0]): Promise<void> {
+    return this.deps.hints?.note(hints, this.now()) ?? Promise.resolve();
+  }
+
   /** A content script saw Alt or Shift. The tab id comes from the sender, not from the page. */
   noteGesture(tabId: number, alt: boolean, shift: boolean): Promise<void> {
     const now = this.now();
     return this.gestures
       .update((map) => rememberGesture(map, tabId, alt, shift, now))
       .then(() => undefined);
+  }
+
+  /** A POST body, cached until the download item exists. A body that cannot be replayed is left out. */
+  onBeforeRequest(event: RequestEvent): Promise<void> {
+    return this.remember(event, false);
   }
 
   /** Request headers, cached until the download item exists. */
@@ -327,7 +354,8 @@ export class InterceptService {
     if (!current?.attachment) return;
     if (this.ownRequest(current)) return;
     const prepared = await this.prepare(current);
-    if (!prepared || prepared.decision.action !== 'take') return;
+    // A checksum is reviewed on the download item, so the request is not cancelled here.
+    if (!prepared || prepared.decision.action !== 'take' || prepared.draft.checksum) return;
     const address = prepared.draft.finalUrl ?? prepared.draft.url;
     if ((await this.claim(address)) !== 'won') return;
     const result = await this.deliver(prepared.draft, prepared.name);
@@ -372,7 +400,11 @@ export class InterceptService {
       return;
     }
     if (prepared.decision.action === 'ask') {
-      await this.ask(prepared);
+      await this.ask(prepared, 'ask');
+      return;
+    }
+    if (prepared.draft.checksum) {
+      await this.ask(prepared, 'checksum');
       return;
     }
     const result = await this.deliver(prepared.draft, prepared.name);
@@ -387,13 +419,31 @@ export class InterceptService {
     );
     if (!pending) return;
     await this.asks.update((list) => list.filter((ask) => ask.id !== pending.id));
+    if (pending.purpose === 'checksum') {
+      await this.finish(withoutChecksum(pending.body), pending.name, pending);
+      return;
+    }
     await this.fallback(pending.fallbackUrl, pending.filename);
   }
 
   /** What the ask page shows. Cookies are not included. */
-  async askView(id: string): Promise<{ name: string; host: string } | null> {
+  async askView(id: string): Promise<{
+    name: string;
+    host: string;
+    purpose: AskPurpose;
+    checksum?: { algorithm: string; expected: string };
+  } | null> {
     const pending = (await this.asks.get()).find((ask) => ask.id === id && !ask.resolved);
-    return pending ? { name: pending.name, host: pending.host } : null;
+    if (!pending) return null;
+    const checksum = pending.body.checksum;
+    return {
+      name: pending.name,
+      host: pending.host,
+      purpose: pending.purpose,
+      ...(checksum
+        ? { checksum: { algorithm: checksum.algorithm, expected: checksum.expected } }
+        : {}),
+    };
   }
 
   /** The ask page's choice. */
@@ -405,6 +455,10 @@ export class InterceptService {
     });
     if (!pending) return;
     const chosen = pending;
+    if (choice === 'omit' || (choice === 'browser' && chosen.purpose === 'checksum')) {
+      await this.finish(withoutChecksum(chosen.body), chosen.name, chosen);
+      return;
+    }
     if (choice === 'browser') {
       await this.fallback(chosen.fallbackUrl, chosen.filename);
       return;
@@ -432,7 +486,10 @@ export class InterceptService {
     await this.asks.update((list) =>
       list.filter((ask) => ask.resolved || now - ask.at <= ASK_TTL_MS),
     );
-    for (const ask of stale) await this.fallback(ask.fallbackUrl, ask.filename);
+    for (const ask of stale) {
+      if (ask.purpose === 'checksum') await this.finish(withoutChecksum(ask.body), ask.name, ask);
+      else await this.fallback(ask.fallbackUrl, ask.filename);
+    }
   }
 
   private async remember(event: RequestEvent, response: boolean): Promise<void> {
@@ -459,6 +516,7 @@ export class InterceptService {
       ...(mime ? { mime } : {}),
       ...(length !== undefined ? { sizeBytes: length } : {}),
       ...(filename ? { filename } : {}),
+      ...(event.postBody ? { postBody: event.postBody } : {}),
     };
     await this.observed.update((list) => {
       const previous = list.find((item) => item.requestId === event.requestId);
@@ -493,6 +551,7 @@ export class InterceptService {
     };
     if (finalUrl) facts.finalUrl = finalUrl;
     if (observed?.method) facts.method = observed.method;
+    if (observed?.postBody) facts.postBody = observed.postBody;
     const size = item?.sizeBytes ?? observed?.sizeBytes;
     if (size !== undefined) facts.sizeBytes = size;
     const filename = item?.filename ?? observed?.filename;
@@ -512,6 +571,10 @@ export class InterceptService {
     draft.userAgent = observed?.userAgent || this.deps.userAgent;
     if (observed && Object.keys(observed.requestHeaders).length > 0)
       draft.headers = observed.requestHeaders;
+    if (observed?.method.toUpperCase() === 'POST' && observed.postBody) {
+      draft.method = 'POST';
+      draft.body = observed.postBody;
+    }
     if (decision.action !== 'leave') {
       const host = downloadHost(finalUrl ?? url);
       if (host) {
@@ -525,7 +588,29 @@ export class InterceptService {
         );
       }
     }
-    return { decision, draft, name: displayName(filename, finalUrl ?? url) };
+    return {
+      decision,
+      draft: await this.applyHints(draft, settings),
+      name: displayName(filename, finalUrl ?? url),
+    };
+  }
+
+  /** Adds a checksum, and mirror links when the user has turned that on. */
+  private async applyHints(
+    draft: CaptureDraft,
+    settings: Awaited<ReturnType<SettingsStore['get']>>,
+  ): Promise<CaptureDraft> {
+    if (!this.deps.hints) return draft;
+    const urls = [draft.finalUrl, draft.url].filter((url): url is string => Boolean(url));
+    const hint = await this.deps.hints.find(urls, this.now());
+    if (!hint) return draft;
+    return {
+      ...draft,
+      ...(hint.checksum ? { checksum: hint.checksum } : {}),
+      ...(settings.preferences.mirrors && hint.mirrors && hint.mirrors.length > 0
+        ? { mirrors: hint.mirrors }
+        : {}),
+    };
   }
 
   private async readCookies(
@@ -639,19 +724,19 @@ export class InterceptService {
     return this.send(buildCaptureBody(draft), name);
   }
 
+  private async finish(body: CaptureBody, name: string, pending: PendingAsk): Promise<void> {
+    const result = await this.send(body, name);
+    if (result === 'failed') await this.fallback(pending.fallbackUrl, pending.filename);
+  }
+
   private async send(body: CaptureBody, name: string): Promise<SendResult> {
-    const state = await this.deps.connection.get();
-    if (state.kind !== 'connected') {
-      await this.notify('intercept.failed', name, t('intercept.reason.offline'));
-      return 'failed';
-    }
-    const token = await this.deps.secrets.get(state.targetId);
-    if (!token) {
+    const routed = await this.routedClient(body.url ?? '');
+    if (!routed) {
       await this.notify('intercept.failed', name, t('intercept.reason.offline'));
       return 'failed';
     }
     try {
-      await this.deps.client(state.baseUrl, token).capture(body);
+      await routed.capture(body);
       await this.bump();
       await this.notify('intercept.sent', name);
       return 'taken';
@@ -684,7 +769,24 @@ export class InterceptService {
     }
   }
 
-  private async ask(prepared: { draft: CaptureDraft; name: string }): Promise<void> {
+  /** The client for the target this address routes to, or the active connection when routing is not wired. */
+  private async routedClient(url: string): Promise<CaptureClient | undefined> {
+    if (this.deps.connection.endpoint) {
+      const settings = await this.deps.settings.get();
+      const endpoint = await this.deps.connection.endpoint(targetFor(settings, url));
+      return endpoint ? this.deps.client(endpoint.baseUrl, endpoint.token) : undefined;
+    }
+    const state = await this.deps.connection.get();
+    if (state.kind !== 'connected') return undefined;
+    const token = await this.deps.secrets.get(state.targetId);
+    if (!token) return undefined;
+    return this.deps.client(state.baseUrl, token);
+  }
+
+  private async ask(
+    prepared: { draft: CaptureDraft; name: string },
+    purpose: AskPurpose,
+  ): Promise<void> {
     const body = buildCaptureBody(prepared.draft);
     const host = downloadHost(prepared.draft.finalUrl ?? prepared.draft.url) ?? '';
     const pending: PendingAsk = {
@@ -693,6 +795,7 @@ export class InterceptService {
       name: prepared.name,
       fallbackUrl: prepared.draft.finalUrl ?? prepared.draft.url,
       body,
+      purpose,
       resolved: false,
       at: this.now(),
       ...(prepared.draft.filename ? { filename: prepared.draft.filename } : {}),

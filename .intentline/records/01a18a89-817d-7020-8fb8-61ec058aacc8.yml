@@ -1,0 +1,140 @@
+schema_version: 1
+id: 01a18a89-817d-7020-8fb8-61ec058aacc8
+status: draft
+created_at: '2026-10-30T02:00:29Z'
+updated_at: '2026-10-30T02:00:29Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: grok
+goal: 'Implement phase E6 from the plan: refresh expired links, review checksums, opt-in mirrors, per-domain routing, and small POST bodies.'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: docs/PLAN.md
+  start_line: null
+  end_line: null
+- path: entrypoints/ask/App.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/ask/main.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/background.ts
+  start_line: null
+  end_line: null
+- path: entrypoints/options/RulesForm.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/page.content.ts
+  start_line: null
+  end_line: null
+- path: src/background/background.test.ts
+  start_line: null
+  end_line: null
+- path: src/background/handlers.ts
+  start_line: null
+  end_line: null
+- path: src/background/register.test.ts
+  start_line: null
+  end_line: null
+- path: src/background/register.ts
+  start_line: null
+  end_line: null
+- path: src/background/services.ts
+  start_line: null
+  end_line: null
+- path: src/lib/bus/messages.ts
+  start_line: null
+  end_line: null
+- path: src/lib/connection/connection.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/connection/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/i18n/en.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/metadata.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/observations.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/post.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/post.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/rules.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/rules.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/service.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/links/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/media/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/page/hints.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/page/hints.ts
+  start_line: null
+  end_line: null
+- path: src/lib/page/store.ts
+  start_line: null
+  end_line: null
+- path: src/lib/refresh/service.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/refresh/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/refresh/watch.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/refresh/watch.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/migrate.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/parse.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/routing.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/routing.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/schema.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/settings.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/store.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

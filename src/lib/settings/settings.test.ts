@@ -86,7 +86,8 @@ describe('parseSettings', () => {
       askFirst: false,
       privateWindows: true,
     });
-    expect(s.preferences).toEqual({ badge: true, notifications: false });
+    expect(s.preferences).toEqual({ badge: true, notifications: false, mirrors: false });
+    expect(s.routes).toEqual([]);
   });
 
   it('normalises sites, file types and MIME types', () => {
@@ -104,7 +105,7 @@ describe('parseSettings', () => {
       rules: { askFirst: true, excludedSites: ['example.test'] },
     });
     const settings = parseSettings(stored);
-    expect(settings.version).toBe(2);
+    expect(settings.version).toBe(3);
     expect(settings.rules.askFirst).toBe(true);
     expect(settings.rules.excludedSites).toEqual(['example.test']);
     expect(settings.rules.alwaysSites).toEqual([]);

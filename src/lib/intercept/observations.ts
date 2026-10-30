@@ -31,6 +31,8 @@ export interface Observation {
   incognito: boolean;
   /** True when `Content-Disposition` says attachment. */
   attachment: boolean;
+  /** Base64 body of a small POST. Absent for GET and for a body this extension will not replay. */
+  postBody?: string | undefined;
   at: number;
 }
 
@@ -92,6 +94,7 @@ export function mergeObservation(
     sizeBytes: next.sizeBytes ?? previous.sizeBytes,
     finalUrl: next.finalUrl ?? previous.finalUrl,
     attachment: next.attachment || previous.attachment,
+    postBody: previous.postBody ?? next.postBody,
   };
 }
 

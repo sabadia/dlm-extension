@@ -50,6 +50,9 @@ export default defineBackground(() => {
             iconUrl: options.iconUrl ?? browser.runtime.getURL('/icon.png'),
           }),
       },
+      open: async (url) => {
+        await browser.tabs.create({ url });
+      },
       windows: {
         create: async (info) => {
           const created = await browser.windows.create(info);

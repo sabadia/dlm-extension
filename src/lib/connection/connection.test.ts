@@ -243,6 +243,17 @@ describe('ConnectionService', () => {
     return { service, local, session, calls, discoveries: () => discoveries };
   }
 
+  it('opens a target that has a token', async () => {
+    const { service, local } = setup();
+    const secrets = new SecretStore(local);
+    await secrets.set('local', 'dlmt_AbCdEf0123456789xyz');
+    expect(await service.endpoint('local')).toEqual({
+      baseUrl: 'http://127.0.0.1:50123',
+      token: 'dlmt_AbCdEf0123456789xyz',
+    });
+    expect(await service.endpoint('missing')).toBeUndefined();
+  });
+
   it('starts as checking, stores the result and paints the toolbar button', async () => {
     const { service, local, session, calls } = setup();
     expect((await service.get()).kind).toBe('checking');

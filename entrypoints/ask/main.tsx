@@ -18,6 +18,8 @@ if (root) {
     <App
       name={view?.name ?? ''}
       host={view?.host ?? ''}
+      purpose={view?.purpose ?? 'ask'}
+      checksum={view?.checksum}
       onChoose={(choice) => {
         void choose(choice);
       }}

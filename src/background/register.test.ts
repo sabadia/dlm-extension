@@ -18,6 +18,7 @@ function fakeBrowser() {
   const browser: InterceptBrowser = {
     downloads: { onCreated: { addListener: (listener) => (listeners.created = listener) } },
     webRequest: {
+      onBeforeRequest: { addListener: () => undefined },
       onBeforeSendHeaders: { addListener: (listener) => (listeners.request = listener) },
       onHeadersReceived: {
         addListener: (listener, _filter, extra) => {

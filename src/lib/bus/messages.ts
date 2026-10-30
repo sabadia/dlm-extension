@@ -1,6 +1,7 @@
 import type { ConnectionState } from '../connection/state';
 import type { PairingView } from '../pairing/service';
-import type { AskChoice } from '../intercept/service';
+import type { AskChoice, AskPurpose } from '../intercept/service';
+import type { PageHint } from '../page/hints';
 import type { PageSnapshot } from '../media/page';
 import type { LiveSnapshot } from '../downloads/service';
 import type { DownloadRequest, TabView } from '../media/service';
@@ -42,7 +43,17 @@ export interface MessageMap {
   /** A content script reporting the modifier keys of a click or key press in its tab. */
   'gesture.note': { request: { alt: boolean; shift: boolean }; response: null };
   /** The name and site of a download the ask page is showing. Null when the prompt is gone. */
-  'ask.get': { request: { id: string }; response: { name: string; host: string } | null };
+  'ask.get': {
+    request: { id: string };
+    response: {
+      name: string;
+      host: string;
+      purpose: AskPurpose;
+      checksum?: { algorithm: string; expected: string };
+    } | null;
+  };
+  /** Checksums and mirror links a content script saw. It does not start a download. */
+  'page.hints': { request: { hints: PageHint[] }; response: null };
   /** The person's choice on the ask page. */
   'ask.choose': { request: { id: string; choice: AskChoice }; response: null };
   /** A magnet or eD2K link a content script caught before the browser could prompt. */

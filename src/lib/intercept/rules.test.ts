@@ -38,6 +38,7 @@ describe('decide', () => {
     ],
     ['takes ftp', {}, { url: 'ftp://files.example.test/a.zip' }, { action: 'take' }],
     ['leaves a POST', {}, { method: 'POST' }, { action: 'leave', reason: 'method' }],
+    ['takes a small POST', {}, { method: 'POST', postBody: 'aGk=' }, { action: 'take' }],
     [
       'leaves everything when interception is off',
       { intercept: false },

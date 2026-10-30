@@ -3,6 +3,7 @@ import {
   defaultSettings,
   LOCAL_TARGET,
   SETTINGS_VERSION,
+  type DomainRoute,
   type Preferences,
   type RemoteTarget,
   type Rules,
@@ -90,7 +91,23 @@ function parsePreferences(raw: unknown): Preferences {
   return {
     badge: bool(raw.badge, d.badge),
     notifications: bool(raw.notifications, d.notifications),
+    mirrors: bool(raw.mirrors, d.mirrors),
   };
+}
+
+function parseRoutes(raw: unknown, targets: readonly Target[]): DomainRoute[] {
+  const known = new Set(targets.map((target) => target.id));
+  const out: DomainRoute[] = [];
+  const seen = new Set<string>();
+  for (const item of Array.isArray(raw) ? raw : []) {
+    if (!isObj(item) || typeof item.site !== 'string' || typeof item.targetId !== 'string')
+      continue;
+    const site = normalizeSite(item.site);
+    if (!site || seen.has(site) || !known.has(item.targetId)) continue;
+    seen.add(site);
+    out.push({ site, targetId: item.targetId });
+  }
+  return out;
 }
 
 function parseTargets(raw: unknown): Target[] {
@@ -136,6 +153,7 @@ export function parseSettings(raw: unknown): Settings {
     version: SETTINGS_VERSION,
     activeTargetId: active && wanted !== undefined ? wanted : d.activeTargetId,
     targets,
+    routes: parseRoutes(raw.routes, targets),
     rules: parseRules(raw.rules),
     preferences: parsePreferences(raw.preferences),
   };

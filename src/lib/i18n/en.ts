@@ -155,6 +155,14 @@ export const en = {
   'onboarding.test': 'Send a test address to DLM.',
   'onboarding.testSend': 'Send test',
   'onboarding.done': 'DLM is ready.',
+  'intercept.checksum': 'Expected {algorithm} {expected}.',
+  'intercept.checksum.use': 'Use this checksum',
+  'intercept.checksum.omit': 'Send without it',
+  'refresh.expired': 'Link expired: open the page',
+  'options.mirrors': 'Send mirror links from download pages',
+  'options.routes': 'Sites that use another DLM',
+  'options.routesHint':
+    'One site and its target id per line, for example example.test home. Other sites use the connection above.',
   'shortcut.intercept': 'Turn download interception on or off',
   'shortcut.options': 'Open DLM options',
 } as const;

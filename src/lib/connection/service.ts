@@ -83,6 +83,41 @@ export class ConnectionService {
     return this.stored.get();
   }
 
+  /**
+   * The address and token of one target, when this extension can call it. A remote target uses its saved address.
+   * The local target uses the address from the last successful check, or asks the native host.
+   */
+  async endpoint(targetId: string): Promise<{ baseUrl: string; token: string } | undefined> {
+    const settings = await this.deps.settings.get();
+    const target = settings.targets.find((item) => item.id === targetId);
+    if (!target) return undefined;
+    const token = await this.deps.secrets.get(target.id);
+    if (!token) return undefined;
+    if (target.kind === 'remote') return { baseUrl: target.url, token };
+    const state = await this.get();
+    if (state.kind === 'connected' && state.targetId === target.id) {
+      return { baseUrl: state.baseUrl, token };
+    }
+    try {
+      const found = await this.deps.host.connect();
+      if (found.state === 'found') return { baseUrl: found.baseUrl, token };
+    } catch (error) {
+      this.deps.log.debug('connection', 'local target could not be reached', { error });
+    }
+    return undefined;
+  }
+
+  /** Every target that currently has an address and a token. */
+  async endpoints(): Promise<{ baseUrl: string; token: string }[]> {
+    const settings = await this.deps.settings.get();
+    const out: { baseUrl: string; token: string }[] = [];
+    for (const target of settings.targets) {
+      const endpoint = await this.endpoint(target.id);
+      if (endpoint) out.push(endpoint);
+    }
+    return out;
+  }
+
   /** Looks again. Calls made while a check runs share its result. */
   refresh(): Promise<ConnectionState> {
     this.running ??= this.check().finally(() => {
