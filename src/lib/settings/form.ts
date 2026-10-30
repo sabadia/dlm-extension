@@ -22,6 +22,7 @@ export interface FormDraft {
   mirrors: boolean;
   refresh: boolean;
   routes: { site: string; targetId: string }[];
+  files: Settings['files'];
 }
 
 export type FormField =
@@ -47,6 +48,7 @@ export function draftFrom(settings: Settings): FormDraft {
     mirrors: preferences.mirrors,
     refresh: preferences.refresh,
     routes: settings.routes.map((route) => ({ ...route })),
+    files: { ...settings.files },
   };
 }
 
@@ -128,6 +130,7 @@ export function settingsFrom(
         refresh: draft.refresh,
       },
       routes,
+      files: { ...current.files, ...draft.files },
     },
   };
 }

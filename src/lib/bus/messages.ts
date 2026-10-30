@@ -3,8 +3,7 @@ import type { PairingView } from '../pairing/service';
 import type { AskChoice, AskPurpose } from '../intercept/service';
 import type { PageHint } from '../page/hints';
 import type { PageSnapshot } from '../media/page';
-import type { LiveSnapshot } from '../downloads/service';
-import type { DownloadRequest, TabView } from '../media/service';
+import type { CookiesRequest, DownloadRequest, TabView } from '../media/service';
 import type { Settings, SettingsPatch } from '../settings/schema';
 import type { Variant } from '../media/playlist';
 import type { AddResult, RemoteTestResult, RemoteView } from '../remote/service';
@@ -69,6 +68,17 @@ export interface MessageMap {
   'media.protected': { request: undefined; response: null };
   /** Sends one item, a chosen quality, or the page via yt-dlp or the daemon's browser. */
   'media.download': { request: DownloadRequest; response: { ok: boolean; error?: string } };
+  /** The queues of the DLM that downloads go to. */
+  'media.queues': { request: undefined; response: { id: string; name: string }[] };
+  /** How many cookies this tab's site has, and for which host: shown before they are sent. */
+  'media.cookies.preview': { request: CookiesRequest; response: { host: string; count: number } };
+  /** Gives DLM the cookies of this tab's site. Only the panel asks, after the person agreed. */
+  'media.cookies.send': {
+    request: CookiesRequest;
+    response:
+      | { ok: true; host: string; imported: number; skipped: number; rejected: number }
+      | { ok: false; error: string };
+  };
   /** Qualities of an HLS master playlist or a DASH manifest. */
   'media.variants': { request: { url: string }; response: Variant[] };
   /** Lazy name, size and duplicate hints for the open popup. */
@@ -84,12 +94,6 @@ export interface MessageMap {
   'settings.export': { request: undefined; response: string };
   /** Replaces the settings from an exported file. A server with a new address starts without its token. */
   'settings.import': { request: { text: string }; response: Settings };
-  /** The downloads DLM is working on, the queues, and whether turbo is on. */
-  'downloads.list': { request: undefined; response: LiveSnapshot };
-  'downloads.pause': { request: { id: string }; response: null };
-  'downloads.resume': { request: { id: string }; response: null };
-  'downloads.move': { request: { id: string; queueId: string }; response: null };
-  'downloads.turbo': { request: { on: boolean }; response: boolean };
   /** Has DLM download a small file of its own (its health report) to show that the whole way works. */
   'downloads.test': { request: undefined; response: { ok: boolean; error?: string } };
 }

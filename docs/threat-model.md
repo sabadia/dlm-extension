@@ -39,6 +39,12 @@
   candidates only. `Authorization` is not repeated on a redirect to another origin.
 - **Private windows (5).** No cookies unless the person allowed private windows; then those of that window's own store (Chrome:
   found through the tab; Firefox: the request's store), and a restarted download stays in that window or container.
+- **Files panel checks and cookies (E5b).** The panel asks the page's own servers for a file's size (HEAD, or a one-byte ranged GET),
+  with the person's cookies, only for links that look like downloads (a file extension, the `download` attribute, download wording),
+  never for every link, so a link such as `/logout` is not requested. Sending a site's cookies to DLM is a click, after a
+  confirmation naming the site and the count; only that site's cookies (and its parent domains) go, never from a private window
+  unless private windows are allowed, to the DLM the person chose. DLM keeps them until they are removed in the app; the extension's
+  token cannot delete them.
 - **Rate limits (4).** Per-token limits are the daemon's (P14.8); the extension adds none for downloads, a limit per tab for
   magnet links, and caps on every list it sends.
 - **Remote servers (7).** Unchanged; `http://` to another computer is warned about before and after adding it.

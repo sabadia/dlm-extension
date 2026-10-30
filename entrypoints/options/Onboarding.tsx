@@ -2,6 +2,8 @@ import { useEffect, useState } from 'preact/hooks';
 import type { ConnectionState } from '../../src/lib/connection/state';
 import { setupSteps, type SetupStep } from '../../src/lib/downloads/setup';
 import { t, type MessageKey } from '../../src/lib/i18n';
+import { Badge, Button, Card } from '../../src/ui/kit';
+import { Icon } from '../../src/ui/icons';
 import { PairingPanel } from '../../src/ui/PairingPanel';
 
 /** What the setup needs from the background and the browser; a test passes a fake. */
@@ -57,12 +59,21 @@ export function Onboarding({ api }: { api: OnboardingApi }) {
   const steps = setupSteps(kind, siteAccess);
   const pairable = kind === 'needs-pairing' || kind === 'pairing' || kind === 'token-revoked';
   return (
-    <section aria-labelledby="setup-title">
-      <h2 id="setup-title">{t('onboarding.title')}</h2>
-      <ol>
+    <Card
+      id="start"
+      title={t('onboarding.title')}
+      actions={
+        steps.every((step) => step.done) ? (
+          <Badge tone="success">{t('onboarding.done')}</Badge>
+        ) : null
+      }
+    >
+      <ol class="steps">
         {steps.map((step) => (
-          <li key={step.id}>
-            <span aria-hidden="true">{step.done ? '✓ ' : ''}</span>
+          <li key={step.id} class={step.done ? 'step done' : 'step'}>
+            <span class="mark" aria-hidden="true">
+              {step.done ? <Icon name="check" /> : null}
+            </span>
             <span class="visually-hidden">
               {step.done ? t('onboarding.stepDone') : t('onboarding.stepTodo')}{' '}
             </span>
@@ -75,12 +86,14 @@ export function Onboarding({ api }: { api: OnboardingApi }) {
                 </a>
               </>
             ) : null}
-            {step.id === 'host' && !step.done ? <p>{t('onboarding.hostMac')}</p> : null}
+            {step.id === 'host' && !step.done ? (
+              <p class="help">{t('onboarding.hostMac')}</p>
+            ) : null}
             {step.id === 'access' && !siteAccess ? (
               <>
                 {' '}
-                <button
-                  type="button"
+                <Button
+                  size="small"
                   onClick={() => {
                     api.requestSiteAccess().then(
                       () => check(),
@@ -89,7 +102,7 @@ export function Onboarding({ api }: { api: OnboardingApi }) {
                   }}
                 >
                   {t('onboarding.accessAllow')}
-                </button>
+                </Button>
               </>
             ) : null}
           </li>
@@ -98,8 +111,7 @@ export function Onboarding({ api }: { api: OnboardingApi }) {
       {pairable ? <PairingPanel onPaired={check} /> : null}
       {kind === 'connected' ? (
         <p>
-          <button
-            type="button"
+          <Button
             onClick={() => {
               setNote('');
               api.sendTest().then(
@@ -115,12 +127,12 @@ export function Onboarding({ api }: { api: OnboardingApi }) {
             }}
           >
             {t('onboarding.testSend')}
-          </button>
+          </Button>
         </p>
       ) : null}
       <p role="status" aria-live="polite">
         {note}
       </p>
-    </section>
+    </Card>
   );
 }

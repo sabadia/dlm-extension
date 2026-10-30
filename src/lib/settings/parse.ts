@@ -4,6 +4,7 @@ import {
   LOCAL_TARGET,
   SETTINGS_VERSION,
   type DomainRoute,
+  type FilesPrefs,
   type Preferences,
   type RemoteTarget,
   type Rules,
@@ -109,6 +110,21 @@ function parsePreferences(raw: unknown): Preferences {
   };
 }
 
+function parseFiles(raw: unknown): FilesPrefs {
+  const d = defaultSettings().files;
+  if (!isObj(raw)) return d;
+  const sort = raw.sort;
+  return {
+    surface: raw.surface === 'popup' || raw.surface === 'panel' ? raw.surface : d.surface,
+    naming: raw.naming === 'url' || raw.naming === 'title' ? raw.naming : d.naming,
+    followRedirects: bool(raw.followRedirects, d.followRedirects),
+    sort:
+      sort === 'size-desc' || sort === 'size-asc' || sort === 'name' || sort === 'type'
+        ? sort
+        : d.sort,
+  };
+}
+
 function parseRoutes(raw: unknown, targets: readonly Target[]): DomainRoute[] {
   const known = new Set(targets.map((target) => target.id));
   const out: DomainRoute[] = [];
@@ -170,5 +186,6 @@ export function parseSettings(raw: unknown): Settings {
     routes: parseRoutes(raw.routes, targets),
     rules: parseRules(raw.rules),
     preferences: parsePreferences(raw.preferences),
+    files: parseFiles(raw.files),
   };
 }

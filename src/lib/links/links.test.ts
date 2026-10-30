@@ -6,6 +6,7 @@ import { LinksService, type MenuClick, type TaskPort } from './service';
 import type { ConnectionState } from '../connection/state';
 import { silentLog } from '../log/log';
 import { memoryArea } from '../storage/area';
+import { defaultSettings } from '../settings/schema';
 
 const link = (url: string, over: Partial<PageLink> = {}): PageLink => ({
   url,
@@ -108,7 +109,7 @@ describe('LinksService', () => {
       },
     };
     const service = new LinksService({
-      settings: { get: () => Promise.reject(new Error('unused')) },
+      settings: { get: () => Promise.resolve(defaultSettings()) },
       secrets: { get: () => Promise.resolve('token') },
       connection: { get: () => Promise.resolve(connection) },
       session: memoryArea(),
@@ -144,6 +145,23 @@ describe('LinksService', () => {
     ]);
     await service.onClick({ menuItemId: 'dlm:all', tabId: 4 });
     expect(opened).toEqual(['links.html?tab=4']);
+  });
+
+  it('names a menu download after the page title and the extension of the link', async () => {
+    const { service, created } = harness();
+    await service.install();
+    await service.onClick({
+      menuItemId: 'dlm:link:queue:main',
+      linkUrl: 'https://files.example.test/a.zip',
+      tabTitle: 'Annual Report | Example',
+    });
+    expect(created.at(-1)).toMatchObject({ name: 'Annual Report - Example.zip' });
+    await service.onClick({
+      menuItemId: 'dlm:link:queue:main',
+      linkUrl: 'https://files.example.test/download',
+      tabTitle: 'Annual Report',
+    });
+    expect(created.at(-1)).not.toHaveProperty('name');
   });
 
   it('uploads torrent bytes when the download had cookies, and the URL otherwise', async () => {
@@ -195,7 +213,7 @@ describe('LinksService review fixes', () => {
       addTorrent: () => Promise.resolve({}),
     };
     const service = new LinksService({
-      settings: { get: () => Promise.reject(new Error('unused')) },
+      settings: { get: () => Promise.resolve(defaultSettings()) },
       secrets: { get: () => Promise.resolve('token') },
       connection: { get: () => Promise.resolve(connection) },
       session: memoryArea(),

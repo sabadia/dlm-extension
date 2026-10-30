@@ -12,6 +12,8 @@ export interface MediaRow {
 
 export interface TabMedia {
   pageUrl: string;
+  /** The title of the page, for naming its files. */
+  title: string;
   protectedMedia: boolean;
   blobOrMse: boolean;
   items: MediaRow[];
@@ -20,7 +22,7 @@ export interface TabMedia {
 }
 
 export function emptyTab(pageUrl = '', at = 0): TabMedia {
-  return { pageUrl, protectedMedia: false, blobOrMse: false, items: [], at };
+  return { pageUrl, title: '', protectedMedia: false, blobOrMse: false, items: [], at };
 }
 
 /** The most rows of one tab, and the most tabs, that are kept. */
@@ -40,13 +42,14 @@ export function replacePage(
   tab: TabMedia,
   pageUrl: string,
   rows: readonly MediaRow[],
-  flags: { protectedMedia: boolean; blobOrMse: boolean },
+  flags: { protectedMedia: boolean; blobOrMse: boolean; title?: string },
   now: number,
 ): TabMedia {
   let items = tab.items.filter((item) => item.source === 'network');
   for (const row of rows) items = upsert(items, row);
   return {
     pageUrl,
+    title: flags.title ?? tab.title,
     // Once protected media was seen on the page, it stays so (an iframe may have said it).
     protectedMedia: flags.protectedMedia || tab.protectedMedia,
     blobOrMse: flags.blobOrMse,
@@ -74,6 +77,7 @@ export function parseTab(raw: unknown): TabMedia {
   const items = Array.isArray(record.items) ? record.items.flatMap(parseRow) : [];
   return {
     pageUrl: typeof record.pageUrl === 'string' ? record.pageUrl : '',
+    title: typeof record.title === 'string' ? record.title : '',
     protectedMedia: record.protectedMedia === true,
     blobOrMse: record.blobOrMse === true,
     items,

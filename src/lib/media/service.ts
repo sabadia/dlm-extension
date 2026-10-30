@@ -1,4 +1,4 @@
-import type { CaptureBody } from '../api/client';
+import type { CaptureBody, CaptureCookie } from '../api/client';
 import type { ConnectionService } from '../connection/service';
 import { t } from '../i18n';
 import { CookieReader, type CookiesPort } from '../intercept/cookies';
@@ -34,6 +34,7 @@ export interface MediaView {
 
 export interface TabView {
   items: MediaView[];
+  title: string;
   protectedMedia: boolean;
   blobOrMse: boolean;
   pageUrl: string;
@@ -52,12 +53,36 @@ export interface DownloadRequest {
   tabId?: number | undefined;
   /** The tab is a private window. */
   incognito?: boolean | undefined;
+  /** The file name to save as. It wins over the name the server gives. */
+  name?: string | undefined;
+  /** The address after redirects: what is downloaded. */
+  finalUrl?: string | undefined;
+  sizeBytes?: number | undefined;
+  mime?: string | undefined;
+  queueId?: string | undefined;
+  paused?: boolean | undefined;
   /** Firefox: the container of the tab. */
   cookieStoreId?: string | undefined;
 }
 
+/** What a cookie request needs to know about the tab. */
+export interface CookiesRequest {
+  /** The address of the page: its host decides which cookies. */
+  url: string;
+  tabId?: number | undefined;
+  incognito?: boolean | undefined;
+  cookieStoreId?: string | undefined;
+}
+
+/** At most this many cookies of one site are sent (the daemon takes 200 in a capture; an import takes more). */
+const MAX_SITE_COOKIES = 500;
+
 interface Tasks {
   capture(body: CaptureBody): Promise<unknown>;
+  listQueues(): Promise<{ id: string; name: string }[]>;
+  importCookies(
+    cookies: CaptureCookie[],
+  ): Promise<{ imported: number; skipped: number; rejected: number }>;
   resolve(url: string): Promise<{ name: string; size: number; duplicate?: string }>;
 }
 
@@ -156,7 +181,11 @@ export class MediaService {
         tab,
         snapshot.pageUrl,
         rows,
-        { protectedMedia: snapshot.protectedMedia, blobOrMse: snapshot.blobOrMse },
+        {
+          protectedMedia: snapshot.protectedMedia,
+          blobOrMse: snapshot.blobOrMse,
+          title: snapshot.title,
+        },
         now,
       ),
     );
@@ -166,6 +195,7 @@ export class MediaService {
     const tab = (await this.tabs.get())[String(tabId)] ?? emptyTab();
     return {
       pageUrl: tab.pageUrl,
+      title: tab.title,
       protectedMedia: tab.protectedMedia,
       blobOrMse: tab.blobOrMse,
       items: tab.items.map(viewOf),
@@ -213,6 +243,12 @@ export class MediaService {
       body.pageUrl = request.pageUrl;
       body.referrer = request.pageUrl;
     }
+    if (request.name) body.name = request.name;
+    if (request.finalUrl && request.finalUrl !== request.url) body.finalUrl = request.finalUrl;
+    if (request.sizeBytes !== undefined) body.size = request.sizeBytes;
+    if (request.mime) body.mime = request.mime;
+    if (request.queueId) body.queueId = request.queueId;
+    if (request.paused) body.paused = true;
     if (request.resolverKind === 'ytdlp' || request.resolverKind === 'browser') {
       body.resolverKind = request.resolverKind;
     } else if (request.kind) {
@@ -225,11 +261,13 @@ export class MediaService {
         },
       ];
     }
-    const host = downloadHost(request.url);
+    // The cookies of the address that is downloaded: the real file after redirects, else the link.
+    const cookieUrl = body.finalUrl ?? request.url;
+    const host = downloadHost(cookieUrl);
     if (host && this.cookieReader) {
       const settings = await this.deps.settings.get();
       const cookies = await this.cookieReader.read({
-        url: request.url,
+        url: cookieUrl,
         pageUrl: request.pageUrl,
         storeId: request.cookieStoreId,
         tabId: request.tabId,
@@ -240,6 +278,57 @@ export class MediaService {
       if (cookies.length > 0) body.cookies = cookies;
     }
     return body;
+  }
+
+  /** The queues of the DLM that downloads go to (the active target), for the picker. Empty when DLM cannot be reached. */
+  async queues(): Promise<{ id: string; name: string }[]> {
+    try {
+      return (await (await this.client())?.listQueues()) ?? [];
+    } catch (error) {
+      this.deps.log.debug('media', 'queues could not be listed', { error });
+      return [];
+    }
+  }
+
+  /** The cookies the browser would send to this address (its host and parent domains), and for which site. */
+  async siteCookies(request: CookiesRequest): Promise<{ host: string; cookies: CaptureCookie[] }> {
+    const host = downloadHost(request.url);
+    if (!host || !this.cookieReader) return { host: host ?? '', cookies: [] };
+    const settings = await this.deps.settings.get();
+    const cookies = await this.cookieReader.read({
+      url: request.url,
+      pageUrl: request.url,
+      storeId: request.cookieStoreId,
+      tabId: request.tabId,
+      incognito: request.incognito === true,
+      allowPrivate: settings.rules.privateWindows,
+      host,
+    });
+    return { host, cookies: cookies.slice(0, MAX_SITE_COOKIES) };
+  }
+
+  /**
+   * Gives DLM the cookies of one site, so that its downloads and its browser are signed in like this one. Called only
+   * when the person asks (the panel shows how many and for which site first). DLM keeps them in its cookie store.
+   */
+  async sendSiteCookies(
+    request: CookiesRequest,
+  ): Promise<
+    | { ok: true; host: string; imported: number; skipped: number; rejected: number }
+    | { ok: false; error: string }
+  > {
+    const { host, cookies } = await this.siteCookies(request);
+    if (cookies.length === 0) return { ok: false, error: t('cookies.none') };
+    const tasks = await this.client(request.url);
+    if (!tasks) return { ok: false, error: t('links.offline') };
+    try {
+      const result = await tasks.importCookies(cookies);
+      this.deps.log.info('media', 'sent the cookies of a site', { host, count: cookies.length });
+      return { ok: true, host, ...result };
+    } catch (error) {
+      this.deps.log.warn('media', 'could not send cookies', { error });
+      return { ok: false, error: t('intercept.reason.rejected') };
+    }
   }
 
   /** Lazy probes. One failure does not drop the others. */

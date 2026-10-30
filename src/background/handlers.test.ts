@@ -72,6 +72,7 @@ describe('settings.save', () => {
       rules: { ...stale.rules, askFirst: true },
       preferences: stale.preferences,
       routes: [],
+      files: stale.files,
     });
     expect(saved.rules.askFirst).toBe(true);
     expect(saved.targets.map((t) => t.id)).toEqual(['local', 'r1']);
@@ -226,6 +227,7 @@ describe('what a content script may ask', () => {
     const { from } = setup({ media });
     const snapshot = {
       pageUrl: 'https://victim.example/',
+      title: 'Victim',
       protectedMedia: false,
       blobOrMse: false,
       videos: [],

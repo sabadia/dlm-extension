@@ -91,6 +91,19 @@ export class DlmClient {
   }
 
   /** The queues a context menu can offer. An extension token may list them. */
+  /** Stores cookies (the JSON array the daemon reads). The result counts the stored and the refused. */
+  importCookies(
+    cookies: readonly Schemas['CaptureCookie'][],
+    signal?: AbortSignal,
+  ): Promise<Schemas['ImportCookiesResult']> {
+    return this.json(
+      'POST',
+      '/v1/cookies/import',
+      { format: 'json', data: JSON.stringify(cookies) },
+      { signal },
+    );
+  }
+
   listQueues(signal?: AbortSignal): Promise<Schemas['QueueList']> {
     return this.json('GET', '/v1/queues', undefined, { signal });
   }

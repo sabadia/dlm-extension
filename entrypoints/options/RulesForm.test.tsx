@@ -53,11 +53,17 @@ const field = (root: HTMLElement, label: string) => {
 };
 const button = (root: HTMLElement, label: string) => {
   const found = [...root.querySelectorAll('button')].find((item) =>
-    item.textContent?.includes(label),
+    (item.textContent || item.getAttribute('aria-label') || '').includes(label),
   );
   if (!found) throw new Error(`no button ${label}`);
   return found;
 };
+const chips = (root: HTMLElement, label: string) =>
+  root.querySelector(`.chip-input input[aria-label="${label}"]`) as HTMLInputElement;
+const enter = (control: HTMLElement) =>
+  act(() => {
+    control.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  });
 async function type(control: HTMLInputElement | HTMLTextAreaElement, value: string) {
   await act(() => {
     control.value = value;
@@ -74,14 +80,19 @@ afterEach(() => {
 });
 
 describe('RulesForm', () => {
-  it('lets a list be typed, line break and all, and parses it only on save', async () => {
+  it('adds sites as chips, one by Enter and several separated by commas, and saves them', async () => {
     const { api, saved } = fakeApi();
     const root = await mount(api);
-    const sites = field(root, 'Sites to leave in the browser');
-    await type(sites, 'example.com\n');
-    expect(sites.value).toBe('example.com\n'); // the Enter that was just typed is still there
-    await type(sites, 'example.com\nOther.test, third.test');
-    expect(sites.value).toBe('example.com\nOther.test, third.test');
+    const sites = chips(root, 'Sites to leave in the browser');
+    await type(sites, 'example.com');
+    await enter(sites);
+    await type(sites, 'Other.test, third.test');
+    await enter(sites);
+    expect([...root.querySelectorAll('.tag')].map((tag) => tag.textContent)).toEqual([
+      'example.com',
+      'other.test',
+      'third.test',
+    ]);
     await click(button(root, 'Save'));
     await settle();
     expect(saved[0]?.rules.excludedSites).toEqual(['example.com', 'other.test', 'third.test']);
@@ -91,13 +102,29 @@ describe('RulesForm', () => {
   it('lets a second extension be typed after a comma', async () => {
     const { api, saved } = fakeApi();
     const root = await mount(api);
-    const types = field(root, 'Only these extensions');
+    const types = chips(root, 'Only these extensions');
     await type(types, 'zip,');
-    expect(types.value).toBe('zip,');
-    await type(types, 'zip, iso');
+    await type(types, 'iso');
+    await enter(types);
     await click(button(root, 'Save'));
     await settle();
     expect(saved[0]?.rules.fileTypes).toEqual(['zip', 'iso']);
+  });
+
+  it('refuses a site that is not valid, shows it, and removes a chip', async () => {
+    const { api, saved } = fakeApi();
+    const root = await mount(api);
+    const sites = chips(root, 'Sites to always take');
+    await type(sites, 'good.test');
+    await enter(sites);
+    await type(sites, 'not!valid');
+    await enter(sites);
+    expect(root.textContent).toContain('not!valid');
+    expect(sites.getAttribute('aria-invalid')).toBe('true');
+    await click(button(root, 'Sites to always take: good.test'));
+    await click(button(root, 'Save'));
+    await settle();
+    expect(saved[0]?.rules.alwaysSites).toEqual([]);
   });
 
   it('shows what it refuses, marks the field, and saves nothing', async () => {
@@ -105,13 +132,11 @@ describe('RulesForm', () => {
     const root = await mount(api);
     const size = field(root, 'Leave files smaller than this');
     await type(size, '');
-    await type(field(root, 'Sites to always take'), 'good.test\nnot valid!');
     await click(button(root, 'Save'));
     await settle();
     expect(saved).toEqual([]);
     expect(size.getAttribute('aria-invalid')).toBe('true');
     expect(root.textContent).toContain('Enter a whole number of bytes');
-    expect(root.textContent).toContain('not valid!');
     expect(root.querySelector('[role="status"]')?.textContent).toContain('Fix the marked fields');
   });
 
@@ -133,25 +158,26 @@ describe('RulesForm', () => {
     expect(root.querySelector('input[aria-label="Site"]')).toBeNull();
   });
 
-  it('saves only the rules, preferences and routes, never the targets', async () => {
+  it('saves only the rules, preferences, routes and files settings, never the targets', async () => {
     const { api, saved } = fakeApi();
     const root = await mount(api);
     await click(button(root, 'Save'));
     await settle();
-    expect(Object.keys(saved[0] ?? {}).sort()).toEqual(['preferences', 'routes', 'rules']);
+    expect(Object.keys(saved[0] ?? {}).sort()).toEqual(['files', 'preferences', 'routes', 'rules']);
   });
 
   it('says why a save failed, and keeps what was typed', async () => {
     const { api } = fakeApi({ save: () => Promise.reject(new Error('The daemon said no.')) });
     const root = await mount(api);
-    const sites = field(root, 'Sites to leave in the browser');
+    const sites = chips(root, 'Sites to leave in the browser');
     await type(sites, 'example.com');
+    await enter(sites);
     await click(button(root, 'Save'));
     await settle();
     expect(root.querySelector('[role="status"]')?.textContent).toContain(
       'Could not save: The daemon said no.',
     );
-    expect(sites.value).toBe('example.com');
+    expect(root.querySelector('.tag')?.textContent).toBe('example.com');
   });
 
   it('gives the settings as a file', async () => {

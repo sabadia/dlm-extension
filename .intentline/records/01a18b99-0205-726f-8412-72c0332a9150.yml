@@ -1,0 +1,26 @@
+schema_version: 1
+id: 01a18b99-0205-726f-8412-72c0332a9150
+status: draft
+created_at: '2026-10-30T06:57:02Z'
+updated_at: '2026-10-30T06:57:02Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: 'Files logic: candidates with titles and download attributes, validation by probing with redirects, title naming, sorting and filtering, capture with DLM''s browser and a site''s cookies'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: src/lib/files/probe.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

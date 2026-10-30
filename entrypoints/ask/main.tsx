@@ -1,4 +1,6 @@
 import { render } from 'preact';
+import '../../src/ui/theme.css';
+import './page.css';
 import { browser } from 'wxt/browser';
 import { sendMessage } from '../../src/lib/bus/bus';
 import type { AskChoice } from '../../src/lib/intercept/service';

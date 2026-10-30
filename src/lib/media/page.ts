@@ -1,15 +1,19 @@
-import { classifyNetwork, nameOf, type MediaKind } from './classify';
+import { DOWNLOAD_EXTENSIONS, looksLikeDownload } from '../files/kinds';
+import { classifyNetwork, extensionOf, nameOf, type MediaKind } from './classify';
 
 /** What the content script can see without deciding what is media. */
 export interface PageSnapshot {
   pageUrl: string;
+  /** The page title (`<title>`, else `og:title`, else the first `h1`): what files are named after by default. */
+  title: string;
   /** True when a media element fired `encrypted` or already has MediaKeys. */
   protectedMedia: boolean;
   /** True when a video is a blob URL or is fed by MediaSource. */
   blobOrMse: boolean;
   videos: { src?: string | undefined; sources: string[] }[];
   audios: { src?: string | undefined; sources: string[] }[];
-  links: { href: string; text: string }[];
+  /** `download` is set when the link has the `download` attribute: the page says it is a file. */
+  links: { href: string; text: string; download?: boolean }[];
   openGraph: string[];
   jsonLd: string[];
 }
@@ -25,7 +29,7 @@ export interface PageMedia {
 /** The media a page scan should offer. Blob and data addresses are left out: the daemon cannot fetch them. */
 export function mediaFromPage(snapshot: PageSnapshot): PageMedia[] {
   const found: PageMedia[] = [];
-  const push = (raw: string | undefined, fallbackKind: MediaKind) => {
+  const push = (raw: string | undefined, fallbackKind: MediaKind, forced = false) => {
     const url = absolute(raw, snapshot.pageUrl);
     if (!url) return;
     const classified = classifyNetwork({ url });
@@ -33,7 +37,7 @@ export function mediaFromPage(snapshot: PageSnapshot): PageMedia[] {
       found.push(toPage(classified));
       return;
     }
-    if (isFileLink(url)) found.push({ url, kind: fallbackKind, name: nameOf(url) });
+    if (forced || isFileLink(url)) found.push({ url, kind: fallbackKind, name: nameOf(url) });
   };
   for (const video of snapshot.videos ?? []) {
     push(video.src, 'video');
@@ -43,7 +47,8 @@ export function mediaFromPage(snapshot: PageSnapshot): PageMedia[] {
     push(audio.src, 'audio');
     for (const source of audio.sources) push(source, 'audio');
   }
-  for (const link of snapshot.links ?? []) push(link.href, 'file');
+  for (const link of snapshot.links ?? [])
+    push(link.href, 'file', link.download === true || looksLikeDownload(link.href, link.text));
   for (const url of snapshot.openGraph ?? []) push(url, 'video');
   for (const block of snapshot.jsonLd ?? []) {
     for (const url of jsonLdContentUrls(block)) push(url, 'video');
@@ -80,10 +85,9 @@ function absolute(raw: string | undefined, base: string): string | undefined {
   }
 }
 
-const FILE_EXT = /\.(mp4|webm|mkv|mp3|m4a|flac|m3u8|mpd|zip|pdf|7z)(\?|$)/i;
-
 function isFileLink(url: string): boolean {
-  return FILE_EXT.test(url);
+  const ext = extensionOf(url);
+  return ext !== undefined && DOWNLOAD_EXTENSIONS.has(ext);
 }
 
 /** `contentUrl` values of VideoObject / AudioObject blocks. Invalid JSON is ignored. */
@@ -148,11 +152,20 @@ export function parseSnapshot(value: unknown, pageUrl: string): PageSnapshot | u
     ? value.links.slice(0, MAX_ITEMS * 5).flatMap((link) => {
         if (!isRecord(link)) return [];
         const href = text(link.href, MAX_URL);
-        return href === undefined ? [] : [{ href, text: text(link.text, MAX_TEXT) ?? '' }];
+        return href === undefined
+          ? []
+          : [
+              {
+                href,
+                text: text(link.text, MAX_TEXT) ?? '',
+                ...(link.download === true ? { download: true } : {}),
+              },
+            ];
       })
     : [];
   return {
     pageUrl,
+    title: text(value.title, MAX_TEXT)?.replace(/\s+/g, ' ').trim() ?? '',
     protectedMedia: value.protectedMedia === true,
     blobOrMse: value.blobOrMse === true,
     videos: elements(value.videos),

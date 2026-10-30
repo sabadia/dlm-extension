@@ -5,7 +5,7 @@
  */
 
 /** The version of the stored shape. Raise it together with a migration in `migrate.ts`. */
-export const SETTINGS_VERSION = 4;
+export const SETTINGS_VERSION = 5;
 
 /** Downloads from one site go to this target instead of the default. */
 export interface DomainRoute {
@@ -69,6 +69,23 @@ export interface Preferences {
   refresh: boolean;
 }
 
+/** Where the files of the current tab are shown when the toolbar button is clicked. */
+export type Surface = 'panel' | 'popup';
+
+/** What the file list is named after: the page title (default) or the name the link or the server gives. */
+export type Naming = 'title' | 'url';
+
+export type FileSort = 'size-desc' | 'size-asc' | 'name' | 'type';
+
+/** The Files panel (docs/PLAN.md, E5b). */
+export interface FilesPrefs {
+  surface: Surface;
+  naming: Naming;
+  /** Resolve redirects and send the address of the real file. The daemon follows redirects either way. */
+  followRedirects: boolean;
+  sort: FileSort;
+}
+
 export interface Settings {
   version: typeof SETTINGS_VERSION;
   /** The target downloads go to when no site rule says otherwise. */
@@ -78,10 +95,11 @@ export interface Settings {
   routes: DomainRoute[];
   rules: Rules;
   preferences: Preferences;
+  files: FilesPrefs;
 }
 
 /** What the options page saves: the parts it edits. Targets and the active target are changed elsewhere. */
-export type SettingsPatch = Pick<Settings, 'rules' | 'preferences' | 'routes'>;
+export type SettingsPatch = Pick<Settings, 'rules' | 'preferences' | 'routes' | 'files'>;
 
 export const LOCAL_TARGET: LocalTarget = { id: 'local', kind: 'local' };
 
@@ -106,5 +124,6 @@ export function defaultSettings(): Settings {
       privateWindows: false,
     },
     preferences: { badge: true, notifications: true, mirrors: false, refresh: true },
+    files: { surface: 'panel', naming: 'title', followRedirects: true, sort: 'size-desc' },
   };
 }

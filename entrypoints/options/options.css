@@ -1,0 +1,175 @@
+.shell {
+  display: grid;
+  grid-template-columns: 15rem minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.side {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.side nav {
+  display: grid;
+  gap: 2px;
+}
+
+.side nav a {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.side nav a:hover,
+.side nav a:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.content {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  max-width: 46rem;
+  padding: var(--space-5) var(--space-4) var(--space-6);
+}
+
+.intro {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.card {
+  scroll-margin-top: var(--space-4);
+}
+
+.steps {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.step .mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.step.done .mark {
+  border-color: var(--success);
+  background: var(--success);
+  color: #fff;
+}
+
+.step.done {
+  color: var(--muted);
+}
+
+.step .help {
+  flex-basis: 100%;
+  margin-left: 2rem;
+}
+
+.inset {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+.pair-code {
+  font-size: 1.6em;
+  letter-spacing: 0.15em;
+  font-variant-numeric: tabular-nums;
+}
+
+.targets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.setting {
+  display: grid;
+  gap: var(--space-1);
+}
+
+fieldset.plain {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.route select {
+  width: auto;
+  max-width: 12rem;
+}
+
+.savebar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-md, var(--shadow-sm));
+}
+
+label.btn input {
+  position: absolute;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    position: static;
+    padding-bottom: 0;
+  }
+
+  .side nav {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}

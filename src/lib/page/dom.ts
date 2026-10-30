@@ -43,6 +43,18 @@ function mediaElements(doc: Document, selector: string): PageSnapshot['videos'] 
   });
 }
 
+/** The title of a page: its `<title>`, else `og:title`, else its first `h1`. */
+export function pageTitle(doc: Document): string {
+  const title = clean(doc.title, MAX_TEXT);
+  if (title) return title;
+  const og = clean(
+    doc.querySelector('meta[property="og:title"]')?.getAttribute('content'),
+    MAX_TEXT,
+  );
+  if (og) return og;
+  return clean(doc.querySelector('h1')?.textContent, MAX_TEXT);
+}
+
 /** The media a document shows, without deciding what is worth listing. */
 export function pageSnapshot(
   doc: Document,
@@ -52,6 +64,7 @@ export function pageSnapshot(
   const videos = [...doc.querySelectorAll('video')];
   return {
     pageUrl,
+    title: pageTitle(doc),
     protectedMedia: flags.protectedMedia || pageIsProtected(doc),
     blobOrMse: videos.some(
       (video) => video.currentSrc.startsWith('blob:') || video.srcObject !== null,
@@ -61,6 +74,7 @@ export function pageSnapshot(
     links: [...doc.querySelectorAll('a[href]')].slice(0, MAX_LINKS).map((anchor) => ({
       href: attr(anchor, 'href') ?? '',
       text: clean(anchor.textContent, MAX_TEXT),
+      ...(anchor.hasAttribute('download') ? { download: true } : {}),
     })),
     openGraph: [...doc.querySelectorAll('meta[property="og:video"], meta[property="og:video:url"]')]
       .slice(0, MAX_MEDIA)

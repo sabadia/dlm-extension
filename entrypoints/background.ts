@@ -45,6 +45,23 @@ async function fetchLimited(url: string, limit: number): Promise<Uint8Array> {
   return bytes;
 }
 
+/** The side panel API of Chrome, when this browser has it. */
+const chromeSidePanel = (
+  globalThis as unknown as {
+    chrome?: {
+      sidePanel?: {
+        setPanelBehavior(options: { openPanelOnActionClick: boolean }): Promise<void>;
+        open(options: { tabId: number }): Promise<void>;
+      };
+    };
+  }
+).chrome?.sidePanel;
+
+/** The sidebar API of Firefox, when this browser has it. */
+const firefoxSidebar = (
+  globalThis as unknown as { browser?: { sidebarAction?: { open(): Promise<void> } } }
+).browser?.sidebarAction;
+
 export default defineBackground(() => {
   // Listeners are registered here, synchronously, and nothing that matters is kept in memory
   // (docs/CONVENTIONS.md, "Extension rules").
@@ -103,6 +120,19 @@ export default defineBackground(() => {
             iconUrl: options.iconUrl ?? browser.runtime.getURL('/icon.png'),
           }),
       },
+      surface: {
+        setPopup: (popup) => browser.action.setPopup({ popup }),
+        // Chrome only: the side panel API. Firefox has `sidebarAction` instead.
+        ...(chromeSidePanel
+          ? {
+              openPanelOnActionClick: (on: boolean) =>
+                chromeSidePanel.setPanelBehavior({ openPanelOnActionClick: on }),
+              openSidePanel: (tabId: number) => chromeSidePanel.open({ tabId }),
+            }
+          : {}),
+        ...(firefoxSidebar ? { openSidebar: () => firefoxSidebar.open() } : {}),
+        openPopup: () => browser.action.openPopup(),
+      },
       open: async (url) => {
         await browser.tabs.create({ url });
       },
@@ -156,9 +186,9 @@ export default defineBackground(() => {
       media: {
         attach: (media) => attachMedia(browser as unknown as InterceptBrowser, media),
       },
+      action: { onClicked: browser.action.onClicked },
       tabs: { onRemoved: browser.tabs.onRemoved },
       notifications: { onClicked: browser.notifications.onClicked },
-      live: { onConnect: browser.runtime.onConnect },
       commands: {
         onCommand: browser.commands.onCommand,
         openOptions: () => {
