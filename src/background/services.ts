@@ -1,5 +1,6 @@
 import { ConnectionService, type ActionApi } from '../lib/connection/service';
 import { DlmClient } from '../lib/api/client';
+import { DownloadsService } from '../lib/downloads/service';
 import {
   InterceptService,
   type CookiesPort,
@@ -78,6 +79,8 @@ export interface Services {
   links?: LinksService;
   /** Per-tab media list (E4). */
   media?: MediaService;
+  /** The popup's live download list (E5). */
+  downloads: DownloadsService;
 }
 
 export function createServices(env: Environment): Services {
@@ -192,5 +195,6 @@ export function createServices(env: Environment): Services {
     ...(intercept ? { intercept } : {}),
     ...(links ? { links } : {}),
     media,
+    downloads: new DownloadsService({ secrets, connection, log }),
   };
 }

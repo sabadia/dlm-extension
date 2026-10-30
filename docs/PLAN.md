@@ -177,11 +177,11 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 ### E5 Popup, options and onboarding
 
-- [ ] E5.1 Live downloads in the popup — SSE while the popup is open, progress list, pause/resume, open in DLM, queue picker, turbo toggle.
-- [ ] E5.2 Options pages — Connection and targets, rules and per-site settings, interception defaults, private windows, notifications.
-- [ ] E5.3 Onboarding and permissions — Step-by-step: install the app, install the native host, pair, grant access (Firefox host permissions), test download. Needs app: sabadia/dlm-app#116 (F9.4)
-- [ ] E5.4 Shortcuts and settings import/export — Keyboard shortcuts via the commands API; export and import settings without secrets.
-- [ ] E5.5 i18n, accessibility and theming — Message catalogue (English first), keyboard-operable and labelled UI, light and dark, high contrast and text scaling.
+- [x] E5.1 Live downloads in the popup — SSE while the popup is open, progress list, pause/resume, open in DLM, queue picker, turbo toggle.
+- [x] E5.2 Options pages — Connection and targets, rules and per-site settings, interception defaults, private windows, notifications.
+- [x] E5.3 Onboarding and permissions — Step-by-step: install the app, install the native host, pair, grant access (Firefox host permissions), test download. Needs app: sabadia/dlm-app#116 (F9.4)
+- [x] E5.4 Shortcuts and settings import/export — Keyboard shortcuts via the commands API; export and import settings without secrets.
+- [x] E5.5 i18n, accessibility and theming — Message catalogue (English first), keyboard-operable and labelled UI, light and dark, high contrast and text scaling.
 
 ### E6 Refresh and advanced
 

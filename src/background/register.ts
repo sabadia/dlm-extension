@@ -1,4 +1,5 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
+import type { LiveSnapshot } from '../lib/downloads/service';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
 import type { LinksService } from '../lib/links/service';
 import type { MediaService } from '../lib/media/service';
@@ -44,6 +45,21 @@ export function registerBackground(
     void services.links.install();
   }
   if (services.media && lifecycle.media) lifecycle.media.attach(services.media);
+  lifecycle.live?.onConnect.addListener((port) => {
+    if (port.name !== 'downloads') return;
+    const controller = new AbortController();
+    port.onDisconnect.addListener(() => controller.abort());
+    void services.downloads.watch((snapshot) => port.postMessage(snapshot), controller.signal);
+  });
+  lifecycle.commands?.onCommand.addListener((command) => {
+    if (command === 'toggle-intercept') {
+      void services.settings.update((settings) => ({
+        ...settings,
+        rules: { ...settings.rules, intercept: !settings.rules.intercept },
+      }));
+    }
+    if (command === 'open-options') void lifecycle.commands?.openOptions();
+  });
 }
 
 /** The alarm that looks at the connection once a minute. */
@@ -73,6 +89,22 @@ export interface Lifecycle {
   media?: {
     attach(media: MediaService): void;
   };
+  /** The popup connects here while it is open so the event stream can stop when it closes. */
+  live?: {
+    onConnect: {
+      addListener(listener: (port: LivePort) => void): void;
+    };
+  };
+  commands?: {
+    onCommand: { addListener(listener: (command: string) => void): void };
+    openOptions(): void;
+  };
+}
+
+interface LivePort {
+  name: string;
+  postMessage(message: LiveSnapshot): void;
+  onDisconnect: { addListener(listener: () => void): void };
 }
 
 /** Addresses the hand-off watches. `blob:` and `data:` are not among them. */

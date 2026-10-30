@@ -1,0 +1,89 @@
+schema_version: 1
+id: 01a18a59-579e-7cd0-a01d-2c23caaf0617
+status: draft
+created_at: '2026-10-30T01:07:53Z'
+updated_at: '2026-10-30T01:07:53Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: grok
+goal: 'Implement E5 popup, options and onboarding: live downloads, rules, setup steps, shortcuts, and settings import and export.'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: docs/PLAN.md
+  start_line: null
+  end_line: null
+- path: entrypoints/background.ts
+  start_line: null
+  end_line: null
+- path: entrypoints/options/App.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/options/Onboarding.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/options/RulesForm.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/options/index.html
+  start_line: null
+  end_line: null
+- path: entrypoints/popup/App.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/popup/LiveList.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/popup/index.html
+  start_line: null
+  end_line: null
+- path: public/ui.css
+  start_line: null
+  end_line: null
+- path: spec/used-operations.json
+  start_line: null
+  end_line: null
+- path: src/background/handlers.ts
+  start_line: null
+  end_line: null
+- path: src/background/register.ts
+  start_line: null
+  end_line: null
+- path: src/background/services.ts
+  start_line: null
+  end_line: null
+- path: src/lib/api/client.ts
+  start_line: null
+  end_line: null
+- path: src/lib/bus/messages.ts
+  start_line: null
+  end_line: null
+- path: src/lib/downloads/live.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/downloads/live.ts
+  start_line: null
+  end_line: null
+- path: src/lib/downloads/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/downloads/setup.ts
+  start_line: null
+  end_line: null
+- path: src/lib/i18n/en.ts
+  start_line: null
+  end_line: null
+- path: wxt.config.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

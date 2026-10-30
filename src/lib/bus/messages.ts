@@ -2,7 +2,9 @@ import type { ConnectionState } from '../connection/state';
 import type { PairingView } from '../pairing/service';
 import type { AskChoice } from '../intercept/service';
 import type { PageSnapshot } from '../media/page';
+import type { LiveSnapshot } from '../downloads/service';
 import type { DownloadRequest, TabView } from '../media/service';
+import type { Settings } from '../settings/schema';
 import type { Variant } from '../media/playlist';
 import type { AddResult, RemoteTestResult, RemoteView } from '../remote/service';
 
@@ -60,6 +62,22 @@ export interface MessageMap {
     request: { urls: string[] };
     response: { url: string; name?: string; size?: number; duplicate?: string }[];
   };
+  /** The settings, without tokens. */
+  'settings.get': { request: undefined; response: Settings };
+  /** Replaces the settings with this value. It is parsed again, so a bad field falls back to the default. */
+  'settings.save': { request: Settings; response: Settings };
+  /** The settings as a file. It contains no token. */
+  'settings.export': { request: undefined; response: string };
+  /** Replaces the settings from an exported file. */
+  'settings.import': { request: { text: string }; response: Settings };
+  /** The downloads DLM is working on, the queues, and whether turbo is on. */
+  'downloads.list': { request: undefined; response: LiveSnapshot };
+  'downloads.pause': { request: { id: string }; response: null };
+  'downloads.resume': { request: { id: string }; response: null };
+  'downloads.move': { request: { id: string; queueId: string }; response: null };
+  'downloads.turbo': { request: { on: boolean }; response: boolean };
+  /** Sends one address as a test that the connection works. */
+  'downloads.test': { request: { url: string }; response: { ok: boolean; error?: string } };
 }
 
 export type MessageType = keyof MessageMap;
