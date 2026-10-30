@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
 import { sendMessage } from '../../src/lib/bus/bus';
 import { t } from '../../src/lib/i18n';
-import type { Settings } from '../../src/lib/settings/schema';
+import type { DomainRoute, Settings } from '../../src/lib/settings/schema';
 
 /** The interception rules and the badge and notification switches. */
 export function RulesForm() {
@@ -141,6 +141,36 @@ export function RulesForm() {
         </span>
       </label>
       <label>
+        <span>
+          <input
+            type="checkbox"
+            checked={settings.preferences.mirrors}
+            onChange={(event) =>
+              setSettings({
+                ...settings,
+                preferences: { ...settings.preferences, mirrors: event.currentTarget.checked },
+              })
+            }
+          />{' '}
+          {t('options.mirrors')}
+        </span>
+      </label>
+      <label>
+        {t('options.routes')}
+        <textarea
+          value={settings.routes.map((route) => `${route.site} ${route.targetId}`).join('\n')}
+          onInput={(event) =>
+            setSettings({ ...settings, routes: routeLines(event.currentTarget.value) })
+          }
+        />
+        <span>
+          {t('options.routesHint')}{' '}
+          {settings.targets
+            .map((target) => `${target.kind === 'local' ? 'DLM' : target.name} ${target.id}`)
+            .join(', ')}
+        </span>
+      </label>
+      <label>
         {t('options.connection')}
         <select
           value={settings.activeTargetId}
@@ -173,6 +203,16 @@ export function RulesForm() {
       <SettingsFile />
     </section>
   );
+}
+
+function routeLines(value: string): DomainRoute[] {
+  const routes: DomainRoute[] = [];
+  for (const line of value.split('\n')) {
+    const [site, targetId] = line.trim().split(/\s+/);
+    if (!site || !targetId) continue;
+    routes.push({ site, targetId });
+  }
+  return routes;
 }
 
 function lines(value: string): string[] {

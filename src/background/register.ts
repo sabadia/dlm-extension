@@ -1,8 +1,10 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
 import type { LiveSnapshot } from '../lib/downloads/service';
+import { postBodyFrom } from '../lib/intercept/post';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
 import type { LinksService } from '../lib/links/service';
 import type { MediaService } from '../lib/media/service';
+import { REFRESH_PERIOD_MINUTES } from '../lib/refresh/watch';
 import { createHandlers } from './handlers';
 import { createServices, type Environment } from './services';
 
@@ -33,6 +35,7 @@ export function registerBackground(
   });
   lifecycle.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === CHECK_ALARM) check('alarm');
+    if (alarm.name === REFRESH_ALARM) void services.refresh.scan();
   });
   // Alarms can be lost with the browser session: make sure ours exists whenever the background loads.
   ensureAlarm(lifecycle.alarms);
@@ -64,6 +67,9 @@ export function registerBackground(
 
 /** The alarm that looks at the connection once a minute. */
 export const CHECK_ALARM = 'connection-check';
+
+/** The alarm that looks for expired links. Half a minute: the worker does not stay awake for a stream. */
+export const REFRESH_ALARM = 'link-refresh';
 
 /** The parts of `browser.runtime` and `browser.alarms` the background lifecycle uses. */
 export interface Lifecycle {
@@ -116,6 +122,7 @@ export interface InterceptBrowser {
     onCreated: { addListener(listener: (item: RawDownload) => void): void };
   };
   webRequest: {
+    onBeforeRequest: WebListener;
     onBeforeSendHeaders: WebListener;
     onHeadersReceived: WebListener;
   };
@@ -159,6 +166,7 @@ export interface RawRequest {
   cookieStoreId?: string | undefined;
   requestHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
   responseHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
+  requestBody?: { raw?: { bytes?: ArrayBuffer }[] | undefined } | undefined;
 }
 
 /** The context-menu click, narrowed to the fields the links service reads. */
@@ -236,6 +244,13 @@ export function attachIntercept(
   browser.downloads.onCreated.addListener((item) => {
     void intercept.onCreated(toDownload(item));
   });
+  browser.webRequest.onBeforeRequest.addListener(
+    (details) => {
+      void intercept.onBeforeRequest(toRequest(details));
+    },
+    { urls: [...INTERCEPT_URLS] },
+    ['requestBody'],
+  );
   browser.webRequest.onBeforeSendHeaders.addListener(
     (details) => {
       void intercept.onBeforeSendHeaders(toRequest(details));
@@ -274,6 +289,7 @@ function toDownload(item: RawDownload) {
 }
 
 function toRequest(details: RawRequest): RequestEvent {
+  const postBody = postBodyFrom(details.requestBody?.raw);
   return {
     requestId: details.requestId,
     url: details.url,
@@ -287,11 +303,21 @@ function toRequest(details: RawRequest): RequestEvent {
     ...(details.cookieStoreId ? { cookieStoreId: details.cookieStoreId } : {}),
     ...(details.requestHeaders ? { requestHeaders: details.requestHeaders } : {}),
     ...(details.responseHeaders ? { responseHeaders: details.responseHeaders } : {}),
+    ...(postBody ? { postBody } : {}),
   };
 }
 
 function ensureAlarm(alarms: Lifecycle['alarms']): void {
-  void Promise.resolve(alarms.get(CHECK_ALARM)).then(async (existing) => {
-    if (!existing) await alarms.create(CHECK_ALARM, { periodInMinutes: 1 });
+  void ensureOne(alarms, CHECK_ALARM, 1);
+  void ensureOne(alarms, REFRESH_ALARM, REFRESH_PERIOD_MINUTES);
+}
+
+function ensureOne(
+  alarms: Lifecycle['alarms'],
+  name: string,
+  periodInMinutes: number,
+): Promise<void> {
+  return Promise.resolve(alarms.get(name)).then(async (existing) => {
+    if (!existing) await alarms.create(name, { periodInMinutes });
   });
 }

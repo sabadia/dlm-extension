@@ -125,6 +125,7 @@ export function withoutTarget(settings: Settings, id: string): Settings {
   return {
     ...settings,
     targets: settings.targets.filter((t) => t.id !== id),
+    routes: settings.routes.filter((route) => route.targetId !== id),
     activeTargetId: settings.activeTargetId === id ? LOCAL_TARGET.id : settings.activeTargetId,
   };
 }

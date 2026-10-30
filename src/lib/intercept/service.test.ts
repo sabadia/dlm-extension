@@ -292,6 +292,7 @@ describe('InterceptService hand-off', () => {
     expect(await harness.service.askView('ask-1')).toEqual({
       name: 'archive.zip',
       host: 'files.example.test',
+      purpose: 'ask',
     });
     await harness.service.choose('ask-1', 'always');
     expect(harness.settingsState.current.rules.alwaysSites).toEqual(['files.example.test']);

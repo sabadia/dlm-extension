@@ -185,11 +185,11 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 ### E6 Refresh and advanced
 
-- [ ] E6.1 Link refresh flow — Watch for `awaiting_link`, notify 'Link expired: open the page', open the stored page URL, capture the next matching download so the daemon refreshes the task. Needs backend: sabadia/dlm-server#142 (P14.6) Needs app: sabadia/dlm-app#115 (F9.3)
-- [ ] E6.2 Checksum detection on download pages — Find SHA-256/SHA-1/MD5 values next to a download link and send them as the expected checksum (user can review). Needs backend: sabadia/dlm-server#140 (P14.4)
-- [ ] E6.3 Mirrors — Detect and send mirror links from known download pages (opt-in). Needs backend: sabadia/dlm-server#140 (P14.4)
-- [ ] E6.4 Multi-server routing — Per-domain routing to different targets with a default target.
-- [ ] E6.5 POST downloads (stretch) — Replay small POST bodies through `source.method/body`; otherwise leave to the browser. Needs backend: sabadia/dlm-server#140 (P14.4)
+- [x] E6.1 Link refresh flow — Watch for `awaiting_link`, notify 'Link expired: open the page', open the stored page URL, capture the next matching download so the daemon refreshes the task. Needs backend: sabadia/dlm-server#142 (P14.6) Needs app: sabadia/dlm-app#115 (F9.3)
+- [x] E6.2 Checksum detection on download pages — Find SHA-256/SHA-1/MD5 values next to a download link and send them as the expected checksum (user can review). Needs backend: sabadia/dlm-server#140 (P14.4)
+- [x] E6.3 Mirrors — Detect and send mirror links from known download pages (opt-in). Needs backend: sabadia/dlm-server#140 (P14.4)
+- [x] E6.4 Multi-server routing — Per-domain routing to different targets with a default target.
+- [x] E6.5 POST downloads (stretch) — Replay small POST bodies through `source.method/body`; otherwise leave to the browser. Needs backend: sabadia/dlm-server#140 (P14.4)
 
 ### E7 Quality
 

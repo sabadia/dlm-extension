@@ -10,10 +10,12 @@ import {
 } from '../lib/intercept/service';
 import { LinksService, type MenuPort, type TaskPort } from '../lib/links/service';
 import { MediaService } from '../lib/media/service';
+import { RefreshService } from '../lib/refresh/service';
 import { RingLog } from '../lib/log/log';
 import { RemoteService } from '../lib/remote/service';
 import { NativeHost, type NativeRuntime } from '../lib/native/host';
 import { detectBrowser } from '../lib/pairing/browser';
+import { HintStore } from '../lib/page/store';
 import { PairingService } from '../lib/pairing/service';
 import { SecretStore, SettingsStore } from '../lib/settings/store';
 import type { KeyValueArea } from '../lib/storage/area';
@@ -46,6 +48,8 @@ export interface Environment {
   downloads?: DownloadsPort;
   cookies?: CookiesPort;
   notifications?: NotificationsPort;
+  /** Opens a page, for an expired link. */
+  open?: (url: string) => Promise<void>;
   windows?: WindowsPort;
   /** Address of the small ask window, including the pending id. */
   askUrl?: (id: string) => string;
@@ -81,6 +85,8 @@ export interface Services {
   media?: MediaService;
   /** The popup's live download list (E5). */
   downloads: DownloadsService;
+  /** Expired links the daemon is waiting for this browser to capture again (E6.1). */
+  refresh: RefreshService;
 }
 
 export function createServices(env: Environment): Services {
@@ -113,11 +119,26 @@ export function createServices(env: Environment): Services {
     log,
     changed: () => void connection.refresh(),
   });
+  const hints = new HintStore(env.session);
   const taskPort = (baseUrl: string, token: string): TaskPort => {
     const client = new DlmClient({ baseUrl, token, log });
     return {
       listQueues: () => client.listQueues(),
-      create: (body) => client.createTask(body),
+      create: (body) =>
+        client.createTask(
+          body.checksum || (body.mirrors && body.mirrors.length > 0)
+            ? {
+                source: {
+                  currentUrl: body.url,
+                  ...(body.mirrors && body.mirrors.length > 0 ? { mirrors: body.mirrors } : {}),
+                },
+                ...(body.checksum ? { settings: { checksum: body.checksum } } : {}),
+                ...(body.queueId ? { queueId: body.queueId } : {}),
+                ...(body.paused !== undefined ? { paused: body.paused } : {}),
+                ...(body.name ? { name: body.name } : {}),
+              }
+            : body,
+        ),
       createMany: async (items) => {
         const result = await client.createTasks({ items });
         return (result.results ?? []).map((item) => ({ ok: item.ok }));
@@ -127,6 +148,7 @@ export function createServices(env: Environment): Services {
   };
   const media = new MediaService({
     secrets,
+    settings,
     connection,
     session: env.session,
     log,
@@ -152,6 +174,7 @@ export function createServices(env: Environment): Services {
           settings,
           secrets,
           connection,
+          hints,
           session: env.session,
           log,
           menus: env.menus,
@@ -166,6 +189,7 @@ export function createServices(env: Environment): Services {
           settings,
           secrets,
           connection,
+          hints,
           session: env.session,
           log,
           extensionId: env.extensionId ?? '',
@@ -182,6 +206,16 @@ export function createServices(env: Environment): Services {
           ...(links ? { torrents: links } : {}),
         })
       : undefined;
+  const refresh = new RefreshService({
+    endpoints: () => connection.endpoints(),
+    settings,
+    notifications: env.notifications ?? { create: () => undefined },
+    open: env.open ?? (() => Promise.resolve()),
+    session: env.session,
+    log,
+    tasks: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
+    ...(env.iconUrl ? { iconUrl: env.iconUrl } : {}),
+  });
   return {
     log,
     settings,
@@ -192,6 +226,7 @@ export function createServices(env: Environment): Services {
     pairing,
     connection,
     remote,
+    refresh,
     ...(intercept ? { intercept } : {}),
     ...(links ? { links } : {}),
     media,

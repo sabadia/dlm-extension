@@ -1,4 +1,6 @@
 import type { ConnectionService } from '../connection/service';
+import { targetFor } from '../settings/routing';
+import type { SettingsStore } from '../settings/store';
 import { t } from '../i18n';
 import type { Logger } from '../log/log';
 import { redactUrl } from '../log/redact';
@@ -65,7 +67,10 @@ interface Tasks {
 
 export interface MediaDeps {
   secrets: Pick<SecretStore, 'get'>;
-  connection: Pick<ConnectionService, 'get' | 'repaint'>;
+  settings?: Pick<SettingsStore, 'get'>;
+  connection: Pick<ConnectionService, 'get' | 'repaint'> & {
+    endpoint?(targetId: string): Promise<{ baseUrl: string; token: string } | undefined>;
+  };
   session: KeyValueArea;
   log: Logger;
   tasks: (baseUrl: string, token: string) => Tasks;
@@ -152,7 +157,7 @@ export class MediaService {
 
   /** Sends one item, a chosen variant, or the page itself through yt-dlp or the daemon's browser. */
   async download(request: DownloadRequest): Promise<{ ok: boolean; error?: string }> {
-    const tasks = await this.client();
+    const tasks = await this.client(request.url);
     if (!tasks) return { ok: false, error: t('links.offline') };
     try {
       if (
@@ -186,10 +191,10 @@ export class MediaService {
   async probe(
     urls: readonly string[],
   ): Promise<{ url: string; name?: string; size?: number; duplicate?: string }[]> {
-    const tasks = await this.client();
-    if (!tasks) return [];
     const out: { url: string; name?: string; size?: number; duplicate?: string }[] = [];
     for (const url of urls.slice(0, 8)) {
+      const tasks = await this.client(url);
+      if (!tasks) continue;
       try {
         const result = await tasks.resolve(url);
         out.push({
@@ -227,7 +232,13 @@ export class MediaService {
     await this.deps.connection.repaint();
   }
 
-  private async client(): Promise<Tasks | undefined> {
+  private async client(url?: string): Promise<Tasks | undefined> {
+    if (url && this.deps.connection.endpoint && this.deps.settings) {
+      const settings = await this.deps.settings.get();
+      const endpoint = await this.deps.connection.endpoint(targetFor(settings, url));
+      if (!endpoint) return undefined;
+      return this.deps.tasks(endpoint.baseUrl, endpoint.token);
+    }
     const state = await this.deps.connection.get();
     if (state.kind !== 'connected') return undefined;
     const token = await this.deps.secrets.get(state.targetId);

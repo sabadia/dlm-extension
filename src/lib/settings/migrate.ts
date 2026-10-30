@@ -9,9 +9,13 @@ export type Migration = (old: Record<string, unknown>) => Record<string, unknown
  *
  * Version 2 adds the interception lists (`alwaysSites`, `fileTypes`, `mimeTypes`). They are filled in by parsing, so
  * the step keeps the stored fields as they are.
+ *
+ * Version 3 adds per-site routing (`routes`) and the mirror opt-in (`preferences.mirrors`). Parsing fills both in,
+ * so the step keeps the stored fields as they are.
  */
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: (old) => old,
+  2: (old) => old,
 };
 
 export class SettingsTooNewError extends Error {

@@ -15,8 +15,10 @@ export interface DownloadFacts {
   filename?: string;
   /** The response content type, parameters allowed (`text/plain; charset=utf-8`). */
   mime?: string;
-  /** HTTP method. Absent counts as GET. Only GET is handed over in v1. */
+  /** HTTP method. Absent counts as GET. GET is handed over. A POST is handed over only when its body is small enough to replay. */
   method?: string;
+  /** Base64 body of a small POST. Absent means the POST stays in the browser. */
+  postBody?: string;
   /** A private window. */
   incognito: boolean;
   altKey: boolean;
@@ -99,7 +101,7 @@ export function typeAllowed(rules: Rules, facts: DownloadFacts, url: string): bo
 
 /**
  * What to do with one download. The first matching rule wins, and the order is fixed: our own downloads, addresses
- * the daemon cannot fetch, anything but GET, the global switch, private windows, the bypass key, an excluded site,
+ * the daemon cannot fetch, a method that is not GET or a small POST, the global switch, private windows, the bypass key, an excluded site,
  * a site set to always, then size, type and ask-first.
  */
 export function decide(rules: Rules, facts: DownloadFacts): Decision {
@@ -108,7 +110,11 @@ export function decide(rules: Rules, facts: DownloadFacts): Decision {
   const host = downloadHost(finalUrl);
   if (!host) return { action: 'leave', reason: 'scheme' };
   const method = (facts.method ?? 'GET').toUpperCase();
-  if (method !== 'GET') return { action: 'leave', reason: 'method' };
+  if (method === 'POST') {
+    if (!facts.postBody) return { action: 'leave', reason: 'method' };
+  } else if (method !== 'GET') {
+    return { action: 'leave', reason: 'method' };
+  }
   if (!rules.intercept) return { action: 'leave', reason: 'off' };
   if (facts.incognito && !rules.privateWindows) return { action: 'leave', reason: 'private' };
   if (

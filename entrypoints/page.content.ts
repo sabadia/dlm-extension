@@ -3,6 +3,7 @@ import { sendMessage } from '../src/lib/bus/bus';
 import { isDirectScheme } from '../src/lib/links/classify';
 import type { PageLink } from '../src/lib/links/filter';
 import type { PageSnapshot } from '../src/lib/media/page';
+import { pageHints, type HintLink } from '../src/lib/page/hints';
 
 /**
  * Collects the links and media on the page for the preview, and sends magnet and eD2K clicks straight to DLM so the
@@ -29,6 +30,9 @@ export default defineContentScript({
         snapshot: snapshot(protectedMedia),
         visible: document.visibilityState === 'visible',
       }).catch(() => undefined);
+      void sendMessage(browser.runtime, 'page.hints', { hints: pageHints(hintLinks()) }).catch(
+        () => undefined,
+      );
     });
     document.addEventListener(
       'encrypted',
@@ -101,6 +105,23 @@ function snapshot(protectedMedia: boolean): PageSnapshot {
       (script) => script.textContent ?? '',
     ),
   };
+}
+
+function hintLinks(): HintLink[] {
+  const found: HintLink[] = [];
+  for (const anchor of document.querySelectorAll('a[href]')) {
+    let url: string;
+    try {
+      const parsed = new URL(anchor.getAttribute('href') ?? '', location.href);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue;
+      url = parsed.href;
+    } catch {
+      continue;
+    }
+    const nearby = (anchor.parentElement?.textContent ?? '').replace(/\s+/g, ' ').slice(0, 800);
+    found.push({ url, text: (anchor.textContent ?? '').replace(/\s+/g, ' ').trim(), nearby });
+  }
+  return found;
 }
 
 function collect(): PageLink[] {

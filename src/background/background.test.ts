@@ -153,7 +153,7 @@ describe('StoredValue', () => {
 
 describe('the background lifecycle', () => {
   it('checks at startup, install and on the alarm, and makes sure the alarm exists', async () => {
-    const { registerBackground, CHECK_ALARM } = await import('./register');
+    const { registerBackground, CHECK_ALARM, REFRESH_ALARM } = await import('./register');
     const listeners = {
       startup: [] as (() => void)[],
       installed: [] as (() => void)[],
@@ -186,7 +186,7 @@ describe('the background lifecycle', () => {
     expect(listeners.installed).toHaveLength(1);
     expect(listeners.alarm).toHaveLength(1);
     await new Promise((r) => setTimeout(r, 0));
-    expect(created).toEqual([CHECK_ALARM]);
+    expect(created).toEqual([CHECK_ALARM, REFRESH_ALARM]);
     listeners.alarm[0]?.({ name: 'something-else' }); // ignored
   });
 });

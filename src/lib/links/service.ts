@@ -1,6 +1,8 @@
 import type { CaptureCookie } from '../api/client';
 import { ApiError, NetworkError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
+import type { HintStore } from '../page/store';
+import { targetFor } from '../settings/routing';
 import { isTorrent } from './classify';
 import { chunk } from './filter';
 import { t } from '../i18n';
@@ -37,6 +39,8 @@ export interface TaskPort {
     queueId?: string;
     paused?: boolean;
     name?: string;
+    checksum?: { algorithm: string; expected: string };
+    mirrors?: string[];
   }): Promise<unknown>;
   createMany(
     items: { url: string; queueId?: string; paused?: boolean }[],
@@ -50,7 +54,10 @@ export type FetchFile = (url: string) => Promise<Uint8Array>;
 export interface LinksDeps {
   settings: Pick<SettingsStore, 'get'>;
   secrets: Pick<SecretStore, 'get'>;
-  connection: Pick<ConnectionService, 'get'>;
+  connection: Pick<ConnectionService, 'get'> & {
+    endpoint?(targetId: string): Promise<{ baseUrl: string; token: string } | undefined>;
+  };
+  hints?: Pick<HintStore, 'find'>;
   session: KeyValueArea;
   log: Logger;
   menus: MenuPort;
@@ -116,6 +123,7 @@ export class LinksService {
    * batches.
    */
   async sendMany(urls: readonly string[]): Promise<{ ok: number; failed: number }> {
+    if (this.deps.connection.endpoint) return this.sendRouted(urls);
     const tasks = await this.client();
     if (!tasks) return { ok: 0, failed: urls.length };
     const paused = await this.paused.get();
@@ -140,12 +148,45 @@ export class LinksService {
    * A `.torrent` download. With cookies, the bytes are uploaded (the daemon could not send those cookies for a bare
    * URL). Without cookies, the URL is enough.
    */
+  private async sendRouted(urls: readonly string[]): Promise<{ ok: number; failed: number }> {
+    const settings = await this.deps.settings.get();
+    const groups = new Map<string, string[]>();
+    for (const url of urls) {
+      const targetId = targetFor(settings, url);
+      groups.set(targetId, [...(groups.get(targetId) ?? []), url]);
+    }
+    const paused = await this.paused.get();
+    let ok = 0;
+    let failed = 0;
+    for (const [targetId, group] of groups) {
+      const endpoint = await this.deps.connection.endpoint?.(targetId);
+      if (!endpoint) {
+        failed += group.length;
+        continue;
+      }
+      const tasks = this.deps.tasks(endpoint.baseUrl, endpoint.token);
+      for (const batch of chunk(group)) {
+        try {
+          const results = await tasks.createMany(batch.map((url) => ({ url, paused })));
+          for (const result of results) {
+            if (result.ok) ok += 1;
+            else failed += 1;
+          }
+        } catch (error) {
+          this.deps.log.warn('links', 'batch failed', { error });
+          failed += batch.length;
+        }
+      }
+    }
+    return { ok, failed };
+  }
+
   async addTorrent(facts: {
     url: string;
     filename?: string;
     cookies?: CaptureCookie[];
   }): Promise<'taken' | 'failed'> {
-    const tasks = await this.client();
+    const tasks = await this.client(facts.url);
     if (!tasks) return 'failed';
     const paused = await this.paused.get();
     try {
@@ -171,12 +212,28 @@ export class LinksService {
   }
 
   private async add(url: string, options: { queueId?: string; paused: boolean }): Promise<void> {
-    const tasks = await this.client();
+    const tasks = await this.client(url);
     if (!tasks) throw new Error(t('links.offline'));
+    let queueId = options.queueId;
+    let checksum: { algorithm: string; expected: string } | undefined;
+    let mirrors: string[] | undefined;
+    if (this.deps.connection.endpoint || this.deps.hints) {
+      const settings = await this.deps.settings.get();
+      if (this.deps.connection.endpoint && targetFor(settings, url) !== settings.activeTargetId) {
+        queueId = undefined;
+      }
+      const hint = await this.deps.hints?.find([url]);
+      if (hint?.checksum) checksum = hint.checksum;
+      if (settings.preferences.mirrors && hint?.mirrors && hint.mirrors.length > 0) {
+        mirrors = hint.mirrors;
+      }
+    }
     await tasks.create({
       url,
       paused: options.paused,
-      ...(options.queueId ? { queueId: options.queueId } : {}),
+      ...(queueId ? { queueId } : {}),
+      ...(checksum ? { checksum } : {}),
+      ...(mirrors ? { mirrors } : {}),
     });
     this.deps.log.info('links', 'sent a link', { url: redactUrl(url) });
   }
@@ -192,7 +249,13 @@ export class LinksService {
     }
   }
 
-  private async client(): Promise<TaskPort | undefined> {
+  private async client(url?: string): Promise<TaskPort | undefined> {
+    if (url && this.deps.connection.endpoint) {
+      const settings = await this.deps.settings.get();
+      const endpoint = await this.deps.connection.endpoint(targetFor(settings, url));
+      if (!endpoint) return undefined;
+      return this.deps.tasks(endpoint.baseUrl, endpoint.token);
+    }
     const state = await this.deps.connection.get();
     if (state.kind !== 'connected') return undefined;
     const token = await this.deps.secrets.get(state.targetId);
