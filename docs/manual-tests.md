@@ -8,6 +8,10 @@ from `pnpm build` (or `pnpm build:firefox`) loaded unpacked (Chrome: `chrome://e
 
 Mark each box with the date and who ran it. A failure is an issue before it is anything else.
 
+To test a release instead of a build, point the end-to-end tests at its assets: unzip `dlm-extension-<version>-chrome.zip`
+and run `E2E_CHROME_DIR=<folder> E2E_FIREFOX_ADDON=<file>.xpi pnpm exec playwright test` (the signed `.xpi` is then
+installed with Firefox's signature check). v0.1.0 passed all 17 tests this way.
+
 ## Matrix
 
 |         | macOS | Windows | Linux |
