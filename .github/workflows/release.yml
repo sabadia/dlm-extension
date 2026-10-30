@@ -58,10 +58,26 @@ jobs:
           pnpm zip
           pnpm zip:firefox
           pnpm make:sbom
+      - name: Sign the Firefox add-on (unlisted, through AMO)
+        # Needs the repository secrets AMO_JWT_ISSUER and AMO_JWT_SECRET (an API key from addons.mozilla.org). A tag
+        # without them fails: a release without the signed add-on would be one Firefox cannot install.
+        if: steps.v.outputs.publish == 'true'
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then
+            echo "::error::the AMO_JWT_ISSUER and AMO_JWT_SECRET secrets are not set; the Firefox add-on cannot be signed"
+            exit 1
+          fi
+          pnpm exec web-ext sign --source-dir .output/firefox-mv3 --channel unlisted \
+            --artifacts-dir signed --api-key "$AMO_JWT_ISSUER" --api-secret "$AMO_JWT_SECRET"
+          ls -l signed
       - name: Checksums
         run: |
           mkdir -p release
           cp .output/*.zip release/
+          if [ -d signed ]; then cp signed/*.xpi "release/dlm-extension-${{ steps.v.outputs.version }}-firefox.xpi"; fi
           cp dist/sbom.cdx.json "release/dlm-extension-${{ steps.v.outputs.version }}-sbom.cdx.json"
           cd release
           sha256sum * > SHA256SUMS
@@ -90,6 +106,7 @@ jobs:
         with:
           subject-path: |
             release/*.zip
+            release/*.xpi
       - name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

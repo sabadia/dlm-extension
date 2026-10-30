@@ -1,0 +1,26 @@
+schema_version: 1
+id: 01a18be6-5bdb-76b2-bbd3-2ab888bd52d5
+status: draft
+created_at: '2026-10-30T08:21:32Z'
+updated_at: '2026-10-30T08:21:32Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: 'E8.1 groundwork: sign the Firefox add-on through AMO in the release workflow (fails a tag without the keys), install guide'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: .github/workflows/release.yml
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null
