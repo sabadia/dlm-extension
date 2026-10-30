@@ -24,6 +24,12 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
     },
   },
+  {
+    // Playwright's own idioms: fixtures are destructured with `{}` when they use nothing, and `test.setTimeout` is
+    // called as a method.
+    files: ['e2e/**/*.ts'],
+    rules: { 'no-empty-pattern': 'off', '@typescript-eslint/unbound-method': 'off' },
+  },
   { files: ['**/*.{js,mjs}', '*.config.ts'], ...tseslint.configs.disableTypeChecked },
   {
     // Node scripts: plain JavaScript, not part of the extension.
