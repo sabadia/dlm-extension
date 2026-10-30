@@ -1,7 +1,16 @@
-import type { Handlers } from '../lib/bus/bus';
+import type { Handlers, SenderLike } from '../lib/bus/bus';
 import { buildDiagnostics } from '../lib/log/diagnostics';
 import { describeState } from '../lib/connection/service';
+import type { AskChoice } from '../lib/intercept/service';
 import type { Services } from './services';
+
+function tabIdOf(sender: SenderLike): number | undefined {
+  const tab = sender.tab;
+  if (typeof tab !== 'object' || tab === null || !('id' in tab)) return undefined;
+  return typeof tab.id === 'number' ? tab.id : undefined;
+}
+
+const ASK_CHOICES: readonly AskChoice[] = ['dlm', 'browser', 'always'];
 
 /** The answers the background gives to its pages (docs: `src/lib/bus/messages.ts` lists the messages). */
 export function createHandlers(services: Services): Handlers {
@@ -59,6 +68,31 @@ export function createHandlers(services: Services): Handlers {
     'log.clear': {
       handle: async () => {
         await services.log.clear();
+        return null;
+      },
+    },
+    'gesture.note': {
+      fromContent: true,
+      handle: (input, sender) => {
+        const tabId = tabIdOf(sender);
+        if (
+          tabId === undefined ||
+          typeof input.alt !== 'boolean' ||
+          typeof input.shift !== 'boolean'
+        )
+          return null;
+        return (
+          services.intercept?.noteGesture(tabId, input.alt, input.shift).then(() => null) ?? null
+        );
+      },
+    },
+    'ask.get': {
+      handle: ({ id }) => services.intercept?.askView(id) ?? Promise.resolve(null),
+    },
+    'ask.choose': {
+      handle: async ({ id, choice }) => {
+        if (!ASK_CHOICES.includes(choice)) return null;
+        await services.intercept?.choose(id, choice);
         return null;
       },
     },

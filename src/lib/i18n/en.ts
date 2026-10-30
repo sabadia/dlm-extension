@@ -72,6 +72,17 @@ export const en = {
   'pairing.denied': 'DLM refused this browser. Choose Connect to try again.',
   'pairing.expired': 'The request ran out of time. Choose Connect to try again.',
   'pairing.error': 'Could not connect: {message}',
+  'intercept.notify.title': 'DLM',
+  'intercept.sent': 'Sent "{name}" to DLM.',
+  'intercept.duplicate': '"{name}" is already in DLM.',
+  'intercept.failed': 'DLM could not take "{name}", so the browser is downloading it. {reason}',
+  'intercept.reason.offline': 'DLM is not connected.',
+  'intercept.reason.rejected': 'DLM did not accept it.',
+  'intercept.ask.prompt': 'Download "{name}" from {host} with DLM?',
+  'intercept.ask.dlm': 'Download with DLM',
+  'intercept.ask.browser': 'With the browser',
+  'intercept.ask.always': 'Always for this site',
+  'intercept.ask.gone': 'This download was already handled.',
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { memoryArea } from '../storage/area';
 import { migrateSettings, SettingsTooNewError, type Migration } from './migrate';
-import { normalizeSite, parseSettings } from './parse';
+import { normalizeFileType, normalizeMimeType, normalizeSite, parseSettings } from './parse';
 import { defaultSettings } from './schema';
 import {
   SecretStore,
@@ -62,6 +62,9 @@ describe('parseSettings', () => {
       rules: {
         minSizeBytes: -5,
         excludedSites: ['https://Example.test/a', '*.cdn.test', 'example.test', 3, '!!'],
+        alwaysSites: ['*.Keep.test', 'nope!'],
+        fileTypes: ['.ZIP', '*.pdf', 'a/b', ''],
+        mimeTypes: ['Video/MP4; charset=binary', 'audio/', 'not a type'],
         bypassKey: 'ctrl',
         privateWindows: true,
       },
@@ -76,6 +79,9 @@ describe('parseSettings', () => {
       intercept: true,
       minSizeBytes: 1_000_000,
       excludedSites: ['example.test', 'cdn.test'],
+      alwaysSites: ['keep.test'],
+      fileTypes: ['zip', 'pdf'],
+      mimeTypes: ['video/mp4', 'audio/'],
       bypassKey: 'alt',
       askFirst: false,
       privateWindows: true,
@@ -83,9 +89,27 @@ describe('parseSettings', () => {
     expect(s.preferences).toEqual({ badge: true, notifications: false });
   });
 
-  it('normalises sites', () => {
+  it('normalises sites, file types and MIME types', () => {
     expect(normalizeSite('HTTPS://www.Example.test:8080/x?y')).toBe('www.example.test');
     expect(normalizeSite('')).toBeUndefined();
+    expect(normalizeFileType(' *.Tar.Gz ')).toBeUndefined();
+    expect(normalizeFileType('.ZIP')).toBe('zip');
+    expect(normalizeMimeType(' Text/Plain ; charset=utf-8 ')).toBe('text/plain');
+    expect(normalizeMimeType('Video/')).toBe('video/');
+  });
+
+  it('reads a version 1 file as the current rules, with the new lists empty', () => {
+    const stored = migrateSettings({
+      version: 1,
+      rules: { askFirst: true, excludedSites: ['example.test'] },
+    });
+    const settings = parseSettings(stored);
+    expect(settings.version).toBe(2);
+    expect(settings.rules.askFirst).toBe(true);
+    expect(settings.rules.excludedSites).toEqual(['example.test']);
+    expect(settings.rules.alwaysSites).toEqual([]);
+    expect(settings.rules.fileTypes).toEqual([]);
+    expect(settings.rules.mimeTypes).toEqual([]);
   });
 });
 

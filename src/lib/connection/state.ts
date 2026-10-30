@@ -64,11 +64,16 @@ const RED = '#c62828';
 const AMBER = '#b26a00';
 const BLUE = '#1565c0';
 
-/** The toolbar badge of a state. Healthy and quiet states show none (the download count comes in E5). */
-export function badgeFor(state: ConnectionState, enabled: boolean): Badge {
+/**
+ * The toolbar badge of a state. A healthy connection shows how many downloads this session were handed to DLM
+ * (`handoffs`, from E2); the live list replaces that number in E5. Quiet while none have been.
+ */
+export function badgeFor(state: ConnectionState, enabled: boolean, handoffs = 0): Badge {
   if (!enabled) return { text: '', color: BLUE };
   switch (state.kind) {
     case 'connected':
+      if (handoffs > 0) return { text: handoffs > 99 ? '99+' : String(handoffs), color: BLUE };
+      return { text: '', color: BLUE };
     case 'checking':
       return { text: '', color: BLUE };
     case 'access-needed':

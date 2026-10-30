@@ -1,4 +1,5 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
+import type { InterceptService, RequestEvent } from '../lib/intercept/service';
 import { createHandlers } from './handlers';
 import { createServices, type Environment } from './services';
 
@@ -32,6 +33,10 @@ export function registerBackground(
   });
   // Alarms can be lost with the browser session: make sure ours exists whenever the background loads.
   ensureAlarm(lifecycle.alarms);
+  if (services.intercept && lifecycle.intercept) {
+    lifecycle.intercept.attach(services.intercept);
+    void services.intercept.sweep();
+  }
 }
 
 /** The alarm that looks at the connection once a minute. */
@@ -45,6 +50,130 @@ export interface Lifecycle {
     get(name: string): Promise<unknown>;
     create(name: string, info: { periodInMinutes: number }): Promise<void> | void;
     onAlarm: { addListener(listener: (alarm: { name: string }) => void): void };
+  };
+  /**
+   * Registers the download and webRequest listeners. Called synchronously, so an event that woke the worker is not
+   * lost. Absent in tests that do not exercise interception.
+   */
+  intercept?: {
+    attach(intercept: InterceptService): void;
+  };
+}
+
+/** Addresses the hand-off watches. `blob:` and `data:` are not among them. */
+export const INTERCEPT_URLS = ['http://*/*', 'https://*/*', 'ftp://*/*'] as const;
+
+/** The listener shape `browser.webRequest` and `browser.downloads` share, narrowed to what E2 registers. */
+export interface InterceptBrowser {
+  downloads: {
+    onCreated: { addListener(listener: (item: RawDownload) => void): void };
+  };
+  webRequest: {
+    onBeforeSendHeaders: WebListener;
+    onHeadersReceived: WebListener;
+  };
+  windows: {
+    onRemoved: { addListener(listener: (windowId: number) => void): void };
+  };
+}
+
+interface WebListener {
+  addListener(
+    listener: (details: RawRequest) => void | Promise<{ cancel?: boolean } | void>,
+    filter: { urls: string[] },
+    extra: readonly string[],
+  ): void;
+}
+
+/** The download item fields the hand-off reads. Both browsers provide these; Firefox leaves two of them empty. */
+export interface RawDownload {
+  id: number;
+  url: string;
+  finalUrl?: string | undefined;
+  referrer?: string | undefined;
+  filename?: string | undefined;
+  mime?: string | undefined;
+  fileSize?: number | undefined;
+  totalBytes?: number | undefined;
+  incognito?: boolean | undefined;
+  byExtensionId?: string | undefined;
+}
+
+/** The webRequest fields the hand-off reads. */
+export interface RawRequest {
+  requestId: string;
+  url: string;
+  method: string;
+  tabId: number;
+  documentUrl?: string | undefined;
+  initiator?: string | undefined;
+  originUrl?: string | undefined;
+  incognito?: boolean | undefined;
+  cookieStoreId?: string | undefined;
+  requestHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
+  responseHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
+}
+
+/** Registers the hand-off listeners. Firefox also asks to cancel attachments before they become downloads. */
+export function attachIntercept(
+  browser: InterceptBrowser,
+  intercept: InterceptService,
+  firefox: boolean,
+): void {
+  browser.downloads.onCreated.addListener((item) => {
+    void intercept.onCreated(toDownload(item));
+  });
+  browser.webRequest.onBeforeSendHeaders.addListener(
+    (details) => {
+      void intercept.onBeforeSendHeaders(toRequest(details));
+    },
+    { urls: [...INTERCEPT_URLS] },
+    ['requestHeaders'],
+  );
+  browser.webRequest.onHeadersReceived.addListener(
+    (details) => intercept.onHeadersReceived(toRequest(details)),
+    { urls: [...INTERCEPT_URLS] },
+    firefox ? ['blocking', 'responseHeaders'] : ['responseHeaders'],
+  );
+  browser.windows.onRemoved.addListener((windowId) => {
+    void intercept.onWindowRemoved(windowId);
+  });
+}
+
+function toDownload(item: RawDownload) {
+  const size =
+    item.fileSize !== undefined && item.fileSize >= 0
+      ? item.fileSize
+      : item.totalBytes !== undefined && item.totalBytes >= 0
+        ? item.totalBytes
+        : undefined;
+  return {
+    id: item.id,
+    url: item.url,
+    incognito: item.incognito === true,
+    ...(item.finalUrl ? { finalUrl: item.finalUrl } : {}),
+    ...(item.referrer ? { referrer: item.referrer } : {}),
+    ...(item.filename ? { filename: item.filename } : {}),
+    ...(item.mime ? { mime: item.mime } : {}),
+    ...(size !== undefined ? { sizeBytes: size } : {}),
+    ...(item.byExtensionId ? { byExtensionId: item.byExtensionId } : {}),
+  };
+}
+
+function toRequest(details: RawRequest): RequestEvent {
+  return {
+    requestId: details.requestId,
+    url: details.url,
+    method: details.method,
+    tabId: details.tabId,
+    ...(details.documentUrl ? { documentUrl: details.documentUrl } : {}),
+    ...(details.initiator || details.originUrl
+      ? { initiator: details.initiator ?? details.originUrl }
+      : {}),
+    ...(details.incognito !== undefined ? { incognito: details.incognito } : {}),
+    ...(details.cookieStoreId ? { cookieStoreId: details.cookieStoreId } : {}),
+    ...(details.requestHeaders ? { requestHeaders: details.requestHeaders } : {}),
+    ...(details.responseHeaders ? { responseHeaders: details.responseHeaders } : {}),
   };
 }
 

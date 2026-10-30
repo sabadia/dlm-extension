@@ -5,7 +5,7 @@
  */
 
 /** The version of the stored shape. Raise it together with a migration in `migrate.ts`. */
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 
 /** The DLM on this computer, found through the native host. There is exactly one. */
 export interface LocalTarget {
@@ -30,10 +30,19 @@ export type BypassKey = 'alt' | 'shift' | 'none';
 export interface Rules {
   /** Take over browser downloads at all. */
   intercept: boolean;
-  /** Files smaller than this stay in the browser. */
+  /** Files smaller than this stay in the browser. An unknown size is not smaller. */
   minSizeBytes: number;
   /** Sites (host names, with their subdomains) that are never taken over. */
   excludedSites: string[];
+  /**
+   * Sites (host names, with their subdomains) that are always taken over: the size and type lists do not apply, and
+   * the extension does not ask first. A site that is also excluded stays excluded.
+   */
+  alwaysSites: string[];
+  /** Extensions without a leading dot. Empty means every extension. */
+  fileTypes: string[];
+  /** MIME types, or a type and a slash (`video/`) for the whole group. Empty means every type. */
+  mimeTypes: string[];
   /** Holding this key while starting a download keeps it in the browser. */
   bypassKey: BypassKey;
   /** Ask before sending, instead of sending at once. */
@@ -72,6 +81,9 @@ export function defaultSettings(): Settings {
       intercept: true,
       minSizeBytes: DEFAULT_MIN_SIZE_BYTES,
       excludedSites: [],
+      alwaysSites: [],
+      fileTypes: [],
+      mimeTypes: [],
       bypassKey: 'alt',
       askFirst: false,
       privateWindows: false,

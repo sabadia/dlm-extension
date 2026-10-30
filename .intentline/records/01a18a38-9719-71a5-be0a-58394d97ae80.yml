@@ -1,0 +1,119 @@
+schema_version: 1
+id: 01a18a38-9719-71a5-be0a-58394d97ae80
+status: draft
+created_at: '2026-10-30T00:32:06Z'
+updated_at: '2026-10-30T00:32:06Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: grok
+goal: 'Implement E2 interception so the browser hands downloads to DLM: rules, Chrome and Firefox hand-off, request metadata and cookies, capture with browser fallback, and ask-first.'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: docs/PLAN.md
+  start_line: null
+  end_line: null
+- path: docs/browser-differences.md
+  start_line: null
+  end_line: null
+- path: entrypoints/ask/App.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/ask/index.html
+  start_line: null
+  end_line: null
+- path: entrypoints/ask/main.tsx
+  start_line: null
+  end_line: null
+- path: entrypoints/background.ts
+  start_line: null
+  end_line: null
+- path: entrypoints/gesture.content.ts
+  start_line: null
+  end_line: null
+- path: public/icon-16.png
+  start_line: null
+  end_line: null
+- path: public/icon.png
+  start_line: null
+  end_line: null
+- path: src/background/handlers.ts
+  start_line: null
+  end_line: null
+- path: src/background/register.test.ts
+  start_line: null
+  end_line: null
+- path: src/background/register.ts
+  start_line: null
+  end_line: null
+- path: src/background/services.ts
+  start_line: null
+  end_line: null
+- path: src/lib/api/client.ts
+  start_line: null
+  end_line: null
+- path: src/lib/bus/messages.ts
+  start_line: null
+  end_line: null
+- path: src/lib/connection/connection.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/connection/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/connection/state.ts
+  start_line: null
+  end_line: null
+- path: src/lib/i18n/en.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/count.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/metadata.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/metadata.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/observations.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/rules.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/rules.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/service.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/intercept/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/migrate.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/parse.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/schema.ts
+  start_line: null
+  end_line: null
+- path: src/lib/settings/settings.test.ts
+  start_line: null
+  end_line: null
+- path: wxt.config.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

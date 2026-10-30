@@ -11,6 +11,7 @@ export type WhoAmI = Schemas['WhoAmI'];
 export type Task = Schemas['Task'];
 export type TaskList = Schemas['TaskList'];
 export type CaptureBody = Schemas['CaptureBody'];
+export type CaptureCookie = Schemas['CaptureCookie'];
 export type CaptureOutput = Schemas['CaptureOutput'];
 export type ResolveResult = Schemas['ResolveResult'];
 export type ResolveTaskBody = Schemas['ResolveTaskBody'];

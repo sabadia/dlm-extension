@@ -1,5 +1,6 @@
 import type { ConnectionState } from '../connection/state';
 import type { PairingView } from '../pairing/service';
+import type { AskChoice } from '../intercept/service';
 import type { AddResult, RemoteTestResult, RemoteView } from '../remote/service';
 
 /**
@@ -33,6 +34,12 @@ export interface MessageMap {
   /** Checks for the answer (call every couple of seconds while a pairing is pending). */
   'pairing.poll': { request: undefined; response: PairingView };
   'pairing.cancel': { request: undefined; response: PairingView };
+  /** A content script reporting the modifier keys of a click or key press in its tab. */
+  'gesture.note': { request: { alt: boolean; shift: boolean }; response: null };
+  /** The name and site of a download the ask page is showing. Null when the prompt is gone. */
+  'ask.get': { request: { id: string }; response: { name: string; host: string } | null };
+  /** The person's choice on the ask page. */
+  'ask.choose': { request: { id: string; choice: AskChoice }; response: null };
 }
 
 export type MessageType = keyof MessageMap;

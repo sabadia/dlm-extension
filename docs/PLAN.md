@@ -112,8 +112,11 @@ Made by the author of the plan:
 `activeTab`, `scripting`, and host access to all sites (needed to see downloads, headers and cookies on any site).
 In E1 the manifest declares `storage`, `nativeMessaging` (find and pair with the local DLM), `alarms` (the once-a-minute
 connection check) and host access to the loopback addresses of the daemon (`http://127.0.0.1/*`, `http://localhost/*`);
-remote servers are optional host permissions, asked for one server at a time when the person adds it (E1.7). The
-remaining permissions arrive with the features that need them.
+remote servers are optional host permissions, asked for one server at a time when the person adds it (E1.7). E2 adds
+`downloads`, `webRequest`, `cookies` and `notifications`, and host access to `http://*/*`, `https://*/*` and
+`ftp://*/*`, so a download's headers and cookies can be read on any site. Firefox also declares `webRequestBlocking`
+so an attachment can be cancelled before a download entry appears. The remaining permissions arrive with the features
+that need them.
 No remote code, no analytics, no data leaves the computer except to the user's own DLM server.
 
 ## Order of work
@@ -149,12 +152,12 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 
 ### E2 Interception
 
-- [ ] E2.1 Rules engine — Per-site allow/deny, minimum size, file types and mime lists, modifier-key bypass (Alt), private-window rule, global on/off; pure functions with table tests.
-- [ ] E2.2 Chrome hand-off (onCreated, cancel, erase, capture) — Intercept browser downloads, cancel and erase them, hand off to DLM; guard against re-intercepting our own fallback download. Needs the result of: E0.7
-- [ ] E2.3 Firefox hand-off details — The common path (E2.2) works on Firefox. Handle what differs: the item has no `finalUrl` or `referrer` (take the page from the `webRequest` data), an optional blocking `webRequest` cancel to avoid the download entry, and exempt our own fallback downloads. Needs the result of: E0.7
-- [ ] E2.4 Request metadata and cookies — Cache request headers per request, read cookies for the download's own domain only (Chrome partition key, Firefox container store), user agent, referrer, page URL; nothing from private windows unless allowed. Needs backend: sabadia/dlm-server#140 (P14.4)
-- [ ] E2.5 Capture, fallback to the browser and feedback — Send `POST /v1/capture`; if DLM is unreachable or rejects, restart the download in the browser and say why; handle duplicates (409); badge and notification feedback. Needs backend: sabadia/dlm-server#140 (P14.4)
-- [ ] E2.6 Optional 'ask first' mode — Small prompt 'Download with DLM / with the browser / always for this site'; remembered choices.
+- [x] E2.1 Rules engine — Per-site allow/deny, minimum size, file types and mime lists, modifier-key bypass (Alt), private-window rule, global on/off; pure functions with table tests.
+- [x] E2.2 Chrome hand-off (onCreated, cancel, erase, capture) — Intercept browser downloads, cancel and erase them, hand off to DLM; guard against re-intercepting our own fallback download. Needs the result of: E0.7
+- [x] E2.3 Firefox hand-off details — The common path (E2.2) works on Firefox. Handle what differs: the item has no `finalUrl` or `referrer` (take the page from the `webRequest` data), an optional blocking `webRequest` cancel to avoid the download entry, and exempt our own fallback downloads. Needs the result of: E0.7
+- [x] E2.4 Request metadata and cookies — Cache request headers per request, read cookies for the download's own domain only (Chrome partition key, Firefox container store), user agent, referrer, page URL; nothing from private windows unless allowed. Needs backend: sabadia/dlm-server#140 (P14.4)
+- [x] E2.5 Capture, fallback to the browser and feedback — Send `POST /v1/capture`; if DLM is unreachable or rejects, restart the download in the browser and say why; handle duplicates (409); badge and notification feedback. Needs backend: sabadia/dlm-server#140 (P14.4)
+- [x] E2.6 Optional 'ask first' mode — Small prompt 'Download with DLM / with the browser / always for this site'; remembered choices.
 
 ### E3 Links and menus
 
