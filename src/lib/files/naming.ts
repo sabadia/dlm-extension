@@ -13,7 +13,14 @@ const MAX_NAME = 120;
  * spaces, no reserved Windows names, and not longer than {@link MAX_NAME} characters.
  */
 export function sanitizeFileName(text: string): string {
-  let name = text.normalize('NFC').replace(ILLEGAL, ' ').replace(/\s+/g, ' ').trim();
+  // A separator in a title ("Report | Site", "Title: Part 2") becomes a dash, which reads well in a file name.
+  let name = text
+    .normalize('NFC')
+    .replace(/\s*[|:]\s*/g, ' - ')
+    .replace(/[\\/]+/g, '-')
+    .replace(ILLEGAL, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   name = name.replace(/^[.\s]+|[.\s]+$/g, '');
   if (name.length > MAX_NAME) name = name.slice(0, MAX_NAME).trim();
   if (/^(con|prn|aux|nul|com\d|lpt\d)$/i.test(name)) name = `_${name}`;

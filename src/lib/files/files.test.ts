@@ -3,7 +3,7 @@ import type { MediaView } from '../media/service';
 import { memoryArea } from '../storage/area';
 import { applyView, countKinds, entryFor, formatSize, needsCheck, nameFacts } from './entries';
 import { nameFromDisposition } from './disposition';
-import { fileKindOf, kindFromMime } from './kinds';
+import { fileKindOf, kindFromMime, looksLikeDownload } from './kinds';
 import { assignNames, extensionOf, nameFromLink, nameFromUrl, sanitizeFileName } from './naming';
 import { ProbeCache, probeFile, runPool, type FetchFn } from './probe';
 
@@ -19,13 +19,15 @@ const response = (
 
 describe('naming', () => {
   it.each([
-    ['Big Buck Bunny: the movie? | Site', 'Big Buck Bunny the movie Site'],
+    ['Big Buck Bunny: the movie? | Site', 'Big Buck Bunny - the movie - Site'],
+    ['Report | Example Corp', 'Report - Example Corp'],
+    ['a/b\\c', 'a-b-c'],
     ['  ..hidden.. ', 'hidden'],
-    ['a/b\\c*d', 'a b c d'],
+    ['a*b', 'a b'],
     ['CON', '_CON'],
     ['', ''],
   ])('sanitises %j', (input, expected) => {
-    expect(sanitizeFileName(input)).toBe(expected.replace('the movie  Site', 'the movie Site'));
+    expect(sanitizeFileName(input)).toBe(expected);
   });
 
   it('caps the length of a name', () => {
@@ -63,10 +65,10 @@ describe('naming', () => {
     ];
     const names = assignNames(files, 'My Lecture: Part 1', 'title');
     expect([...names.values()]).toEqual([
-      'My Lecture Part 1.mp4',
-      'My Lecture Part 1 (two).mp4',
-      'My Lecture Part 1.pdf',
-      'My Lecture Part 1.zip',
+      'My Lecture - Part 1.mp4',
+      'My Lecture - Part 1 (two).mp4',
+      'My Lecture - Part 1.pdf',
+      'My Lecture - Part 1.zip',
     ]);
   });
 
@@ -379,5 +381,22 @@ describe('entries', () => {
     expect(formatSize(820_000)).toBe('820 KB');
     expect(formatSize(1_400_000_000)).toBe('1.4 GB');
     expect(formatSize(undefined)).toBe('');
+  });
+});
+
+describe('looksLikeDownload', () => {
+  it.each([
+    ['https://a.test/download/12', undefined, true],
+    ['https://a.test/get.php?download=3', undefined, true],
+    ['https://a.test/files/dl/abc', undefined, true],
+    ['https://a.test/attachments/9', undefined, true],
+    ['https://a.test/r1', 'Download the report', true],
+    ['https://a.test/r1', 'Descargar informe', true],
+    ['https://a.test/logout', 'Log out', false],
+    ['https://a.test/downloader-news', 'News', false],
+    ['https://a.test/about', 'About us', false],
+    ['not a url', undefined, false],
+  ])('%s %j is %s', (url, text, expected) => {
+    expect(looksLikeDownload(url, text)).toBe(expected);
   });
 });

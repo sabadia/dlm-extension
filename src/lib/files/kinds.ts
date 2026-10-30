@@ -123,3 +123,24 @@ export function extensionForMime(mime: string | undefined): string | undefined {
   const type = mime?.split(';')[0]?.trim().toLowerCase();
   return type ? MIME_EXT[type] : undefined;
 }
+
+/**
+ * Whether an address or a link's words say "this is a download" although it has no file extension: `/download/12`,
+ * `get.php?file=3`, `/dl/abc`, `/attachments/9`, or a link that reads "Download". Such links are checked before they are
+ * listed; a page that turns out not to be a file never appears.
+ */
+export function looksLikeDownload(url: string, text?: string): boolean {
+  if (text && /\b(download|descargar|télécharger|herunterladen)\b/i.test(text)) return true;
+  try {
+    const parsed = new URL(url);
+    if (
+      /(^|[/_.-])(download|downloads|dl|attachment|attachments|export)([/_.-]|$)/i.test(
+        parsed.pathname,
+      )
+    )
+      return true;
+    return /(^|&)(download|dl|attachment|export)=/i.test(parsed.search.slice(1));
+  } catch {
+    return false;
+  }
+}

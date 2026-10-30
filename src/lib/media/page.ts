@@ -1,4 +1,4 @@
-import { DOWNLOAD_EXTENSIONS } from '../files/kinds';
+import { DOWNLOAD_EXTENSIONS, looksLikeDownload } from '../files/kinds';
 import { classifyNetwork, extensionOf, nameOf, type MediaKind } from './classify';
 
 /** What the content script can see without deciding what is media. */
@@ -47,7 +47,8 @@ export function mediaFromPage(snapshot: PageSnapshot): PageMedia[] {
     push(audio.src, 'audio');
     for (const source of audio.sources) push(source, 'audio');
   }
-  for (const link of snapshot.links ?? []) push(link.href, 'file', link.download === true);
+  for (const link of snapshot.links ?? [])
+    push(link.href, 'file', link.download === true || looksLikeDownload(link.href, link.text));
   for (const url of snapshot.openGraph ?? []) push(url, 'video');
   for (const block of snapshot.jsonLd ?? []) {
     for (const url of jsonLdContentUrls(block)) push(url, 'video');

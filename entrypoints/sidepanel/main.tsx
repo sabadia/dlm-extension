@@ -1,6 +1,6 @@
 import { render } from 'preact';
-import '../../src/ui/theme.css';
-import { FilesView } from '../../src/ui/FilesView';
+import { browserFilesApi } from '../../src/ui/files/browser-api';
+import { FilesView } from '../../src/ui/files/FilesView';
 
 const root = document.getElementById('app');
-if (root) render(<FilesView surface="panel" />, root);
+if (root) render(<FilesView api={browserFilesApi} />, root);

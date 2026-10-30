@@ -213,6 +213,18 @@ export function createHandlers(services: Services): Handlers {
         services.media?.download(input) ??
         Promise.resolve({ ok: false, error: t('error.noMedia') }),
     },
+    'media.queues': { handle: () => services.media?.queues() ?? Promise.resolve([]) },
+    'media.cookies.preview': {
+      handle: async (request) => {
+        const found = await services.media?.siteCookies(request);
+        return { host: found?.host ?? '', count: found?.cookies.length ?? 0 };
+      },
+    },
+    'media.cookies.send': {
+      handle: (request) =>
+        services.media?.sendSiteCookies(request) ??
+        Promise.resolve({ ok: false as const, error: t('links.offline') }),
+    },
     'media.variants': {
       handle: ({ url }) => services.media?.variants(url) ?? Promise.resolve([]),
     },
