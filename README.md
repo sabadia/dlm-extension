@@ -32,6 +32,10 @@ pnpm build          # both browsers into .output/
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Install
+
+See the [install guide](docs/install.md).
+
 ## Related
 
 - [dlm-app](https://github.com/sabadia/dlm-app): the desktop app
