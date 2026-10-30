@@ -83,6 +83,14 @@ export async function startSite(): Promise<Site> {
 <video src="${FILES.video.path}" controls></video>`,
       );
     }
+    if (route === '/frames') {
+      const count = Math.min(Number(url.searchParams.get('n') ?? 50), 500);
+      return html(
+        res,
+        `<!doctype html><title>Frames</title>${Array.from({ length: count }, (_v, i) => `<iframe src="/frame?i=${i}"></iframe>`).join('')}`,
+      );
+    }
+    if (route === '/frame') return html(res, '<!doctype html><title>f</title><p>frame</p>');
     if (route === '/attachments') {
       return html(
         res,

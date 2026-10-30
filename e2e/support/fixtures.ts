@@ -28,6 +28,7 @@ export interface Extension {
 }
 
 interface World {
+  profile: Profile;
   daemon: Daemon;
   site: Site;
   context: BrowserContext;
@@ -38,6 +39,11 @@ interface World {
     check: () => Promise<T | undefined | false> | T | undefined | false,
     ms?: number,
   ): Promise<T>;
+}
+
+export interface Profile {
+  /** The browser profile directory (holds `DevToolsActivePort`). */
+  dir: string;
 }
 
 export interface Pairing {
@@ -62,8 +68,14 @@ export const test = base.extend<World>({
     rmSync(home, { recursive: true, force: true });
   },
 
-  context: async ({ daemon }, use) => {
-    const profile = mkdtempSync(path.join(tmpdir(), 'dlm-e2e-profile-'));
+  profile: async ({}, use) => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'dlm-e2e-profile-'));
+    await use({ dir });
+    rmSync(dir, { recursive: true, force: true });
+  },
+
+  context: async ({ daemon, profile: where }, use) => {
+    const profile = where.dir;
     mkdirSync(path.join(profile, 'Default'), { recursive: true });
     const downloads = path.join(profile, 'browser-downloads');
     mkdirSync(downloads);
@@ -102,11 +114,11 @@ export const test = base.extend<World>({
         `--load-extension=${EXTENSION_DIR}`,
         '--disable-features=DisableLoadExtensionCommandLineSwitch',
         '--no-first-run',
+        '--remote-debugging-port=0',
       ],
     });
     await use(context);
     await context.close();
-    rmSync(profile, { recursive: true, force: true });
   },
 
   extension: async ({ context, daemon, until }, use) => {
