@@ -4,8 +4,11 @@ import { extensionForMime } from './kinds';
 export type NameSource = 'title' | 'url';
 
 // Characters no common file system accepts in a name, and control characters.
-// eslint-disable-next-line no-control-regex -- control characters are exactly what is being removed
+/* eslint-disable no-control-regex -- control characters are exactly what is being removed */
 const ILLEGAL = /[\\/:*?"<>|\u0000-\u001f\u007f]/g;
+// Characters that make a name read differently from what it is (right-to-left overrides, zero-width characters).
+const MISLEADING = /[\u0080-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g;
+/* eslint-enable no-control-regex */
 const MAX_NAME = 120;
 
 /**
@@ -16,6 +19,7 @@ export function sanitizeFileName(text: string): string {
   // A separator in a title ("Report | Site", "Title: Part 2") becomes a dash, which reads well in a file name.
   let name = text
     .normalize('NFC')
+    .replace(MISLEADING, '')
     .replace(/\s*[|:]\s*/g, ' - ')
     .replace(/[\\/]+/g, '-')
     .replace(ILLEGAL, ' ')

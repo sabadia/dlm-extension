@@ -14,7 +14,7 @@ export type ProbeResult =
       /** The name the server gave (`Content-Disposition`). */
       serverName?: string;
     }
-  | { ok: false; reason: 'status' | 'page' | 'size' | 'network' };
+  | { ok: false; reason: 'status' | 'page' | 'size' | 'network' | 'blocked' };
 
 export type FetchFn = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -23,6 +23,8 @@ export interface ProbeOptions {
   /** Milliseconds before a request is given up. */
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Whether the person's cookies go with the request. Default `omit`. */
+  credentials?: 'include' | 'omit';
 }
 
 const PAGE_TYPES = /^(text\/html|application\/xhtml\+xml)/i;
@@ -66,7 +68,7 @@ async function ask(
     return await options.fetch(url, {
       ...init,
       signal,
-      credentials: 'include',
+      credentials: options.credentials ?? 'omit',
       redirect: 'follow',
     });
   } catch {

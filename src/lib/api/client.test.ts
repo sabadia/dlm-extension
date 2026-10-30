@@ -183,3 +183,116 @@ describe('readSse', () => {
     expect(await all(['event: reset\n\n'])).toEqual([]);
   });
 });
+
+describe('DlmClient requests', () => {
+  const ok = () => json({});
+  const run = async (call: (client: DlmClient) => Promise<unknown>) => {
+    const { calls, fetch } = recorder(ok);
+    await call(new DlmClient({ baseUrl: 'http://127.0.0.1:5', token: 't', fetch }));
+    const first = at(calls, 0);
+    return {
+      method: first.init.method,
+      url: first.url,
+      body:
+        typeof first.init.body === 'string'
+          ? (JSON.parse(first.init.body) as unknown)
+          : first.init.body,
+      headers: headersOf(first.init),
+    };
+  };
+
+  it('lists tasks with a query, joining lists with commas and leaving empty values out', async () => {
+    const sent = await run((c) => c.listTasks({ status: ['awaiting_link', 'error'], limit: 5 }));
+    expect(sent.method).toBe('GET');
+    expect(sent.url).toBe('http://127.0.0.1:5/v1/tasks?status=awaiting_link%2Cerror&limit=5');
+    expect((await run((c) => c.listTasks())).url).toBe('http://127.0.0.1:5/v1/tasks');
+  });
+
+  it('asks for one task, escaping its id', async () => {
+    expect((await run((c) => c.getTask('a/b'))).url).toBe('http://127.0.0.1:5/v1/tasks/a%2Fb');
+  });
+
+  it.each([
+    ['createTask', (c: DlmClient) => c.createTask({ url: 'magnet:?xt=1' }), 'POST', '/v1/tasks'],
+    [
+      'createTasks',
+      (c: DlmClient) => c.createTasks({ items: [{ url: 'https://a.test/x' }] }),
+      'POST',
+      '/v1/tasks/batch',
+    ],
+    ['listQueues', (c: DlmClient) => c.listQueues(), 'GET', '/v1/queues'],
+    ['limits', (c: DlmClient) => c.limits(), 'GET', '/v1/limits'],
+    [
+      'moveTasks',
+      (c: DlmClient) => c.moveTasks({ ids: ['1'], queueId: 'q' }),
+      'POST',
+      '/v1/tasks/move',
+    ],
+    ['pauseTasks', (c: DlmClient) => c.pauseTasks({ ids: ['1'] }), 'POST', '/v1/tasks/pause'],
+    ['resumeTasks', (c: DlmClient) => c.resumeTasks({ ids: ['1'] }), 'POST', '/v1/tasks/resume'],
+    ['resolve', (c: DlmClient) => c.resolve({ url: 'https://a.test/x' }), 'POST', '/v1/resolve'],
+  ] as const)('%s uses its endpoint', async (_name, call, method, path) => {
+    const sent = await run(call);
+    expect(sent.method).toBe(method);
+    expect(sent.url).toBe(`http://127.0.0.1:5${path}`);
+    expect(sent.headers.Authorization).toBe('Bearer t');
+  });
+
+  it('turns turbo on for an hour and off again', async () => {
+    const on = await run((c) => c.turbo(true));
+    expect(on).toMatchObject({ method: 'POST', body: { speedLimit: 0, minutes: 60 } });
+    expect(on.url).toBe('http://127.0.0.1:5/v1/limits/override');
+    expect(await run((c) => c.turbo(false))).toMatchObject({ method: 'DELETE' });
+  });
+
+  it('imports cookies as the daemon’s JSON format', async () => {
+    const sent = await run((c) => c.importCookies([{ domain: 'a.test', name: 'sid', value: 'x' }]));
+    expect(sent.url).toBe('http://127.0.0.1:5/v1/cookies/import');
+    const body = sent.body as { format: string; data: string };
+    expect(body.format).toBe('json');
+    expect(JSON.parse(body.data)).toEqual([{ domain: 'a.test', name: 'sid', value: 'x' }]);
+  });
+
+  it('uploads a torrent as its own content type, with the options in the query', async () => {
+    const sent = await run((c) =>
+      c.addTorrentFile(new Uint8Array([1, 2, 3]), {
+        queueId: 'q',
+        name: 'a.torrent',
+        paused: true,
+      }),
+    );
+    expect(sent.url).toBe(
+      'http://127.0.0.1:5/v1/tasks/torrent?queueId=q&name=a.torrent&paused=true',
+    );
+    expect(sent.headers['Content-Type']).toBe('application/x-bittorrent');
+    expect((await run((c) => c.addTorrentFile(new Uint8Array([1])))).url).toBe(
+      'http://127.0.0.1:5/v1/tasks/torrent',
+    );
+  });
+
+  it('opens the event stream with the last event id and the types asked for', async () => {
+    const { calls, fetch } = recorder(
+      () =>
+        new Response('id: 1\nevent: ping\ndata: {}\n\n', {
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+    );
+    const client = new DlmClient({ baseUrl: 'http://127.0.0.1:5', token: 't', fetch });
+    const seen: string[] = [];
+    for await (const event of client.events({
+      lastEventId: '7',
+      types: ['task.updated', 'reset'],
+    })) {
+      seen.push(event.event ?? '');
+    }
+    expect(at(calls, 0).url).toBe('http://127.0.0.1:5/v1/events?types=task.updated%2Creset');
+    expect(headersOf(at(calls, 0).init)['Last-Event-ID']).toBe('7');
+    expect(seen).toEqual(['ping']);
+  });
+
+  it('says so when the event stream has no body', async () => {
+    const { fetch } = recorder(() => new Response(null, { status: 200 }));
+    const client = new DlmClient({ baseUrl: 'http://127.0.0.1:5', token: 't', fetch });
+    await expect(client.events().next()).rejects.toBeInstanceOf(NetworkError);
+  });
+});

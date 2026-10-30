@@ -6,7 +6,7 @@ import { LinksService, type MenuClick, type TaskPort } from './service';
 import type { ConnectionState } from '../connection/state';
 import { silentLog } from '../log/log';
 import { memoryArea } from '../storage/area';
-import { defaultSettings } from '../settings/schema';
+import { defaultSettings, type Settings } from '../settings/schema';
 
 const link = (url: string, over: Partial<PageLink> = {}): PageLink => ({
   url,
@@ -82,7 +82,13 @@ describe('menus', () => {
 });
 
 describe('LinksService', () => {
-  function harness() {
+  function harness(
+    over: {
+      endpoint?: (id: string) => Promise<{ baseUrl: string; token: string } | undefined>;
+      settings?: Settings;
+      createMany?: TaskPort['createMany'];
+    } = {},
+  ) {
     const created: { url: string; queueId?: string; paused?: boolean }[] = [];
     const torrents: { bytes: number; name?: string }[] = [];
     const opened: string[] = [];
@@ -99,19 +105,24 @@ describe('LinksService', () => {
         created.push(body);
         return Promise.resolve({ id: 't' });
       },
-      createMany: (items) => {
-        created.push(...items);
-        return Promise.resolve(items.map(() => ({ ok: true })));
-      },
+      createMany:
+        over.createMany ??
+        ((items) => {
+          created.push(...items);
+          return Promise.resolve(items.map(() => ({ ok: true })));
+        }),
       addTorrent: (bytes, query) => {
         torrents.push({ bytes: bytes.byteLength, ...(query.name ? { name: query.name } : {}) });
         return Promise.resolve({ id: 'tor' });
       },
     };
     const service = new LinksService({
-      settings: { get: () => Promise.resolve(defaultSettings()) },
+      settings: { get: () => Promise.resolve(over.settings ?? defaultSettings()) },
       secrets: { get: () => Promise.resolve('token') },
-      connection: { get: () => Promise.resolve(connection) },
+      connection: {
+        get: () => Promise.resolve(connection),
+        ...(over.endpoint ? { endpoint: over.endpoint } : {}),
+      },
       session: memoryArea(),
       log: silentLog,
       menus: {
@@ -162,6 +173,57 @@ describe('LinksService', () => {
       tabTitle: 'Annual Report',
     });
     expect(created.at(-1)).not.toHaveProperty('name');
+  });
+
+  it('sends the links of the all-links page in one batch, and counts the ones DLM refused', async () => {
+    const { service, created } = harness({
+      createMany: (items) => {
+        created.push(...items);
+        return Promise.resolve(items.map((_item, index) => ({ ok: index !== 1 })));
+      },
+    });
+    const sent = await service.sendMany([
+      'https://a.test/1.zip',
+      'https://a.test/2.zip',
+      'https://a.test/3.zip',
+    ]);
+    expect(sent).toEqual({ ok: 2, failed: 1 });
+  });
+
+  it('counts a whole batch as failed when DLM cannot be asked', async () => {
+    const { service } = harness({ createMany: () => Promise.reject(new Error('offline')) });
+    expect(await service.sendMany(['https://a.test/1.zip', 'https://a.test/2.zip'])).toEqual({
+      ok: 0,
+      failed: 2,
+    });
+  });
+
+  it('sends each link to the server its site is routed to, and fails the links of a server that is gone', async () => {
+    const settings = {
+      ...defaultSettings(),
+      targets: [
+        ...defaultSettings().targets,
+        { id: 'home', name: 'Home', kind: 'remote' as const, url: 'https://home.test' },
+      ],
+      routes: [{ site: 'files.example.test', targetId: 'home' }],
+    } as Settings;
+    const asked: string[] = [];
+    const { service, created } = harness({
+      settings,
+      endpoint: (id) => {
+        asked.push(id);
+        return Promise.resolve(
+          id === 'home' ? { baseUrl: 'https://home.test', token: 't' } : undefined,
+        );
+      },
+    });
+    const sent = await service.sendMany([
+      'https://files.example.test/a.zip',
+      'https://other.test/b.zip',
+    ]);
+    expect(asked.sort()).toEqual(['home', 'local']);
+    expect(sent).toEqual({ ok: 1, failed: 1 });
+    expect(created.map((item) => item.url)).toEqual(['https://files.example.test/a.zip']);
   });
 
   it('uploads torrent bytes when the download had cookies, and the URL otherwise', async () => {

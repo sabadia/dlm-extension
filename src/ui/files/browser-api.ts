@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { sendMessage } from '../../lib/bus/bus';
+import { probePolicy } from '../../lib/files/policy';
 import { probeFile, ProbeCache } from '../../lib/files/probe';
 import { browserArea } from '../../lib/storage/area';
 import type { FilesApi, TabInfo } from './api';
@@ -50,12 +51,17 @@ export const browserFilesApi: FilesApi = {
     };
   },
   mediaList: (tabId) => sendMessage(browser.runtime, 'media.list', { tabId }),
-  async probe(url, force) {
+  async probe(url, context, force) {
+    const policy = probePolicy(context.pageUrl, url, context.incognito);
+    if (!policy.allowed) return { ok: false, reason: policy.reason };
     if (!force) {
       const known = await cache.get(url);
       if (known) return known;
     }
-    const result = await probeFile(url, { fetch: (input, init) => fetch(input, init) });
+    const result = await probeFile(url, {
+      fetch: (input, init) => fetch(input, init),
+      credentials: policy.credentials,
+    });
     // A network failure is not a verdict on the file: it is asked again next time.
     if (!(!result.ok && result.reason === 'network')) await cache.put(url, result);
     return result;

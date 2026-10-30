@@ -1,0 +1,18 @@
+name: Fetch the pinned DLM daemon
+description: Downloads the DLM release named in e2e/DLM_VERSION, checks its checksum, and sets DLM to the binary
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        tag="$(cat e2e/DLM_VERSION)"
+        version="${tag#v}"
+        dir="$RUNNER_TEMP/dlm"
+        mkdir -p "$dir"
+        gh release download "$tag" --repo sabadia/dlm-server --dir "$dir" \
+          --pattern "dlm_${version}_checksums.txt" --pattern "dlm_${version}_linux_amd64.tar.gz"
+        (cd "$dir" && grep "dlm_${version}_linux_amd64.tar.gz" "dlm_${version}_checksums.txt" | sha256sum --check -)
+        tar -xzf "$dir/dlm_${version}_linux_amd64.tar.gz" -C "$dir" dlm
+        echo "DLM=$dir/dlm" >> "$GITHUB_ENV"

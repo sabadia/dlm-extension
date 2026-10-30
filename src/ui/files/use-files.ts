@@ -120,7 +120,11 @@ export function useFiles(api: FilesApi): FilesState {
       fresh,
       CHECK_CONCURRENCY,
       async (url) => {
-        const result = await api.probe(url, forced);
+        const result = await api.probe(
+          url,
+          { pageUrl: view.pageUrl, incognito: tab?.incognito ?? false },
+          forced,
+        );
         // A check that could not reach the server is asked again later; any other answer is final.
         if (!result.ok && result.reason === 'network') asked.current.delete(url);
         else setProbes((previous) => ({ ...previous, [url]: result }));

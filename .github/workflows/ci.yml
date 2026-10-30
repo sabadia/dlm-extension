@@ -23,7 +23,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm check:api
       - run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm test:coverage
 
   build:
     name: build (Chrome and Firefox)
@@ -48,6 +48,40 @@ jobs:
         with:
           name: extension-zips
           path: .output/*.zip
+
+  e2e:
+    name: end-to-end (Chromium, real daemon)
+    needs: [check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-node-pnpm
+      - uses: ./.github/actions/fetch-dlm
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      - run: pnpm exec playwright test --project=chromium
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: e2e-traces
+          path: test-results
+
+  e2e-firefox:
+    name: end-to-end (Firefox, real daemon)
+    needs: [check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-node-pnpm
+      - uses: ./.github/actions/fetch-dlm
+      # Selenium Manager fetches Firefox and geckodriver when the runner has none that fit.
+      - run: pnpm build:firefox
+      - run: pnpm exec playwright test --project=firefox
+      - uses: actions/upload-artifact@v7.0.2
+        if: failure()
+        with:
+          name: e2e-firefox-traces
+          path: test-results
 
   licences:
     name: licences and SBOM

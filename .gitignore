@@ -9,3 +9,5 @@ web-ext-artifacts
 .env.*
 dist
 spikes/results/*.tmp
+test-results
+playwright-report

@@ -13,6 +13,12 @@ export interface TabInfo {
   cookieStoreId?: string | undefined;
 }
 
+/** What decides how an address is checked: the page it was found on, and whether that is a private window. */
+export interface ProbeContext {
+  pageUrl: string;
+  incognito: boolean;
+}
+
 export type CookieSendResult =
   | { ok: true; host: string; imported: number; skipped: number; rejected: number }
   | { ok: false; error: string };
@@ -27,7 +33,7 @@ export interface FilesApi {
   subscribe(listener: () => void): () => void;
   mediaList(tabId: number): Promise<TabView>;
   /** Checks an address (cached for ten minutes unless `force`). */
-  probe(url: string, force?: boolean): Promise<ProbeResult>;
+  probe(url: string, context: ProbeContext, force?: boolean): Promise<ProbeResult>;
   settings(): Promise<Settings>;
   saveFiles(files: FilesPrefs): Promise<Settings>;
   connection(): Promise<{ kind: ConnectionState['kind']; text: string }>;
