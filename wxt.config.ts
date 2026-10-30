@@ -37,7 +37,7 @@ export default defineConfig({
       'contextMenus',
       ...(browser === 'firefox' ? ['webRequestBlocking' as const] : []),
     ],
-    icons: { '16': '/icon-16.png', '128': '/icon.png' },
+    icons: { '16': '/icon-16.png', '32': '/icon-32.png', '48': '/icon-48.png', '128': '/icon.png' },
     commands: {
       _execute_action: {
         suggested_key: { default: 'Alt+Shift+D' },
