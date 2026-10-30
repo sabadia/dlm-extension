@@ -143,6 +143,44 @@ export function matchManifest(
   });
 }
 
+/** Query parameters that only say which part of a file a request asked for. */
+const RANGE_PARAMS = ['range', 'rn', 'rbuf', 'bytestart', 'byteend'];
+
+/**
+ * The address without the parameters that select a byte range, so that every piece of one file (a video site asks for
+ * it in ranges) is one row, not hundreds.
+ */
+export function canonicalUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    let changed = false;
+    for (const name of RANGE_PARAMS) {
+      if (parsed.searchParams.has(name)) {
+        parsed.searchParams.delete(name);
+        changed = true;
+      }
+    }
+    return changed ? parsed.href : url;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * The size of the whole file a response is about. A partial response (206) says the whole size only in
+ * `Content-Range`; its `Content-Length` is the size of the piece and must not be shown as the file's.
+ */
+export function responseSize(response: {
+  status?: number | undefined;
+  contentLength?: number | undefined;
+  contentRange?: string | undefined;
+}): number | undefined {
+  const total = /\/(\d+)\s*$/.exec(response.contentRange ?? '')?.[1];
+  if (total !== undefined) return Number(total);
+  if (response.status === 206) return undefined;
+  return response.contentLength;
+}
+
 export function extensionOf(url: string): string | undefined {
   try {
     const base = new URL(url).pathname.split('/').pop() ?? '';

@@ -82,12 +82,24 @@ function MediaList() {
   >({});
   const [variants, setVariants] = useState<Record<string, Variant[]>>({});
   const [note, setNote] = useState('');
+  const [tab, setTab] = useState<{
+    id: number;
+    incognito: boolean;
+    cookieStoreId?: string;
+  } | null>(null);
 
   useEffect(() => {
     void browser.tabs.query({ active: true, currentWindow: true }).then(
       (tabs) => {
         const id = tabs[0]?.id;
         if (id === undefined) return;
+        // Only Firefox has containers.
+        const store = (tabs[0] as { cookieStoreId?: string } | undefined)?.cookieStoreId;
+        setTab({
+          id,
+          incognito: tabs[0]?.incognito === true,
+          ...(store ? { cookieStoreId: store } : {}),
+        });
         void sendMessage(browser.runtime, 'media.list', { tabId: id }).then(
           (listed) => {
             setView(listed);
@@ -117,6 +129,8 @@ function MediaList() {
     void sendMessage(browser.runtime, 'media.download', {
       url,
       pageUrl: view.pageUrl,
+      ...(tab ? { tabId: tab.id, incognito: tab.incognito } : {}),
+      ...(tab?.cookieStoreId ? { cookieStoreId: tab.cookieStoreId } : {}),
       ...extra,
     }).then(
       (result) => {
@@ -173,9 +187,10 @@ function MediaList() {
               ) : null}
               {(variants[item.url] ?? []).map((variant) => (
                 <button
-                  key={variant.url}
+                  key={`${variant.url}\n${variant.hint}\n${variant.bandwidth ?? ''}`}
                   type="button"
-                  onClick={() => send(variant.url, { quality: variant.quality, kind: item.kind })}
+                  // The manifest goes with the chosen quality: DLM reads it, picks that stream and its audio.
+                  onClick={() => send(item.url, { quality: variant.hint, kind: item.kind })}
                 >
                   {variant.quality}
                 </button>

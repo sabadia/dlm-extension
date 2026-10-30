@@ -12,10 +12,13 @@ export type Migration = (old: Record<string, unknown>) => Record<string, unknown
  *
  * Version 3 adds per-site routing (`routes`) and the mirror opt-in (`preferences.mirrors`). Parsing fills both in,
  * so the step keeps the stored fields as they are.
+ *
+ * Version 4 adds the expired-link switch (`preferences.refresh`, on). Parsing fills it in.
  */
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: (old) => old,
   2: (old) => old,
+  3: (old) => old,
 };
 
 export class SettingsTooNewError extends Error {

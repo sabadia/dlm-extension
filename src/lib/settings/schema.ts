@@ -5,7 +5,7 @@
  */
 
 /** The version of the stored shape. Raise it together with a migration in `migrate.ts`. */
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 4;
 
 /** Downloads from one site go to this target instead of the default. */
 export interface DomainRoute {
@@ -65,6 +65,8 @@ export interface Preferences {
   notifications: boolean;
   /** Send mirror links found on a download page. Off until the user turns it on. */
   mirrors: boolean;
+  /** Look every half minute for downloads whose link expired, and tell the person. */
+  refresh: boolean;
 }
 
 export interface Settings {
@@ -77,6 +79,9 @@ export interface Settings {
   rules: Rules;
   preferences: Preferences;
 }
+
+/** What the options page saves: the parts it edits. Targets and the active target are changed elsewhere. */
+export type SettingsPatch = Pick<Settings, 'rules' | 'preferences' | 'routes'>;
 
 export const LOCAL_TARGET: LocalTarget = { id: 'local', kind: 'local' };
 
@@ -100,6 +105,6 @@ export function defaultSettings(): Settings {
       askFirst: false,
       privateWindows: false,
     },
-    preferences: { badge: true, notifications: true, mirrors: false },
+    preferences: { badge: true, notifications: true, mirrors: false, refresh: true },
   };
 }

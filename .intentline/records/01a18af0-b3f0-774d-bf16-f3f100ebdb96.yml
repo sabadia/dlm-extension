@@ -1,0 +1,26 @@
+schema_version: 1
+id: 01a18af0-b3f0-774d-bf16-f3f100ebdb96
+status: draft
+created_at: '2026-10-30T03:53:12Z'
+updated_at: '2026-10-30T03:53:12Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: 'Review fixes, part 4: options form that can be typed into, saved on top of current settings and explains refusals, live list that reconnects, expired links that notify and open on click, interactive onboarding, routing and settings migrations tested'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: entrypoints/options/RulesForm.tsx
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

@@ -1,9 +1,12 @@
-import type { Handlers, SenderLike } from '../lib/bus/bus';
+import { isTopFrame, type Handlers, type SenderLike } from '../lib/bus/bus';
 import { buildDiagnostics } from '../lib/log/diagnostics';
 import { describeState } from '../lib/connection/service';
 import type { AskChoice } from '../lib/intercept/service';
 import { acceptedHints } from '../lib/page/hints';
-import type { PageSnapshot } from '../lib/media/page';
+import { t } from '../lib/i18n';
+import { SettingsImportError } from '../lib/settings/store';
+import { isDirectScheme } from '../lib/links/classify';
+import { parseSnapshot } from '../lib/media/page';
 import type { Services } from './services';
 
 function tabIdOf(sender: SenderLike): number | undefined {
@@ -12,10 +15,51 @@ function tabIdOf(sender: SenderLike): number | undefined {
   return typeof tab.id === 'number' ? tab.id : undefined;
 }
 
+/** A tab may hand over this many magnet links in this long. */
+const ADD_LIMIT = 5;
+const ADD_WINDOW_MS = 10_000;
+
+const MAX_URL = 8192;
+
+function originOfSender(sender: SenderLike): string | undefined {
+  try {
+    const { origin } = new URL(sender.url ?? '');
+    return origin === 'null' ? undefined : origin;
+  } catch {
+    return undefined;
+  }
+}
+/** The most addresses one links-page send may carry. */
+const MAX_SEND = 500;
+
+/** An address the links page may send: a web address, or a magnet or eD2K link. */
+function isSendable(url: string): boolean {
+  if (isDirectScheme(url)) return true;
+  try {
+    const { protocol } = new URL(url);
+    return protocol === 'http:' || protocol === 'https:' || protocol === 'ftp:';
+  } catch {
+    return false;
+  }
+}
+
 const ASK_CHOICES: readonly AskChoice[] = ['dlm', 'browser', 'always', 'omit'];
 
 /** The answers the background gives to its pages (docs: `src/lib/bus/messages.ts` lists the messages). */
 export function createHandlers(services: Services): Handlers {
+  // Magnet links a tab handed over lately. Only a real click can make one (the content script checks), so this is a
+  // second wall against a page that finds a way; losing it with the worker costs nothing.
+  const recentAdds = new Map<number, number[]>();
+  const allowAdd = (tabId: number): boolean => {
+    const now = Date.now();
+    const recent = (recentAdds.get(tabId) ?? []).filter((at) => now - at < ADD_WINDOW_MS);
+    if (recent.length >= ADD_LIMIT) {
+      recentAdds.set(tabId, recent);
+      return false;
+    }
+    recentAdds.set(tabId, [...recent, now]);
+    return true;
+  };
   return {
     'ext.info': { handle: () => ({ version: services.version }) },
     'diagnostics.get': {
@@ -100,22 +144,36 @@ export function createHandlers(services: Services): Handlers {
     },
     'page.hints': {
       fromContent: true,
-      handle: async (input) => {
-        await services.intercept?.noteHints(acceptedHints(input?.hints));
+      handle: async (input, sender) => {
+        if (!isTopFrame(sender)) return null;
+        // The page the hints came from is the sender's, never what the content script says.
+        const origin = originOfSender(sender);
+        if (origin === undefined) return null;
+        await services.intercept?.noteHints(acceptedHints(input?.hints), origin);
         return null;
       },
     },
     'links.add': {
       fromContent: true,
-      handle: async (input) => {
-        if (!input || typeof input.url !== 'string' || input.url.length > 8192) return false;
+      handle: async (input, sender) => {
+        // Only a magnet or eD2K link, only from the top frame of a tab; anything else is not ours to send.
+        if (!isTopFrame(sender)) return false;
+        if (typeof input?.url !== 'string' || input.url.length > MAX_URL) return false;
+        if (!isDirectScheme(input.url)) return false;
+        const tabId = tabIdOf(sender);
+        if (tabId === undefined || !allowAdd(tabId)) return false;
         return (await services.links?.addDirect(input.url)) ?? false;
       },
     },
     'links.send': {
       handle: async (input) => {
         const urls = Array.isArray(input?.urls)
-          ? input.urls.filter((url): url is string => typeof url === 'string' && url.length < 8192)
+          ? input.urls
+              .filter(
+                (url): url is string =>
+                  typeof url === 'string' && url.length < MAX_URL && isSendable(url),
+              )
+              .slice(0, MAX_SEND)
           : [];
         return (await services.links?.sendMany(urls)) ?? { ok: 0, failed: urls.length };
       },
@@ -129,16 +187,25 @@ export function createHandlers(services: Services): Handlers {
       fromContent: true,
       handle: (input, sender) => {
         const tabId = tabIdOf(sender);
-        if (tabId === undefined || !isSnapshot(input?.snapshot)) return null;
-        return (
-          services.media?.scan(tabId, input.snapshot, input.visible === true).then(() => null) ??
-          null
-        );
+        if (tabId === undefined || !isTopFrame(sender) || sender.url === undefined) return null;
+        // The address of the page is the sender's, not the one the content script claims.
+        const snapshot = parseSnapshot(input?.snapshot, sender.url);
+        if (!snapshot) return null;
+        return services.media?.scan(tabId, snapshot).then(() => null) ?? null;
+      },
+    },
+    'media.protected': {
+      fromContent: true,
+      handle: (_input, sender) => {
+        const tabId = tabIdOf(sender);
+        if (tabId === undefined) return null;
+        return services.media?.markProtected(tabId).then(() => null) ?? null;
       },
     },
     'media.download': {
       handle: (input) =>
-        services.media?.download(input) ?? Promise.resolve({ ok: false, error: 'no media' }),
+        services.media?.download(input) ??
+        Promise.resolve({ ok: false, error: t('error.noMedia') }),
     },
     'media.variants': {
       handle: ({ url }) => services.media?.variants(url) ?? Promise.resolve([]),
@@ -148,9 +215,21 @@ export function createHandlers(services: Services): Handlers {
         services.media?.probe(urls.filter((url) => typeof url === 'string')) ?? Promise.resolve([]),
     },
     'settings.get': { handle: () => services.settings.get() },
-    'settings.save': { handle: (settings) => services.settings.update(() => settings) },
+    'settings.save': { handle: (patch) => services.settings.save(patch) },
     'settings.export': { handle: () => services.settings.export() },
-    'settings.import': { handle: ({ text }) => services.settings.import(text) },
+    'settings.import': {
+      handle: async ({ text }) => {
+        const settings = await services.settings.import(text).catch((error: unknown) => {
+          // The page gets the sentence, not the reason code.
+          throw error instanceof SettingsImportError
+            ? new Error(t(`options.importError.${error.reason}`))
+            : error;
+        });
+        // A server that is not in the file, or has a new address, must not keep the token it had.
+        await services.secrets.keepOnly(settings.targets.map((target) => target.id));
+        return settings;
+      },
+    },
     'downloads.list': {
       handle: () => services.downloads.list(),
     },
@@ -174,24 +253,14 @@ export function createHandlers(services: Services): Handlers {
     },
     'downloads.turbo': { handle: ({ on }) => services.downloads.setTurbo(on) },
     'downloads.test': {
-      handle: async ({ url }) => {
+      handle: async () => {
         try {
-          await services.downloads.test(url);
+          await services.downloads.test();
           return { ok: true };
         } catch (error) {
-          return { ok: false, error: error instanceof Error ? error.message : 'failed' };
+          return { ok: false, error: error instanceof Error ? error.message : t('error.failed') };
         }
       },
     },
   };
-}
-
-function isSnapshot(value: unknown): value is PageSnapshot {
-  if (typeof value !== 'object' || value === null) return false;
-  const record = value as Record<string, unknown>;
-  return (
-    typeof record.pageUrl === 'string' &&
-    Array.isArray(record.videos) &&
-    Array.isArray(record.audios)
-  );
 }

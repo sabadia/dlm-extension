@@ -19,7 +19,10 @@ export default defineConfig({
   vite: () => ({ plugins: [preact()] }),
   manifest: ({ browser }) => ({
     name: 'DLM',
-    description: 'Send downloads, media, magnet links and torrents from your browser to DLM.',
+    // Manifest strings come from public/_locales/<language>/messages.json (the browser translates them); the pages
+    // use the catalogue in src/lib/i18n.
+    default_locale: 'en',
+    description: '__MSG_extDescription__',
     // The permission set grows with the features (docs/PLAN.md, "Permissions"). E2 adds downloads, webRequest,
     // cookies and notifications, and host access to every site so a download's headers and cookies can be read.
     // Firefox also gets webRequestBlocking so an attachment can be cancelled before a download entry appears.
@@ -38,27 +41,20 @@ export default defineConfig({
     commands: {
       _execute_action: {
         suggested_key: { default: 'Alt+Shift+D' },
-        description: 'Open DLM',
+        description: '__MSG_cmdOpen__',
       },
       'toggle-intercept': {
         suggested_key: { default: 'Alt+Shift+I' },
-        description: 'Turn download interception on or off',
+        description: '__MSG_cmdToggleIntercept__',
       },
       'open-options': {
         suggested_key: { default: 'Alt+Shift+O' },
-        description: 'Open DLM options',
+        description: '__MSG_cmdOpenOptions__',
       },
     },
     // The daemon of this computer, plus every site a download can come from. Remote servers are still asked for one
-    // by one when the person adds one that the required host access does not already cover.
-    host_permissions: [
-      'http://127.0.0.1/*',
-      'http://localhost/*',
-      'http://*/*',
-      'https://*/*',
-      'ftp://*/*',
-    ],
-    optional_host_permissions: ['https://*/*', 'http://*/*'],
+    // by one on Firefox, where host access is not granted at install (onboarding asks for it).
+    host_permissions: ['http://127.0.0.1/*', 'http://localhost/*', 'http://*/*', 'https://*/*'],
     ...(browser === 'firefox' ? {} : { key: CHROME_PUBLIC_KEY }),
     ...(browser === 'firefox'
       ? {

@@ -1,4 +1,4 @@
-import type { CaptureBody, CaptureCookie } from '../api/client';
+import type { CaptureBody } from '../api/client';
 import { ApiError, NetworkError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
 import { t } from '../i18n';
@@ -12,14 +12,14 @@ import {
   basename,
   buildCaptureBody,
   contentLength,
-  withoutChecksum,
+  withoutHints,
   displayName,
   filenameFromDisposition,
   headerValue,
   isAttachment,
+  isDownloadType,
   pickRequestHeaders,
-  toCaptureCookie,
-  type BrowserCookieLike,
+  sameOrigin,
   type CaptureDraft,
   type RawHeader,
 } from './metadata';
@@ -35,6 +35,8 @@ import {
 import { isTorrent } from '../links/classify';
 import type { HintStore } from '../page/store';
 import { targetFor } from '../settings/routing';
+import { CookieReader, type CookiesPort } from './cookies';
+import { decodeBase64Text, isMultipart } from './post';
 import { decide, downloadHost, type DownloadFacts } from './rules';
 
 /** A browser download, reduced to what the hand-off reads. */
@@ -67,20 +69,23 @@ export interface RequestEvent {
   postBody?: string | undefined;
 }
 
+/** What the browser fallback may ask of `downloads.download`. The port drops what the browser does not know. */
+export interface DownloadOptions {
+  url: string;
+  filename?: string | undefined;
+  /** A POST that is replayed in the browser. The body is text. */
+  method?: 'POST' | undefined;
+  body?: string | undefined;
+  headers?: { name: string; value: string }[] | undefined;
+  /** Firefox: keep the download in the private window or container it started in. */
+  incognito?: boolean | undefined;
+  cookieStoreId?: string | undefined;
+}
+
 export interface DownloadsPort {
   cancel(id: number): Promise<void>;
   erase(query: { id: number }): Promise<number[]>;
-  download(options: { url: string; filename?: string | undefined }): Promise<number>;
-}
-
-export interface CookieQuery {
-  url: string;
-  storeId?: string | undefined;
-  partitionKey?: { topLevelSite: string } | undefined;
-}
-
-export interface CookiesPort {
-  getAll(query: CookieQuery): Promise<BrowserCookieLike[]>;
+  download(options: DownloadOptions): Promise<number>;
 }
 
 export interface NotificationsPort {
@@ -97,6 +102,8 @@ export interface WindowsPort {
     width: number;
     height: number;
   }): Promise<{ id?: number | undefined }>;
+  /** Closes a window. Used to close an ask prompt that ran out of time. */
+  remove?(id: number): Promise<void>;
 }
 
 /** What one capture call returns. Tests pass a fake; the real one is {@link DlmClient.capture}. */
@@ -108,28 +115,59 @@ export type AskChoice = 'dlm' | 'browser' | 'always' | 'omit';
 
 export type AskPurpose = 'ask' | 'checksum';
 
+/** What it takes to restart a download in the browser the way it started. */
+export interface Replay {
+  url: string;
+  filename?: string | undefined;
+  /** A POST: its text body (base64, as captured) and content type. */
+  method?: 'POST' | undefined;
+  body?: string | undefined;
+  contentType?: string | undefined;
+  incognito?: boolean | undefined;
+  cookieStoreId?: string | undefined;
+}
+
 export interface PendingAsk {
   id: string;
+  /** The site "always" remembers: the page the download started on, else the download's own host. */
   host: string;
   name: string;
   /** `ask` is ask-first. `checksum` reviews a hash and still sends the download when the window closes. */
   purpose: AskPurpose;
-  fallbackUrl: string;
-  filename?: string | undefined;
+  fallback: Replay;
   body: CaptureBody;
   windowId?: number | undefined;
-  resolved: boolean;
   at: number;
 }
 
 /** `working` is in progress, `taken` reached DLM, `failed` left the file with the browser. */
 type ClaimResult = 'working' | 'taken' | 'failed';
 
+/** One request (or, without an observation, one download item) being handled by exactly one path. */
 interface Claim {
-  url: string;
+  key: string;
   at: number;
   result: ClaimResult;
 }
+
+/** A capture DLM answered with 409; the notification offers to add it anyway. Holds cookies: session storage only. */
+interface Duplicate {
+  id: string;
+  name: string;
+  body: CaptureBody;
+  at: number;
+}
+
+/** A restarted download is left alone for this long. */
+const RELEASED_TTL_MS = 60_000;
+const DUPLICATE_TTL_MS = 5 * 60_000;
+const MAX_DUPLICATES = 5;
+/** Request details live this long in memory: the download item follows within milliseconds (spike E0.7). */
+const REQUEST_TTL_MS = 15_000;
+const MAX_REQUESTS = 300;
+/** POST bodies are the big part of a request; only this many are kept at once. */
+const MAX_CACHED_BODIES = 8;
+export const DUPLICATE_PREFIX = 'dlm-duplicate:';
 
 const CLAIM_TTL_MS = 60_000;
 const ASK_TTL_MS = 2 * 60_000;
@@ -138,6 +176,7 @@ const GESTURE_KEY = 'intercept.gestures';
 const RELEASED_KEY = 'intercept.released';
 const CLAIM_KEY = 'intercept.claims';
 const ASK_KEY = 'intercept.asks';
+const DUPLICATE_KEY = 'intercept.duplicates';
 
 const parseList =
   <T>(item: (raw: unknown) => T | undefined) =>
@@ -210,16 +249,57 @@ function claimResult(value: unknown): ClaimResult {
   return 'working';
 }
 
-function parseStrings(raw: unknown): string[] {
-  return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
+interface Released {
+  url: string;
+  at: number;
+}
+
+function parseReleased(raw: unknown): Released[] {
+  return parseList((value) => {
+    const record = asRecord(value);
+    if (!record || typeof record.url !== 'string' || typeof record.at !== 'number')
+      return undefined;
+    return { url: record.url, at: record.at };
+  })(raw);
 }
 
 function parseClaims(raw: unknown): Claim[] {
   return parseList((value) => {
     const record = asRecord(value);
-    if (!record || typeof record.url !== 'string' || typeof record.at !== 'number')
+    if (!record || typeof record.key !== 'string' || typeof record.at !== 'number')
       return undefined;
-    return { url: record.url, at: record.at, result: claimResult(record.result) };
+    return { key: record.key, at: record.at, result: claimResult(record.result) };
+  })(raw);
+}
+
+function parseReplay(raw: unknown): Replay | undefined {
+  const record = asRecord(raw);
+  if (!record || typeof record.url !== 'string') return undefined;
+  return {
+    url: record.url,
+    ...(typeof record.filename === 'string' ? { filename: record.filename } : {}),
+    ...(record.method === 'POST' ? { method: 'POST' as const } : {}),
+    ...(typeof record.body === 'string' ? { body: record.body } : {}),
+    ...(typeof record.contentType === 'string' ? { contentType: record.contentType } : {}),
+    ...(record.incognito === true ? { incognito: true } : {}),
+    ...(typeof record.cookieStoreId === 'string' ? { cookieStoreId: record.cookieStoreId } : {}),
+  };
+}
+
+function parseDuplicates(raw: unknown): Duplicate[] {
+  return parseList((value) => {
+    const record = asRecord(value);
+    const body = asRecord(record?.body);
+    if (
+      !record ||
+      !body ||
+      typeof body.url !== 'string' ||
+      typeof record.id !== 'string' ||
+      typeof record.name !== 'string' ||
+      typeof record.at !== 'number'
+    )
+      return undefined;
+    return { id: record.id, name: record.name, body, at: record.at };
   })(raw);
 }
 
@@ -228,11 +308,8 @@ function parseAsks(raw: unknown): PendingAsk[] {
     const record = asRecord(value);
     if (!record || typeof record.id !== 'string' || typeof record.host !== 'string')
       return undefined;
-    if (
-      typeof record.name !== 'string' ||
-      typeof record.fallbackUrl !== 'string' ||
-      typeof record.at !== 'number'
-    )
+    const fallback = parseReplay(record.fallback);
+    if (typeof record.name !== 'string' || !fallback || typeof record.at !== 'number')
       return undefined;
     const body = asRecord(record.body);
     if (!body || typeof body.url !== 'string') return undefined;
@@ -242,11 +319,9 @@ function parseAsks(raw: unknown): PendingAsk[] {
       host: record.host,
       name: record.name,
       purpose,
-      fallbackUrl: record.fallbackUrl,
+      fallback,
       body,
-      resolved: record.resolved === true,
       at: record.at,
-      ...(typeof record.filename === 'string' ? { filename: record.filename } : {}),
       ...(typeof record.windowId === 'number' ? { windowId: record.windowId } : {}),
     };
     return pending;
@@ -288,40 +363,94 @@ export interface InterceptDeps {
       url: string;
       filename?: string | undefined;
       cookies?: CaptureBody['cookies'];
-    }): Promise<'taken' | 'failed'>;
+    }): Promise<'taken' | 'duplicate' | 'failed'>;
   };
+  /**
+   * The server that is waiting for a download from this page (an expired task being renewed), if any. Such a download is
+   * taken whatever the rules say, and sent to that server.
+   */
+  refreshTarget?: (
+    pageUrl: string | undefined,
+  ) => Promise<{ baseUrl: string; token: string } | undefined>;
   now?: () => number;
   id?: () => string;
 }
 
 type SendResult = 'taken' | 'duplicate' | 'failed';
 
+/** What the hand-off decided about one download, before anything was cancelled. */
+interface Prepared {
+  decision: ReturnType<typeof decide>;
+  draft: CaptureDraft;
+  name: string;
+  /** The page the download started on, when known. */
+  site: string | undefined;
+  replay: Replay;
+  /** False in a private window or a container: a torrent fetched by the extension would use the wrong cookies. */
+  defaultStore: boolean;
+  /** Set when an expired task of one server is waiting for exactly this download. */
+  endpoint?: { baseUrl: string; token: string } | undefined;
+}
+
+function originOf(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const { origin } = new URL(url);
+    return origin === 'null' ? undefined : origin;
+  } catch {
+    return undefined;
+  }
+}
+
+/** A multipart form cannot be rebuilt from its parsed fields: such a POST stays with the browser. */
+function withReplayableBody(observation: Observation): Observation {
+  if (
+    observation.postBody !== undefined &&
+    isMultipart(observation.requestHeaders['content-type'])
+  ) {
+    return { ...observation, postBody: undefined };
+  }
+  return observation;
+}
+
 /**
- * Hands browser downloads to DLM. Listeners are registered by {@link registerBackground} while the background loads;
- * everything they need is read from storage when the event arrives, so a worker that stopped in between still behaves.
+ * Hands browser downloads to DLM. Listeners are registered by {@link registerBackground} while the background loads.
+ *
+ * What survives a restart of the worker is in `storage.session`. The one thing that is only in memory is the request
+ * cache: headers and bodies of requests that are in flight, which live a few milliseconds until the response says
+ * whether they were a download (a worker that is stopped in that window loses nothing but some metadata, and the
+ * download is still handed over from its item). Writing every request to storage queued a write per request and, on
+ * Firefox, held every response back behind them.
  */
 export class InterceptService {
   private readonly observed: StoredValue<Observation[]>;
   private readonly gestures: StoredValue<Record<string, Gesture>>;
-  private readonly released: StoredValue<string[]>;
+  private readonly released: StoredValue<Released[]>;
   private readonly claims: StoredValue<Claim[]>;
   private readonly asks: StoredValue<PendingAsk[]>;
+  private readonly duplicates: StoredValue<Duplicate[]>;
+  private readonly requests = new Map<string, Observation>();
+  private readonly cookieReader: CookieReader;
+  /** Every write of an observation, in order. `onCreated` waits for it so it never reads before the response is in. */
+  private writes: Promise<unknown> = Promise.resolve();
   private readonly now: () => number;
   private readonly id: () => string;
 
   constructor(private readonly deps: InterceptDeps) {
     this.observed = new StoredValue(deps.session, OBSERVED_KEY, parseList(parseObservation));
     this.gestures = new StoredValue(deps.session, GESTURE_KEY, parseGestureMap);
-    this.released = new StoredValue(deps.session, RELEASED_KEY, parseStrings);
+    this.released = new StoredValue(deps.session, RELEASED_KEY, parseReleased);
     this.claims = new StoredValue(deps.session, CLAIM_KEY, parseClaims);
     this.asks = new StoredValue(deps.session, ASK_KEY, parseAsks);
+    this.duplicates = new StoredValue(deps.session, DUPLICATE_KEY, parseDuplicates);
+    this.cookieReader = new CookieReader(deps.cookies, deps.log);
     this.now = deps.now ?? (() => Date.now());
     this.id = deps.id ?? (() => crypto.randomUUID());
   }
 
   /** A content script reporting checksums and mirror links it saw. It cannot ask for a download. */
-  noteHints(hints: Parameters<HintStore['note']>[0]): Promise<void> {
-    return this.deps.hints?.note(hints, this.now()) ?? Promise.resolve();
+  noteHints(hints: Parameters<HintStore['note']>[0], origin: string): Promise<void> {
+    return this.deps.hints?.note(hints, origin, this.now()) ?? Promise.resolve();
   }
 
   /** A content script saw Alt or Shift. The tab id comes from the sender, not from the page. */
@@ -332,50 +461,65 @@ export class InterceptService {
       .then(() => undefined);
   }
 
-  /** A POST body, cached until the download item exists. A body that cannot be replayed is left out. */
-  onBeforeRequest(event: RequestEvent): Promise<void> {
-    return this.remember(event, false);
+  /** A POST body, cached in memory until the response says whether the request was a download. */
+  onBeforeRequest(event: RequestEvent): void {
+    this.cache(event);
   }
 
-  /** Request headers, cached until the download item exists. */
-  onBeforeSendHeaders(event: RequestEvent): Promise<void> {
-    return this.remember(event, false);
+  /** Request headers, cached in memory until the response arrives. */
+  onBeforeSendHeaders(event: RequestEvent): void {
+    this.cache(event);
   }
 
   /**
-   * Response headers. On Firefox an attachment that the rules take is captured here and the request is cancelled, so
-   * no download entry appears (spike E0.7). Anywhere else this only fills the cache.
+   * Response headers: the request becomes an observation in storage. On Firefox an attachment that the rules take is
+   * captured here and the request is cancelled, so no download entry appears (spike E0.7); every other response returns
+   * at once, so the browser is never held back.
    */
-  async onHeadersReceived(event: RequestEvent): Promise<{ cancel: true } | void> {
-    await this.remember(event, true);
-    if (!this.deps.firefox) return;
-    const observed = await this.observed.get();
-    const current = observed.find((item) => item.requestId === event.requestId);
-    if (!current?.attachment) return;
-    if (this.ownRequest(current)) return;
+  onHeadersReceived(event: RequestEvent): Promise<{ cancel: true } | void> | void {
+    const next = this.toObservation(event, true);
+    const merged = withReplayableBody(mergeObservation(this.requests.get(event.requestId), next));
+    this.requests.delete(event.requestId);
+    const own = this.ownRequest(merged);
+    // A body is kept only for a response that looks like a download; every other POST body is dropped here.
+    const kept: Observation =
+      merged.attachment || isDownloadType(merged.mime)
+        ? merged
+        : { ...merged, postBody: undefined };
+    const written = this.persist(kept);
+    if (!this.deps.firefox || !kept.attachment || own) return;
+    return written.then(() => this.captureBlocking(kept));
+  }
+
+  private async captureBlocking(current: Observation): Promise<{ cancel: true } | void> {
     const prepared = await this.prepare(current);
-    // A checksum is reviewed on the download item, so the request is not cancelled here.
-    if (!prepared || prepared.decision.action !== 'take' || prepared.draft.checksum) return;
-    const address = prepared.draft.finalUrl ?? prepared.draft.url;
-    if ((await this.claim(address)) !== 'won') return;
-    const result = await this.deliver(prepared.draft, prepared.name);
-    await this.settle(address, result === 'failed' ? 'failed' : 'taken');
+    // A checksum or a mirror list is reviewed on the download item, so the request is not cancelled here.
+    if (!prepared || prepared.decision.action !== 'take') return;
+    if (prepared.draft.checksum || (prepared.draft.mirrors?.length ?? 0) > 0) return;
+    const key = current.requestId;
+    if ((await this.claim(key)) !== 'won') return;
+    let result: SendResult = 'failed';
+    try {
+      result = await this.dispatch(buildCaptureBody(prepared.draft), prepared.name, prepared);
+    } catch (error) {
+      this.deps.log.error('intercept', 'the hand-off failed', { error });
+    }
+    await this.settle(key, result === 'failed' ? 'failed' : 'taken');
     if (result === 'failed') return;
     return { cancel: true };
   }
 
   /** The common path (spike E0.7): cancel and erase, then hand the download to DLM. */
   async onCreated(item: DownloadSnapshot): Promise<void> {
+    await this.writes;
     const observed = matchObservation(
       await this.observed.get(),
       [item.url, item.finalUrl ?? item.url],
       this.now(),
     );
-    const released = await this.released.get();
     const own =
       (item.byExtensionId !== undefined && item.byExtensionId === this.deps.extensionId) ||
-      released.includes(item.url) ||
-      (item.finalUrl !== undefined && released.includes(item.finalUrl)) ||
+      (await this.wasReleased([item.url, item.finalUrl])) ||
       (observed !== undefined && this.ownRequest(observed));
     const prepared = await this.prepare(observed, item, own);
     if (!prepared || prepared.decision.action === 'leave') {
@@ -386,44 +530,51 @@ export class InterceptService {
       }
       return;
     }
-    const address = prepared.draft.finalUrl ?? prepared.draft.url;
-    const claim = await this.claim(address);
+    // One request is handled once. A repeat of the same address is a new request and is handled on its own.
+    const key = observed?.requestId ?? `download:${item.id}`;
+    const claim = await this.claim(key);
     if (claim === 'taken') {
       // Captured while the request was paused, and a download entry appeared anyway.
       await this.erase(item.id);
       return;
     }
     if (claim !== 'won') return;
-    const erased = await this.erase(item.id);
-    if (!erased) {
-      await this.settle(address, 'failed');
+    if (!(await this.erase(item.id))) {
+      await this.settle(key, 'failed');
       return;
     }
-    if (prepared.decision.action === 'ask') {
-      await this.ask(prepared, 'ask');
-      return;
+    // The browser's copy is gone from here on: whatever goes wrong, the file must end up in DLM or in the browser.
+    try {
+      if (prepared.decision.action === 'ask') {
+        await this.ask(prepared, 'ask');
+        return;
+      }
+      if (prepared.draft.checksum || (prepared.draft.mirrors?.length ?? 0) > 0) {
+        await this.ask(prepared, 'checksum');
+        return;
+      }
+      const result = await this.dispatch(buildCaptureBody(prepared.draft), prepared.name, prepared);
+      await this.settle(key, result === 'failed' ? 'failed' : 'taken');
+      if (result === 'failed') await this.fallback(prepared.replay);
+    } catch (error) {
+      this.deps.log.error('intercept', 'the hand-off failed', {
+        error,
+        url: redactUrl(item.url),
+      });
+      await this.settle(key, 'failed');
+      await this.fallback(prepared.replay);
     }
-    if (prepared.draft.checksum) {
-      await this.ask(prepared, 'checksum');
-      return;
-    }
-    const result = await this.deliver(prepared.draft, prepared.name);
-    await this.settle(address, result === 'failed' ? 'failed' : 'taken');
-    if (result === 'failed') await this.fallback(address, prepared.draft.filename);
   }
 
   /** The person closed the ask window without choosing. The browser downloads the file. */
   async onWindowRemoved(windowId: number): Promise<void> {
-    const pending = (await this.asks.get()).find(
-      (ask) => ask.windowId === windowId && !ask.resolved,
-    );
+    let pending: PendingAsk | undefined;
+    await this.asks.update((list) => {
+      pending = list.find((ask) => ask.windowId === windowId);
+      return list.filter((ask) => ask !== pending);
+    });
     if (!pending) return;
-    await this.asks.update((list) => list.filter((ask) => ask.id !== pending.id));
-    if (pending.purpose === 'checksum') {
-      await this.finish(withoutChecksum(pending.body), pending.name, pending);
-      return;
-    }
-    await this.fallback(pending.fallbackUrl, pending.filename);
+    await this.resolveUnanswered(pending);
   }
 
   /** What the ask page shows. Cookies are not included. */
@@ -432,10 +583,20 @@ export class InterceptService {
     host: string;
     purpose: AskPurpose;
     checksum?: { algorithm: string; expected: string };
+    /** The hosts of the mirror links that would be sent. */
+    mirrors?: string[];
   } | null> {
-    const pending = (await this.asks.get()).find((ask) => ask.id === id && !ask.resolved);
+    const pending = (await this.asks.get()).find((ask) => ask.id === id);
     if (!pending) return null;
     const checksum = pending.body.checksum;
+    const mirrors = [
+      ...new Set(
+        (pending.body.mirrors ?? []).flatMap((mirror) => {
+          const host = downloadHost(mirror);
+          return host ? [host] : [];
+        }),
+      ),
+    ];
     return {
       name: pending.name,
       host: pending.host,
@@ -443,27 +604,28 @@ export class InterceptService {
       ...(checksum
         ? { checksum: { algorithm: checksum.algorithm, expected: checksum.expected } }
         : {}),
+      ...(mirrors.length > 0 ? { mirrors } : {}),
     };
   }
 
-  /** The ask page's choice. */
+  /** The ask page's choice. The prompt is forgotten at once, so a window closing afterwards finds nothing to undo. */
   async choose(id: string, choice: AskChoice): Promise<void> {
     let pending: PendingAsk | undefined;
     await this.asks.update((list) => {
-      pending = list.find((ask) => ask.id === id && !ask.resolved);
-      return list.map((ask) => (ask.id === id ? { ...ask, resolved: true } : ask));
+      pending = list.find((ask) => ask.id === id);
+      return list.filter((ask) => ask !== pending);
     });
     if (!pending) return;
     const chosen = pending;
     if (choice === 'omit' || (choice === 'browser' && chosen.purpose === 'checksum')) {
-      await this.finish(withoutChecksum(chosen.body), chosen.name, chosen);
+      await this.finish(withoutHints(chosen.body), chosen);
       return;
     }
     if (choice === 'browser') {
-      await this.fallback(chosen.fallbackUrl, chosen.filename);
+      await this.fallback(chosen.fallback);
       return;
     }
-    if (choice === 'always') {
+    if (choice === 'always' && chosen.host !== '') {
       await this.deps.settings.update((settings) => ({
         ...settings,
         rules: {
@@ -472,56 +634,122 @@ export class InterceptService {
         },
       }));
     }
-    const result = await this.send(chosen.body, chosen.name);
-    if (result === 'failed') await this.fallback(chosen.fallbackUrl, chosen.filename);
+    await this.finish(chosen.body, chosen);
   }
 
-  /** A prompt nobody answered is handed back to the browser. Called when the background loads. */
+  /**
+   * A prompt nobody answered in time is closed and the download goes to the browser. Called when the background
+   * loads, and by the notification click handler.
+   */
   async sweep(): Promise<void> {
     const now = this.now();
-    const stale = (await this.asks.get()).filter(
-      (ask) => !ask.resolved && now - ask.at > ASK_TTL_MS,
-    );
-    if (stale.length === 0) return;
-    await this.asks.update((list) =>
-      list.filter((ask) => ask.resolved || now - ask.at <= ASK_TTL_MS),
-    );
+    let stale: PendingAsk[] = [];
+    await this.asks.update((list) => {
+      stale = list.filter((ask) => now - ask.at > ASK_TTL_MS);
+      return list.filter((ask) => !stale.includes(ask));
+    });
     for (const ask of stale) {
-      if (ask.purpose === 'checksum') await this.finish(withoutChecksum(ask.body), ask.name, ask);
-      else await this.fallback(ask.fallbackUrl, ask.filename);
+      if (ask.windowId !== undefined) {
+        try {
+          await this.deps.windows.remove?.(ask.windowId);
+        } catch {
+          // The window is gone already.
+        }
+      }
+      await this.resolveUnanswered(ask);
+    }
+    await this.duplicates.update((list) =>
+      list.filter((item) => now - item.at <= DUPLICATE_TTL_MS),
+    );
+  }
+
+  /** The person clicked "Already in DLM": add it again, on purpose. Returns true when the click was ours. */
+  async onNotificationClicked(notificationId: string): Promise<boolean> {
+    if (!notificationId.startsWith(DUPLICATE_PREFIX)) return false;
+    const id = notificationId.slice(DUPLICATE_PREFIX.length);
+    let found: Duplicate | undefined;
+    await this.duplicates.update((list) => {
+      found = list.find((item) => item.id === id);
+      return list.filter((item) => item !== found);
+    });
+    if (found && this.now() - found.at <= DUPLICATE_TTL_MS) {
+      await this.send({ ...found.body, allowDuplicate: true }, found.name);
+    }
+    return true;
+  }
+
+  /** A prompt that was never answered: a checksum review still sends the file, ask-first goes to the browser. */
+  private async resolveUnanswered(ask: PendingAsk): Promise<void> {
+    if (ask.purpose === 'checksum') await this.finish(withoutHints(ask.body), ask);
+    else await this.fallback(ask.fallback);
+  }
+
+  private cache(event: RequestEvent): void {
+    const now = this.now();
+    const next = this.toObservation(event, false);
+    this.requests.set(
+      event.requestId,
+      withReplayableBody(mergeObservation(this.requests.get(event.requestId), next)),
+    );
+    for (const [id, item] of this.requests) {
+      if (now - item.at > REQUEST_TTL_MS) this.requests.delete(id);
+    }
+    while (this.requests.size > MAX_REQUESTS) {
+      const oldest = this.requests.keys().next().value;
+      if (oldest === undefined) break;
+      this.requests.delete(oldest);
+    }
+    let bodies = 0;
+    for (const item of [...this.requests.values()].reverse()) {
+      if (item.postBody === undefined) continue;
+      bodies += 1;
+      if (bodies > MAX_CACHED_BODIES) item.postBody = undefined;
     }
   }
 
-  private async remember(event: RequestEvent, response: boolean): Promise<void> {
+  /** Writes one observation after the earlier writes. Never rejects; a storage error is logged. */
+  private persist(observation: Observation): Promise<unknown> {
+    const now = this.now();
+    this.writes = this.writes
+      .then(() => this.observed.update((list) => rememberObservation(list, observation, now)))
+      .catch((error: unknown) => {
+        this.deps.log.warn('intercept', 'could not remember a request', { error });
+      });
+    return this.writes;
+  }
+
+  private toObservation(event: RequestEvent, response: boolean): Observation {
     const now = this.now();
     const disposition = headerValue(event.responseHeaders, 'content-disposition');
     const userAgent = headerValue(event.requestHeaders, 'user-agent');
     const length = contentLength(headerValue(event.responseHeaders, 'content-length'));
     const mime = headerValue(event.responseHeaders, 'content-type');
     const filename = filenameFromDisposition(disposition);
-    const next: Observation = {
+    const initiator = event.initiator;
+    // A request of this extension (the daemon, a fallback download) keeps no headers or body: it only has to be
+    // recognised as ours.
+    const ours = initiator !== undefined && initiator.startsWith(this.deps.extensionOrigin);
+    const headers = response || ours ? {} : pickRequestHeaders(event.requestHeaders);
+    const body = ours ? undefined : event.postBody;
+    return {
       requestId: event.requestId,
       url: event.url,
       method: event.method,
       tabId: event.tabId,
-      requestHeaders: response ? {} : pickRequestHeaders(event.requestHeaders),
+      requestHeaders: headers,
       incognito: event.incognito === true,
       attachment: response && isAttachment(disposition),
       at: now,
       ...(event.documentUrl ? { documentUrl: event.documentUrl } : {}),
-      ...(event.initiator ? { initiator: event.initiator } : {}),
+      ...(initiator ? { initiator } : {}),
       ...(event.cookieStoreId ? { cookieStoreId: event.cookieStoreId } : {}),
       ...(response ? { finalUrl: event.url } : {}),
-      ...(userAgent ? { userAgent } : {}),
+      ...(userAgent && !ours ? { userAgent } : {}),
       ...(mime ? { mime } : {}),
       ...(length !== undefined ? { sizeBytes: length } : {}),
       ...(filename ? { filename } : {}),
-      ...(event.postBody ? { postBody: event.postBody } : {}),
+      ...(body ? { postBody: body } : {}),
     };
-    await this.observed.update((list) => {
-      const previous = list.find((item) => item.requestId === event.requestId);
-      return rememberObservation(list, mergeObservation(previous, next), now);
-    });
   }
 
   private ownRequest(observed: Observation): boolean {
@@ -530,18 +758,26 @@ export class InterceptService {
     );
   }
 
+  private async wasReleased(urls: readonly (string | undefined)[]): Promise<boolean> {
+    const now = this.now();
+    const fresh = (await this.released.get()).filter((item) => now - item.at <= RELEASED_TTL_MS);
+    return fresh.some((item) => urls.includes(item.url));
+  }
+
   private async prepare(
     observed: Observation | undefined,
     item?: DownloadSnapshot,
     own?: boolean,
-  ): Promise<
-    { decision: ReturnType<typeof decide>; draft: CaptureDraft; name: string } | undefined
-  > {
+  ): Promise<Prepared | undefined> {
     const settings = await this.deps.settings.get();
     const url = observed?.url ?? item?.url;
     if (!url) return undefined;
     const finalUrl = item?.finalUrl ?? observed?.finalUrl ?? (item ? item.url : observed?.finalUrl);
     const gesture = readGesture(await this.gestures.get(), observed?.tabId, this.now());
+    // The browser reports 0 (or -1) for a size it does not know; that is not a small file.
+    const size = [item?.sizeBytes, observed?.sizeBytes].find(
+      (value): value is number => value !== undefined && value > 0,
+    );
     const facts: DownloadFacts = {
       url,
       incognito: item?.incognito ?? observed?.incognito ?? false,
@@ -550,16 +786,25 @@ export class InterceptService {
       own: own ?? (observed !== undefined && this.ownRequest(observed)),
     };
     if (finalUrl) facts.finalUrl = finalUrl;
+    if (observed?.documentUrl) facts.pageUrl = observed.documentUrl;
     if (observed?.method) facts.method = observed.method;
     if (observed?.postBody) facts.postBody = observed.postBody;
-    const size = item?.sizeBytes ?? observed?.sizeBytes;
     if (size !== undefined) facts.sizeBytes = size;
     const filename = item?.filename ?? observed?.filename;
     if (filename) facts.filename = filename;
     const mime = item?.mime ?? observed?.mime;
     if (mime) facts.mime = mime;
-    const decision = decide(settings.rules, facts);
-    const referrer = item?.referrer || observed?.requestHeaders.referer || observed?.documentUrl;
+    let decision = decide(settings.rules, facts);
+    // An expired task waits for a download from this page: it is taken and sent to that server, whatever the rules say
+    // about size, type, sites, private windows or the bypass key. Our own downloads and addresses that cannot be
+    // handed over (blob:, a method we do not replay) stay what they are.
+    const endpoint =
+      decision.action === 'leave' && ['own', 'scheme', 'method'].includes(decision.reason)
+        ? undefined
+        : await this.deps.refreshTarget?.(observed?.documentUrl);
+    if (endpoint) decision = { action: 'take' };
+    // The referrer is what the browser sent. The page address is its own field; it is not made into a referrer.
+    const referrer = item?.referrer || observed?.requestHeaders.referer;
     const pageUrl = observed?.documentUrl || referrer;
     const draft: CaptureDraft = { url };
     if (finalUrl) draft.finalUrl = finalUrl;
@@ -569,29 +814,55 @@ export class InterceptService {
     if (mime) draft.mime = mime;
     if (size !== undefined) draft.sizeBytes = size;
     draft.userAgent = observed?.userAgent || this.deps.userAgent;
-    if (observed && Object.keys(observed.requestHeaders).length > 0)
-      draft.headers = observed.requestHeaders;
-    if (observed?.method.toUpperCase() === 'POST' && observed.postBody) {
-      draft.method = 'POST';
-      draft.body = observed.postBody;
+    if (observed && Object.keys(observed.requestHeaders).length > 0) {
+      const headers = { ...observed.requestHeaders };
+      // Browsers drop `Authorization` on a redirect to another origin; so does the hand-off.
+      if (finalUrl && !sameOrigin(url, finalUrl)) delete headers.authorization;
+      if (Object.keys(headers).length > 0) draft.headers = headers;
     }
+    const replayBody = observed?.method.toUpperCase() === 'POST' ? observed.postBody : undefined;
+    if (replayBody) {
+      draft.method = 'POST';
+      draft.body = replayBody;
+    }
+    const incognito = facts.incognito;
+    const storeId = observed?.cookieStoreId;
     if (decision.action !== 'leave') {
       const host = downloadHost(finalUrl ?? url);
       if (host) {
-        draft.cookies = await this.readCookies(
-          finalUrl ?? url,
+        draft.cookies = await this.cookieReader.read({
+          url: finalUrl ?? url,
           pageUrl,
-          observed?.cookieStoreId,
-          facts.incognito,
-          settings.rules.privateWindows,
+          storeId,
+          tabId: observed?.tabId,
+          incognito,
+          allowPrivate: settings.rules.privateWindows,
           host,
-        );
+        });
       }
     }
+    // A renewal carries no checksum or mirror list to review: it only has to reach the server that is waiting.
+    const hinted = endpoint
+      ? draft
+      : await this.applyHints(draft, settings, originOf(observed?.documentUrl));
+    const address = finalUrl ?? url;
+    const contentType = observed?.requestHeaders['content-type'];
+    const replay: Replay = {
+      url: address,
+      ...(filename ? { filename } : {}),
+      ...(replayBody ? { method: 'POST' as const, body: replayBody } : {}),
+      ...(replayBody && contentType ? { contentType } : {}),
+      ...(incognito ? { incognito: true } : {}),
+      ...(storeId ? { cookieStoreId: storeId } : {}),
+    };
     return {
       decision,
-      draft: await this.applyHints(draft, settings),
-      name: displayName(filename, finalUrl ?? url),
+      draft: hinted,
+      name: displayName(filename, address),
+      site: observed?.documentUrl ? downloadHost(observed.documentUrl) : undefined,
+      replay,
+      defaultStore: !incognito && (storeId === undefined || /default$/.test(storeId)),
+      ...(endpoint ? { endpoint } : {}),
     };
   }
 
@@ -599,10 +870,12 @@ export class InterceptService {
   private async applyHints(
     draft: CaptureDraft,
     settings: Awaited<ReturnType<SettingsStore['get']>>,
+    origin: string | undefined,
   ): Promise<CaptureDraft> {
     if (!this.deps.hints) return draft;
     const urls = [draft.finalUrl, draft.url].filter((url): url is string => Boolean(url));
-    const hint = await this.deps.hints.find(urls, this.now());
+    // Only what the page the download started on said about it.
+    const hint = await this.deps.hints.find(urls, origin, this.now());
     if (!hint) return draft;
     return {
       ...draft,
@@ -613,124 +886,112 @@ export class InterceptService {
     };
   }
 
-  private async readCookies(
-    url: string,
-    pageUrl: string | undefined,
-    storeId: string | undefined,
-    incognito: boolean,
-    allowPrivate: boolean,
-    host: string,
-  ): Promise<CaptureCookie[]> {
-    if (incognito && !allowPrivate) return [];
-    const base: CookieQuery = storeId ? { url, storeId } : { url };
-    const lists: BrowserCookieLike[][] = [];
-    lists.push(await this.readCookieList(base));
-    if (pageUrl) {
-      try {
-        const origin = new URL(pageUrl).origin;
-        if (origin !== 'null') {
-          lists.push(
-            await this.readCookieList({ ...base, partitionKey: { topLevelSite: origin } }),
-          );
-        }
-      } catch {
-        // The page address is not a URL we can use as a partition key.
-      }
-    }
-    const seen = new Set<string>();
-    const cookies = [];
-    for (const cookie of lists.flat()) {
-      const mapped = toCaptureCookie(cookie, host);
-      if (!mapped) continue;
-      const key = `${mapped.domain}\n${mapped.name}\n${mapped.path ?? ''}\n${mapped.partitionKey ?? ''}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      cookies.push(mapped);
-    }
-    return cookies;
-  }
-
-  private async readCookieList(query: CookieQuery): Promise<BrowserCookieLike[]> {
-    try {
-      return await this.deps.cookies.getAll(query);
-    } catch (error) {
-      this.deps.log.debug('intercept', 'cookies could not be read', { error });
-      return [];
-    }
-  }
-
   /**
-   * `won` the first time. A later event sees `taken` (DLM has it), `failed` (the browser keeps it) or `working`
-   * (the other path has not finished).
+   * `won` the first time. A later event for the same request sees `taken` (DLM has it), `failed` (the browser keeps
+   * it) or `working` (the other path has not finished).
    */
-  private async claim(url: string): Promise<ClaimResult | 'won'> {
+  private async claim(key: string): Promise<ClaimResult | 'won'> {
     const now = this.now();
     let outcome: ClaimResult | 'won' = 'working';
     await this.claims.update((list) => {
       const fresh = list.filter((item) => now - item.at <= CLAIM_TTL_MS);
-      const existing = fresh.find((item) => item.url === url);
+      const existing = fresh.find((item) => item.key === key);
       if (existing) {
         outcome = existing.result;
         return fresh;
       }
       outcome = 'won';
-      return [...fresh, { url, at: now, result: 'working' as const }];
+      return [...fresh, { key, at: now, result: 'working' as const }];
     });
     return outcome;
   }
 
-  private settle(url: string, result: ClaimResult): Promise<Claim[]> {
+  private settle(key: string, result: ClaimResult): Promise<Claim[]> {
     return this.claims.update((list) =>
-      list.map((item) => (item.url === url ? { ...item, result } : item)),
+      list.map((item) => (item.key === key ? { ...item, result } : item)),
     );
   }
 
-  /** Cancels and erases a download that already started. False when the browser would not cancel it. */
+  /**
+   * Cancels and erases a download that already started. False only when the browser would not cancel it, so the
+   * download is still running in the browser. A cancelled entry that cannot be erased is a leftover in the list, not a
+   * reason to lose the file.
+   */
   private async erase(id: number): Promise<boolean> {
     try {
       await this.deps.downloads.cancel(id);
-      await this.deps.downloads.erase({ id });
-      return true;
     } catch (error) {
       this.deps.log.warn('intercept', 'could not cancel the browser download', { error });
       return false;
     }
+    try {
+      await this.deps.downloads.erase({ id });
+    } catch (error) {
+      this.deps.log.warn('intercept', 'could not erase the cancelled download', { error });
+    }
+    return true;
   }
 
-  /** A torrent file goes to the torrent upload; everything else is a capture. */
-  private async deliver(draft: CaptureDraft, name: string): Promise<SendResult> {
-    const address = draft.finalUrl ?? draft.url;
+  /**
+   * A torrent file goes to the torrent upload; everything else is a capture. A torrent started in a private window or a
+   * container is captured with its own cookies instead: the extension would fetch it with the wrong ones.
+   */
+  private async dispatch(
+    body: CaptureBody,
+    name: string,
+    prepared: Pick<Prepared, 'defaultStore' | 'endpoint'>,
+  ): Promise<SendResult> {
+    const address = body.finalUrl ?? body.url ?? '';
     if (
       this.deps.torrents &&
+      prepared.defaultStore &&
+      !prepared.endpoint &&
       isTorrent({
         url: address,
-        ...(draft.filename ? { filename: draft.filename } : {}),
-        ...(draft.mime ? { mime: draft.mime } : {}),
+        ...(body.filename ? { filename: body.filename } : {}),
+        ...(body.mime ? { mime: body.mime } : {}),
       })
     ) {
       const outcome = await this.deps.torrents.addTorrent({
         url: address,
-        ...(draft.filename ? { filename: draft.filename } : {}),
-        ...(draft.cookies ? { cookies: draft.cookies } : {}),
+        ...(body.filename ? { filename: body.filename } : {}),
+        ...(body.cookies ? { cookies: body.cookies } : {}),
       });
       if (outcome === 'failed') {
         await this.notify('intercept.failed', name, t('intercept.reason.rejected'));
         return 'failed';
       }
       await this.bump();
+      if (outcome === 'duplicate') {
+        await this.notifyDuplicate(body, name);
+        return 'duplicate';
+      }
       await this.notify('intercept.sent', name);
       return 'taken';
     }
-    return this.send(buildCaptureBody(draft), name);
+    return this.send(body, name, prepared.endpoint);
   }
 
-  private async finish(body: CaptureBody, name: string, pending: PendingAsk): Promise<void> {
-    const result = await this.send(body, name);
-    if (result === 'failed') await this.fallback(pending.fallbackUrl, pending.filename);
+  private async finish(body: CaptureBody, pending: PendingAsk): Promise<void> {
+    let result: SendResult = 'failed';
+    try {
+      result = await this.dispatch(body, pending.name, {
+        defaultStore: !pending.fallback.incognito && pending.fallback.cookieStoreId === undefined,
+      });
+    } catch (error) {
+      this.deps.log.error('intercept', 'the hand-off failed', { error });
+    }
+    if (result === 'failed') await this.fallback(pending.fallback);
   }
 
-  private async send(body: CaptureBody, name: string): Promise<SendResult> {
-    const routed = await this.routedClient(body.url ?? '');
+  private async send(
+    body: CaptureBody,
+    name: string,
+    endpoint?: { baseUrl: string; token: string },
+  ): Promise<SendResult> {
+    const routed = endpoint
+      ? this.deps.client(endpoint.baseUrl, endpoint.token)
+      : await this.routedClient(body.url ?? '');
     if (!routed) {
       await this.notify('intercept.failed', name, t('intercept.reason.offline'));
       return 'failed';
@@ -743,7 +1004,7 @@ export class InterceptService {
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         await this.bump();
-        await this.notify('intercept.duplicate', name);
+        await this.notifyDuplicate(body, name);
         return 'duplicate';
       }
       const reason =
@@ -756,15 +1017,31 @@ export class InterceptService {
     }
   }
 
-  private async fallback(url: string, filename: string | undefined): Promise<void> {
-    const name = basename(filename);
-    await this.released.update((list) => [...list.filter((item) => item !== url), url].slice(-100));
+  /** Restarts a download in the browser, the way it started. The restarted download is left alone for a minute. */
+  private async fallback(replay: Replay): Promise<void> {
+    const now = this.now();
+    await this.released.update((list) =>
+      [
+        ...list.filter((item) => item.url !== replay.url && now - item.at <= RELEASED_TTL_MS),
+        { url: replay.url, at: now },
+      ].slice(-100),
+    );
+    const name = basename(replay.filename);
+    const options: DownloadOptions = { url: replay.url, ...(name ? { filename: name } : {}) };
+    if (replay.method === 'POST' && replay.body !== undefined) {
+      options.method = 'POST';
+      options.body = decodeBase64Text(replay.body);
+      if (replay.contentType)
+        options.headers = [{ name: 'Content-Type', value: replay.contentType }];
+    }
+    if (replay.incognito) options.incognito = true;
+    if (replay.cookieStoreId) options.cookieStoreId = replay.cookieStoreId;
     try {
-      await this.deps.downloads.download(name ? { url, filename: name } : { url });
+      await this.deps.downloads.download(options);
     } catch (error) {
       this.deps.log.error('intercept', 'could not restart the download in the browser', {
         error,
-        url: redactUrl(url),
+        url: redactUrl(replay.url),
       });
     }
   }
@@ -783,24 +1060,22 @@ export class InterceptService {
     return this.deps.client(state.baseUrl, token);
   }
 
-  private async ask(
-    prepared: { draft: CaptureDraft; name: string },
-    purpose: AskPurpose,
-  ): Promise<void> {
+  private async ask(prepared: Prepared, purpose: AskPurpose): Promise<void> {
     const body = buildCaptureBody(prepared.draft);
-    const host = downloadHost(prepared.draft.finalUrl ?? prepared.draft.url) ?? '';
+    const now = this.now();
     const pending: PendingAsk = {
       id: this.id(),
-      host,
+      host: prepared.site ?? downloadHost(prepared.draft.finalUrl ?? prepared.draft.url) ?? '',
       name: prepared.name,
-      fallbackUrl: prepared.draft.finalUrl ?? prepared.draft.url,
+      fallback: prepared.replay,
       body,
       purpose,
-      resolved: false,
-      at: this.now(),
-      ...(prepared.draft.filename ? { filename: prepared.draft.filename } : {}),
+      at: now,
     };
-    await this.asks.update((list) => [...list.filter((ask) => ask.resolved), pending].slice(-20));
+    // Prompts that are still open stay: a page can start two downloads at once.
+    await this.asks.update((list) =>
+      [...list.filter((ask) => now - ask.at <= ASK_TTL_MS), pending].slice(-20),
+    );
     try {
       const created = await this.deps.windows.create({
         url: this.deps.askUrl(pending.id),
@@ -815,7 +1090,7 @@ export class InterceptService {
     } catch (error) {
       this.deps.log.warn('intercept', 'could not open the ask window', { error });
       await this.asks.update((list) => list.filter((ask) => ask.id !== pending.id));
-      await this.fallback(pending.fallbackUrl, pending.filename);
+      await this.fallback(pending.fallback);
     }
   }
 
@@ -825,10 +1100,24 @@ export class InterceptService {
     await this.deps.connection.repaint();
   }
 
+  /** DLM already has it: say so, and let the person add it again by clicking the notification. */
+  private async notifyDuplicate(body: CaptureBody, name: string): Promise<void> {
+    const id = this.id();
+    const now = this.now();
+    await this.duplicates.update((list) =>
+      [
+        ...list.filter((item) => now - item.at <= DUPLICATE_TTL_MS),
+        { id, name, body, at: now },
+      ].slice(-MAX_DUPLICATES),
+    );
+    await this.notify('intercept.duplicate', name, undefined, `${DUPLICATE_PREFIX}${id}`);
+  }
+
   private async notify(
     key: 'intercept.sent' | 'intercept.duplicate' | 'intercept.failed',
     name: string,
     reason?: string,
+    notificationId = 'dlm-intercept',
   ): Promise<void> {
     const settings = await this.deps.settings.get();
     if (!settings.preferences.notifications) return;
@@ -837,7 +1126,7 @@ export class InterceptService {
         ? t(key, { name, reason: reason ?? t('intercept.reason.rejected') })
         : t(key, { name });
     try {
-      await this.deps.notifications.create('dlm-intercept', {
+      await this.deps.notifications.create(notificationId, {
         title: t('intercept.notify.title'),
         message,
         ...(this.deps.iconUrl ? { iconUrl: this.deps.iconUrl } : {}),
@@ -847,3 +1136,5 @@ export class InterceptService {
     }
   }
 }
+
+export type { CookieQuery, CookiesPort } from './cookies';

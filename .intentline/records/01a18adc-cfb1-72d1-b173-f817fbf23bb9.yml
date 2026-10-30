@@ -1,0 +1,26 @@
+schema_version: 1
+id: 01a18adc-cfb1-72d1-b173-f817fbf23bb9
+status: draft
+created_at: '2026-10-30T03:31:29Z'
+updated_at: '2026-10-30T03:31:29Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: 'Review fixes, part 2: interception keeps every ask prompt, treats size 0 as unknown, no longer writes every request to storage, claims per request, safer cookies/redirects, duplicates offer Add anyway, POST replay works'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: src/lib/intercept/service.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

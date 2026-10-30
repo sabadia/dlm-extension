@@ -1,10 +1,13 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
 import type { LiveSnapshot } from '../lib/downloads/service';
+import { contentLength, headerValue } from '../lib/intercept/metadata';
+import { responseSize } from '../lib/media/classify';
 import { postBodyFrom } from '../lib/intercept/post';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
 import type { LinksService } from '../lib/links/service';
 import type { MediaService } from '../lib/media/service';
 import { REFRESH_PERIOD_MINUTES } from '../lib/refresh/watch';
+import { t } from '../lib/i18n';
 import { createHandlers } from './handlers';
 import { createServices, type Environment } from './services';
 
@@ -26,12 +29,23 @@ export function registerBackground(
 
   const check = (why: string) => {
     services.log.debug('connection', `check: ${why}`);
-    void services.connection.refresh();
+    void (async () => {
+      const before = await services.connection.get();
+      const after = await services.connection.refresh();
+      // The menus list the queues of DLM: build them again when DLM becomes reachable.
+      if (after.kind === 'connected' && before.kind !== 'connected') void services.links?.install();
+    })();
   };
-  lifecycle.onStartup.addListener(() => check('startup'));
-  lifecycle.onInstalled.addListener(() => {
+  lifecycle.onStartup.addListener(() => {
+    void services.links?.install();
+    check('startup');
+  });
+  lifecycle.onInstalled.addListener((details) => {
     ensureAlarm(lifecycle.alarms);
+    void services.links?.install();
     check('installed');
+    // A new installation opens the setup; an update does not.
+    if (details?.reason === 'install') lifecycle.commands?.openOptions();
   });
   lifecycle.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === CHECK_ALARM) check('alarm');
@@ -43,23 +57,61 @@ export function registerBackground(
     lifecycle.intercept.attach(services.intercept);
     void services.intercept.sweep();
   }
-  if (services.links && lifecycle.menus) {
-    lifecycle.menus.attach(services.links);
-    void services.links.install();
-  }
+  // The menus are built when the extension is installed or the browser starts, not each time the worker wakes.
+  if (services.links && lifecycle.menus) lifecycle.menus.attach(services.links);
   if (services.media && lifecycle.media) lifecycle.media.attach(services.media);
+  // One listener for every notification that asks for a click: "already in DLM" (add it again), "link expired" (open
+  // the page).
+  lifecycle.notifications?.onClicked.addListener((id) => {
+    void (async () => {
+      if (await services.intercept?.onNotificationClicked(id)) return;
+      await services.refresh.onNotificationClicked(id);
+    })();
+  });
+  lifecycle.tabs?.onRemoved.addListener((tabId) => {
+    void services.media?.closed(tabId);
+  });
   lifecycle.live?.onConnect.addListener((port) => {
     if (port.name !== 'downloads') return;
+    // Only the extension's own pages (the popup) may open the stream; a content script or another extension may not.
+    if (port.sender?.id !== runtime.id || !port.sender.url?.startsWith(runtime.getURL(''))) {
+      port.disconnect?.();
+      return;
+    }
     const controller = new AbortController();
     port.onDisconnect.addListener(() => controller.abort());
-    void services.downloads.watch((snapshot) => port.postMessage(snapshot), controller.signal);
+    const send = (snapshot: LiveSnapshot) => {
+      try {
+        port.postMessage(snapshot);
+      } catch {
+        // The popup closed between two messages.
+        controller.abort();
+      }
+    };
+    services.downloads.watch(send, controller.signal).catch((error: unknown) => {
+      services.log.warn('downloads', 'the live list stopped', { error });
+    });
   });
   lifecycle.commands?.onCommand.addListener((command) => {
     if (command === 'toggle-intercept') {
-      void services.settings.update((settings) => ({
-        ...settings,
-        rules: { ...settings.rules, intercept: !settings.rules.intercept },
-      }));
+      void services.settings
+        .update((settings) => ({
+          ...settings,
+          rules: { ...settings.rules, intercept: !settings.rules.intercept },
+        }))
+        .then(
+          // The shortcut changes something the person cannot see: say what it is now.
+          async (settings) => {
+            await env.notifications?.create('dlm-toggle', {
+              title: t('intercept.notify.title'),
+              message: t(settings.rules.intercept ? 'intercept.toggledOn' : 'intercept.toggledOff'),
+              ...(env.iconUrl ? { iconUrl: env.iconUrl } : {}),
+            });
+          },
+        )
+        .catch((error: unknown) => {
+          services.log.warn('commands', 'could not toggle interception', { error });
+        });
     }
     if (command === 'open-options') void lifecycle.commands?.openOptions();
   });
@@ -74,7 +126,7 @@ export const REFRESH_ALARM = 'link-refresh';
 /** The parts of `browser.runtime` and `browser.alarms` the background lifecycle uses. */
 export interface Lifecycle {
   onStartup: { addListener(listener: () => void): void };
-  onInstalled: { addListener(listener: () => void): void };
+  onInstalled: { addListener(listener: (details: { reason: string }) => void): void };
   alarms: {
     get(name: string): Promise<unknown>;
     create(name: string, info: { periodInMinutes: number }): Promise<void> | void;
@@ -101,6 +153,13 @@ export interface Lifecycle {
       addListener(listener: (port: LivePort) => void): void;
     };
   };
+  notifications?: {
+    onClicked: { addListener(listener: (notificationId: string) => void): void };
+  };
+  /** A closed tab's media list is forgotten. */
+  tabs?: {
+    onRemoved: { addListener(listener: (tabId: number) => void): void };
+  };
   commands?: {
     onCommand: { addListener(listener: (command: string) => void): void };
     openOptions(): void;
@@ -109,12 +168,20 @@ export interface Lifecycle {
 
 interface LivePort {
   name: string;
+  sender?: { id?: string | undefined; url?: string | undefined } | undefined;
+  disconnect?(): void;
   postMessage(message: LiveSnapshot): void;
   onDisconnect: { addListener(listener: () => void): void };
 }
 
 /** Addresses the hand-off watches. `blob:` and `data:` are not among them. */
-export const INTERCEPT_URLS = ['http://*/*', 'https://*/*', 'ftp://*/*'] as const;
+export const INTERCEPT_URLS = ['http://*/*', 'https://*/*'] as const;
+
+/**
+ * Request types the hand-off watches: navigations (a link to a file) and `other` (`<a download>`, `downloads.download`).
+ * Images, scripts and XHR are never downloads, and watching them would run the listeners for every subresource.
+ */
+export const INTERCEPT_TYPES = ['main_frame', 'sub_frame', 'other'] as const;
 
 /** The listener shape `browser.webRequest` and `browser.downloads` share, narrowed to what E2 registers. */
 export interface InterceptBrowser {
@@ -134,7 +201,7 @@ export interface InterceptBrowser {
 interface WebListener {
   addListener(
     listener: (details: RawRequest) => void | Promise<{ cancel?: boolean } | void>,
-    filter: { urls: string[] },
+    filter: { urls: string[]; types?: string[] },
     extra: readonly string[],
   ): void;
 }
@@ -159,6 +226,9 @@ export interface RawRequest {
   url: string;
   method: string;
   tabId: number;
+  /** `main_frame`, `sub_frame`, `xmlhttprequest`, `media`, … */
+  type?: string | undefined;
+  statusCode?: number | undefined;
   documentUrl?: string | undefined;
   initiator?: string | undefined;
   originUrl?: string | undefined;
@@ -166,7 +236,12 @@ export interface RawRequest {
   cookieStoreId?: string | undefined;
   requestHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
   responseHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
-  requestBody?: { raw?: { bytes?: ArrayBuffer }[] | undefined } | undefined;
+  requestBody?:
+    | {
+        raw?: { bytes?: ArrayBuffer }[] | undefined;
+        formData?: Record<string, string[]> | undefined;
+      }
+    | undefined;
 }
 
 /** The context-menu click, narrowed to the fields the links service reads. */
@@ -203,36 +278,35 @@ export function attachMenus(browser: MenuBrowser, links: LinksService): void {
   });
 }
 
-/** Registers the media listener on the same webRequest events. It never cancels a request. */
+/**
+ * Registers the media listener on the same webRequest events. It never cancels a request. A top-level navigation clears
+ * the tab's list (Chrome does not tell a request which document made it, so the navigation itself is the signal); every
+ * other response is offered to the classifier.
+ */
 export function attachMedia(browser: InterceptBrowser, media: MediaService): void {
   browser.webRequest.onHeadersReceived.addListener(
     (details) => {
       const request = toRequest(details);
+      if (details.type === 'main_frame') {
+        void media.navigated(request.tabId, request.url);
+        return;
+      }
       const mime = headerValue(request.responseHeaders, 'content-type');
-      const sizeBytes = contentLength(headerValue(request.responseHeaders, 'content-length'));
+      const sizeBytes = responseSize({
+        status: details.statusCode,
+        contentLength: contentLength(headerValue(request.responseHeaders, 'content-length')),
+        contentRange: headerValue(request.responseHeaders, 'content-range'),
+      });
       void media.observe({
         url: request.url,
         tabId: request.tabId,
         ...(mime ? { mime } : {}),
         ...(sizeBytes !== undefined ? { sizeBytes } : {}),
-        ...(request.documentUrl ? { pageUrl: request.documentUrl } : {}),
       });
     },
     { urls: [...INTERCEPT_URLS] },
     ['responseHeaders'],
   );
-}
-
-function headerValue(
-  headers: { name?: string | undefined; value?: string | undefined }[] | undefined,
-  name: string,
-): string | undefined {
-  return headers?.find((header) => header.name?.toLowerCase() === name)?.value;
-}
-
-function contentLength(value: string | undefined): number | undefined {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
 
 /** Registers the hand-off listeners. Firefox also asks to cancel attachments before they become downloads. */
@@ -241,26 +315,28 @@ export function attachIntercept(
   intercept: InterceptService,
   firefox: boolean,
 ): void {
+  const filter = { urls: [...INTERCEPT_URLS], types: [...INTERCEPT_TYPES] };
   browser.downloads.onCreated.addListener((item) => {
     void intercept.onCreated(toDownload(item));
   });
   browser.webRequest.onBeforeRequest.addListener(
     (details) => {
-      void intercept.onBeforeRequest(toRequest(details));
+      if (details.method === 'POST') intercept.onBeforeRequest(toRequest(details));
     },
-    { urls: [...INTERCEPT_URLS] },
+    filter,
     ['requestBody'],
   );
   browser.webRequest.onBeforeSendHeaders.addListener(
     (details) => {
-      void intercept.onBeforeSendHeaders(toRequest(details));
+      intercept.onBeforeSendHeaders(toRequest(details));
     },
-    { urls: [...INTERCEPT_URLS] },
-    ['requestHeaders'],
+    filter,
+    // Chrome hides `Referer` and a few other headers unless asked; Firefox has no such option and refuses it.
+    firefox ? ['requestHeaders'] : ['requestHeaders', 'extraHeaders'],
   );
   browser.webRequest.onHeadersReceived.addListener(
     (details) => intercept.onHeadersReceived(toRequest(details)),
-    { urls: [...INTERCEPT_URLS] },
+    filter,
     firefox ? ['blocking', 'responseHeaders'] : ['responseHeaders'],
   );
   browser.windows.onRemoved.addListener((windowId) => {
@@ -269,10 +345,11 @@ export function attachIntercept(
 }
 
 function toDownload(item: RawDownload) {
+  // The browser reports 0 or -1 for a size it does not know (a chunked response): that is unknown, not an empty file.
   const size =
-    item.fileSize !== undefined && item.fileSize >= 0
+    item.fileSize !== undefined && item.fileSize > 0
       ? item.fileSize
-      : item.totalBytes !== undefined && item.totalBytes >= 0
+      : item.totalBytes !== undefined && item.totalBytes > 0
         ? item.totalBytes
         : undefined;
   return {
@@ -289,7 +366,7 @@ function toDownload(item: RawDownload) {
 }
 
 function toRequest(details: RawRequest): RequestEvent {
-  const postBody = postBodyFrom(details.requestBody?.raw);
+  const postBody = postBodyFrom(details.requestBody);
   return {
     requestId: details.requestId,
     url: details.url,

@@ -1,18 +1,59 @@
 import { browser } from 'wxt/browser';
 import { sendMessage } from '../src/lib/bus/bus';
 import { isDirectScheme } from '../src/lib/links/classify';
-import type { PageLink } from '../src/lib/links/filter';
-import type { PageSnapshot } from '../src/lib/media/page';
-import { pageHints, type HintLink } from '../src/lib/page/hints';
+import {
+  directLinkOfClick,
+  hintLinks,
+  pageIsProtected,
+  pageLinks,
+  pageSnapshot,
+  throttled,
+} from '../src/lib/page/dom';
+import { pageHints } from '../src/lib/page/hints';
+
+/** How often a page that keeps changing is looked at again. */
+const SCAN_INTERVAL_MS = 2000;
 
 /**
- * Collects the links and media on the page for the preview, and sends magnet and eD2K clicks straight to DLM so the
- * browser does not ask to open another application. The page cannot ask for anything else.
+ * Collects the links and media on the page for the preview, tells the background about protected media, and sends
+ * magnet and eD2K clicks straight to DLM so the browser does not ask to open another application. It runs in every
+ * frame (a player is often an iframe); only the top frame reports links, media and hints. The page cannot ask for
+ * anything else: the background checks the frame and the sender of every message.
  */
 export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
-  runAt: 'document_idle',
+  allFrames: true,
+  // The `encrypted` event of an autoplaying protected video fires before the page is idle.
+  runAt: 'document_start',
   main() {
+    const top = window === window.top;
+    let protectedMedia = false;
+    let reportedProtected = false;
+
+    const reportProtected = () => {
+      protectedMedia = true;
+      if (!top && !reportedProtected) {
+        reportedProtected = true;
+        void sendMessage(browser.runtime, 'media.protected').catch(() => undefined);
+      }
+    };
+    document.addEventListener(
+      'encrypted',
+      () => {
+        reportProtected();
+        scan();
+      },
+      true,
+    );
+
+    if (!top) {
+      // An iframe only says that it plays protected media.
+      document.addEventListener('DOMContentLoaded', () => {
+        if (pageIsProtected(document)) reportProtected();
+      });
+      return;
+    }
+
     browser.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
       if (
         typeof message !== 'object' ||
@@ -21,130 +62,50 @@ export default defineContentScript({
         message.type !== 'links.collect'
       )
         return undefined;
-      sendResponse(collect());
+      sendResponse(pageLinks(document, location.href));
       return true;
     });
-    let protectedMedia = false;
-    const schedule = debounce(() => {
+
+    const scan = throttled(() => {
       void sendMessage(browser.runtime, 'media.scan', {
-        snapshot: snapshot(protectedMedia),
-        visible: document.visibilityState === 'visible',
+        snapshot: pageSnapshot(document, location.href, { protectedMedia }),
       }).catch(() => undefined);
-      void sendMessage(browser.runtime, 'page.hints', { hints: pageHints(hintLinks()) }).catch(
-        () => undefined,
-      );
-    });
-    document.addEventListener(
-      'encrypted',
-      () => {
-        protectedMedia = true;
-        schedule();
-      },
-      true,
-    );
-    schedule();
-    new MutationObserver(schedule).observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['src', 'href'],
-    });
+      void sendMessage(browser.runtime, 'page.hints', {
+        hints: pageHints(hintLinks(document, location.href)),
+      }).catch(() => undefined);
+    }, SCAN_INTERVAL_MS);
+
+    const start = () => {
+      scan();
+      new MutationObserver(scan).observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['src', 'href'],
+      });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+    else start();
+
     window.addEventListener(
       'click',
       (event) => {
-        const target = event.target;
-        if (!(target instanceof Element)) return;
-        const anchor = target.closest('a');
-        const href = anchor?.href;
-        if (!href || !isDirectScheme(href)) return;
+        const href = directLinkOfClick(event, isDirectScheme);
+        if (!href) return;
+        // The browser would ask to open another application: stop it, and hand the link over. If DLM does not take
+        // it, the browser gets it after all.
         event.preventDefault();
         event.stopPropagation();
-        void sendMessage(browser.runtime, 'links.add', { url: href }).catch(() => undefined);
+        void sendMessage(browser.runtime, 'links.add', { url: href }).then(
+          (accepted) => {
+            if (!accepted) location.href = href;
+          },
+          () => {
+            location.href = href;
+          },
+        );
       },
       true,
     );
   },
 });
-
-function debounce(run: () => void): () => void {
-  let pending = 0;
-  return () => {
-    window.clearTimeout(pending);
-    pending = window.setTimeout(run, 400);
-  };
-}
-
-function snapshot(protectedMedia: boolean): PageSnapshot {
-  const media = (selector: string) =>
-    [...document.querySelectorAll(selector)].map((element) => ({
-      src: element.getAttribute('src') ?? undefined,
-      sources: [...element.querySelectorAll('source[src]')].map(
-        (source) => source.getAttribute('src') ?? '',
-      ),
-    }));
-  const videos = media('video');
-  const blobOrMse = [...document.querySelectorAll('video')].some(
-    (video) => video.currentSrc.startsWith('blob:') || video.srcObject !== null,
-  );
-  return {
-    pageUrl: location.href,
-    protectedMedia,
-    blobOrMse,
-    videos,
-    audios: media('audio'),
-    links: [...document.querySelectorAll('a[href]')].map((anchor) => ({
-      href: anchor.getAttribute('href') ?? '',
-      text: anchor.textContent ?? '',
-    })),
-    openGraph: [
-      ...document.querySelectorAll('meta[property="og:video"], meta[property="og:video:url"]'),
-    ]
-      .map((meta) => meta.getAttribute('content') ?? '')
-      .filter((url) => url !== ''),
-    jsonLd: [...document.querySelectorAll('script[type="application/ld+json"]')].map(
-      (script) => script.textContent ?? '',
-    ),
-  };
-}
-
-function hintLinks(): HintLink[] {
-  const found: HintLink[] = [];
-  for (const anchor of document.querySelectorAll('a[href]')) {
-    let url: string;
-    try {
-      const parsed = new URL(anchor.getAttribute('href') ?? '', location.href);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue;
-      url = parsed.href;
-    } catch {
-      continue;
-    }
-    const nearby = (anchor.parentElement?.textContent ?? '').replace(/\s+/g, ' ').slice(0, 800);
-    found.push({ url, text: (anchor.textContent ?? '').replace(/\s+/g, ' ').trim(), nearby });
-  }
-  return found;
-}
-
-function collect(): PageLink[] {
-  const found: PageLink[] = [];
-  const push = (url: string | null, text: string, kind: PageLink['kind']) => {
-    if (!url) return;
-    try {
-      const parsed = new URL(url, location.href);
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:' && parsed.protocol !== 'ftp:')
-        return;
-      found.push({ url: parsed.href, text: text.trim() || parsed.href, kind });
-    } catch {
-      // Not an address.
-    }
-  };
-  for (const anchor of document.querySelectorAll('a[href]')) {
-    push(anchor.getAttribute('href'), anchor.textContent ?? '', 'link');
-  }
-  for (const kind of ['img', 'audio', 'video', 'source'] as const) {
-    const media = kind === 'img' ? 'image' : kind === 'source' ? 'video' : kind;
-    for (const element of document.querySelectorAll(`${kind}[src]`)) {
-      push(element.getAttribute('src'), element.getAttribute('alt') ?? '', media);
-    }
-  }
-  return found;
-}

@@ -7,10 +7,10 @@ function parseHints(raw: unknown): StoredHint[] {
   const hints: StoredHint[] = [];
   for (const item of raw) {
     if (typeof item !== 'object' || item === null) continue;
-    const at = (item as { at?: unknown }).at;
-    if (typeof at !== 'number') continue;
+    const { at, origin } = item as { at?: unknown; origin?: unknown };
+    if (typeof at !== 'number' || typeof origin !== 'string') continue;
     const [hint] = acceptedHints([item]);
-    if (hint) hints.push({ ...hint, at });
+    if (hint) hints.push({ ...hint, origin, at });
   }
   return hints;
 }
@@ -23,11 +23,19 @@ export class HintStore {
     this.stored = new StoredValue(area, 'page.hints', parseHints);
   }
 
-  note(hints: readonly PageHint[], now = Date.now()): Promise<void> {
-    return this.stored.update((list) => rememberPageHints(list, hints, now)).then(() => undefined);
+  /** Hints the page of `origin` reported. The origin comes from the sender of the message, never from the page. */
+  note(hints: readonly PageHint[], origin: string, now = Date.now()): Promise<void> {
+    return this.stored
+      .update((list) => rememberPageHints(list, hints, origin, now))
+      .then(() => undefined);
   }
 
-  find(urls: readonly string[], now = Date.now()): Promise<StoredHint | undefined> {
-    return this.stored.get().then((list) => hintFor(list, urls, now));
+  /** The hint for one of `urls` that a page of `origin` reported; none when the origin is not known. */
+  find(
+    urls: readonly string[],
+    origin: string | undefined,
+    now = Date.now(),
+  ): Promise<StoredHint | undefined> {
+    return this.stored.get().then((list) => hintFor(list, urls, origin, now));
   }
 }

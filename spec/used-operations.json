@@ -1,20 +1,53 @@
 {
-  "get-health": { "reads": ["status", "version", "apiVersion", "minClientApi", "authenticated"] },
-  "whoami": { "reads": ["name", "scope", "primary"] },
-  "capture-download": { "reads": ["task", "refreshed"] },
-  "list-tasks": { "reads": ["tasks", "nextCursor"] },
-  "get-task": { "reads": ["id", "status", "name", "source"] },
-  "create-task": { "reads": ["id", "status"] },
-  "create-tasks": { "reads": ["results"] },
-  "list-queues": { "reads": ["queues"] },
-  "move-tasks": { "reads": ["results"] },
-  "get-limits": { "reads": ["global", "override"] },
-  "set-limits-override": { "reads": ["override"] },
-  "clear-limits-override": { "reads": ["override"] },
-  "add-torrent-file": { "reads": ["id"] },
-  "pause-tasks": { "reads": [] },
-  "resume-tasks": { "reads": [] },
-  "resolve-task": { "reads": [] },
-  "resolve-page": { "reads": [] },
-  "stream-events": { "reads": [] }
+  "get-health": {
+    "reads": ["status", "version", "apiVersion", "minClientApi", "authenticated"]
+  },
+  "whoami": {
+    "reads": ["name", "scope", "primary"]
+  },
+  "capture-download": {
+    "reads": ["task", "refreshed"]
+  },
+  "list-tasks": {
+    "reads": ["tasks", "nextCursor"]
+  },
+  "get-task": {
+    "reads": ["id", "status", "name", "source"]
+  },
+  "create-task": {
+    "reads": ["id", "status"]
+  },
+  "create-tasks": {
+    "reads": ["results"]
+  },
+  "list-queues": {
+    "reads": ["queues"]
+  },
+  "move-tasks": {
+    "reads": ["results"]
+  },
+  "get-limits": {
+    "reads": ["global", "override"]
+  },
+  "set-limits-override": {
+    "reads": ["override"]
+  },
+  "clear-limits-override": {
+    "reads": ["override"]
+  },
+  "add-torrent-file": {
+    "reads": ["id"]
+  },
+  "pause-tasks": {
+    "reads": []
+  },
+  "resume-tasks": {
+    "reads": []
+  },
+  "resolve-task": {
+    "reads": ["name", "resource", "duplicateOf"]
+  },
+  "stream-events": {
+    "reads": []
+  }
 }

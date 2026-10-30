@@ -336,3 +336,82 @@ describe('ConnectionService', () => {
     expect(await service.refresh()).toMatchObject({ kind: 'connected', targetId: 'home' });
   });
 });
+
+describe('the toolbar button of a tab with media', () => {
+  it('shows the media count in that tab only, and keeps it when the state changes', async () => {
+    const local = memoryArea();
+    const session = memoryArea();
+    const calls: { text: string; tabId?: number }[] = [];
+    const action: ActionApi = {
+      setBadgeText: (details) => void calls.push(details),
+      setBadgeBackgroundColor: () => undefined,
+      setTitle: () => undefined,
+    };
+    await session.set('media.tabs', {
+      '7': {
+        pageUrl: 'https://p.test/',
+        protectedMedia: false,
+        blobOrMse: false,
+        at: 1,
+        items: [
+          { url: 'https://c.test/a.mp4', kind: 'video', name: 'a.mp4', source: 'network' },
+          { url: 'https://c.test/b.mp4', kind: 'video', name: 'b.mp4', source: 'network' },
+        ],
+      },
+    });
+    await new SecretStore(local).set('local', 'dlmt_AbCdEf0123456789xyz');
+    const service = new ConnectionService({
+      settings: new SettingsStore(local),
+      secrets: new SecretStore(local),
+      host: { connect: () => Promise.resolve(found) },
+      pairing: { view: () => Promise.resolve({ phase: 'idle' }) },
+      area: session,
+      action,
+      log: new RingLog(session),
+      client: (): ProbeClient => ({
+        health: () => Promise.resolve(health()),
+        whoami: () => Promise.resolve({ scope: 'extension' }),
+      }),
+    });
+    await service.refresh();
+    expect(calls).toContainEqual({ text: '2', tabId: 7 });
+    expect(calls.find((call) => call.tabId === undefined)?.text).toBe('');
+    calls.length = 0;
+    await service.paintTab(7, 5);
+    expect(calls).toEqual([{ text: '5', tabId: 7 }]);
+  });
+});
+
+describe('endpoints for a background look', () => {
+  it('does not start the native host to find the local DLM, and uses the address of the last check', async () => {
+    const local = memoryArea();
+    const session = memoryArea();
+    let hostStarts = 0;
+    await new SecretStore(local).set('local', 'dlmt_AbCdEf0123456789xyz');
+    const service = new ConnectionService({
+      settings: new SettingsStore(local),
+      secrets: new SecretStore(local),
+      host: { connect: () => ((hostStarts += 1), Promise.resolve(found)) },
+      pairing: { view: () => Promise.resolve({ phase: 'idle' }) },
+      area: session,
+      action: {
+        setBadgeText: () => undefined,
+        setBadgeBackgroundColor: () => undefined,
+        setTitle: () => undefined,
+      },
+      log: new RingLog(session),
+      client: (): ProbeClient => ({
+        health: () => Promise.resolve(health()),
+        whoami: () => Promise.resolve({ scope: 'extension' }),
+      }),
+    });
+    expect(await service.endpoints({ discover: false })).toEqual([]);
+    expect(hostStarts).toBe(0);
+    await service.refresh(); // connects, starting the host once
+    const starts = hostStarts;
+    expect(await service.endpoints({ discover: false })).toEqual([
+      { baseUrl: 'http://127.0.0.1:50123', token: 'dlmt_AbCdEf0123456789xyz' },
+    ]);
+    expect(hostStarts).toBe(starts);
+  });
+});

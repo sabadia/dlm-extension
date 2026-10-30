@@ -16,7 +16,11 @@ const links: PageLink[] =
 
 if (root) {
   render(
-    <App links={links} onSend={(urls) => sendMessage(browser.runtime, 'links.send', { urls })} />,
+    <App
+      links={links}
+      onSend={(urls) => sendMessage(browser.runtime, 'links.send', { urls })}
+      onProbe={(urls) => sendMessage(browser.runtime, 'media.probe', { urls })}
+    />,
     root,
   );
 }

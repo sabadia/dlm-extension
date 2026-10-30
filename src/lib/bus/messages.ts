@@ -5,7 +5,7 @@ import type { PageHint } from '../page/hints';
 import type { PageSnapshot } from '../media/page';
 import type { LiveSnapshot } from '../downloads/service';
 import type { DownloadRequest, TabView } from '../media/service';
-import type { Settings } from '../settings/schema';
+import type { Settings, SettingsPatch } from '../settings/schema';
 import type { Variant } from '../media/playlist';
 import type { AddResult, RemoteTestResult, RemoteView } from '../remote/service';
 
@@ -50,6 +50,7 @@ export interface MessageMap {
       host: string;
       purpose: AskPurpose;
       checksum?: { algorithm: string; expected: string };
+      mirrors?: string[];
     } | null;
   };
   /** Checksums and mirror links a content script saw. It does not start a download. */
@@ -63,7 +64,9 @@ export interface MessageMap {
   /** The media list of one tab. */
   'media.list': { request: { tabId: number }; response: TabView };
   /** A content script reporting what it found on its document. */
-  'media.scan': { request: { snapshot: PageSnapshot; visible: boolean }; response: null };
+  'media.scan': { request: { snapshot: PageSnapshot }; response: null };
+  /** An iframe of the tab plays protected (DRM) media. */
+  'media.protected': { request: undefined; response: null };
   /** Sends one item, a chosen quality, or the page via yt-dlp or the daemon's browser. */
   'media.download': { request: DownloadRequest; response: { ok: boolean; error?: string } };
   /** Qualities of an HLS master playlist or a DASH manifest. */
@@ -75,11 +78,11 @@ export interface MessageMap {
   };
   /** The settings, without tokens. */
   'settings.get': { request: undefined; response: Settings };
-  /** Replaces the settings with this value. It is parsed again, so a bad field falls back to the default. */
-  'settings.save': { request: Settings; response: Settings };
+  /** Saves the rules, preferences and routes. It is parsed again, so a bad field falls back to the default. */
+  'settings.save': { request: SettingsPatch; response: Settings };
   /** The settings as a file. It contains no token. */
   'settings.export': { request: undefined; response: string };
-  /** Replaces the settings from an exported file. */
+  /** Replaces the settings from an exported file. A server with a new address starts without its token. */
   'settings.import': { request: { text: string }; response: Settings };
   /** The downloads DLM is working on, the queues, and whether turbo is on. */
   'downloads.list': { request: undefined; response: LiveSnapshot };
@@ -87,8 +90,8 @@ export interface MessageMap {
   'downloads.resume': { request: { id: string }; response: null };
   'downloads.move': { request: { id: string; queueId: string }; response: null };
   'downloads.turbo': { request: { on: boolean }; response: boolean };
-  /** Sends one address as a test that the connection works. */
-  'downloads.test': { request: { url: string }; response: { ok: boolean; error?: string } };
+  /** Has DLM download a small file of its own (its health report) to show that the whole way works. */
+  'downloads.test': { request: undefined; response: { ok: boolean; error?: string } };
 }
 
 export type MessageType = keyof MessageMap;

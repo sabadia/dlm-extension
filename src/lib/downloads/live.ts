@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 /** One download in the popup. Built from a task and updated from the event stream. */
 export interface LiveTask {
   id: string;
@@ -25,7 +26,7 @@ export interface TaskLike {
 export function liveFromTask(task: TaskLike): LiveTask {
   return {
     id: task.id,
-    name: task.name && task.name !== '' ? task.name : 'download',
+    name: task.name && task.name !== '' ? task.name : t('downloads.unnamed'),
     status: task.status,
     downloaded: task.downloaded,
     size: task.size,
@@ -105,6 +106,18 @@ export function formatBytes(bytes: number): string {
 export function openInAppUrl(url: string): string {
   return `dlm://add?url=${encodeURIComponent(url)}`;
 }
+
+/**
+ * Brings the DLM app forward. The app's `dlm:` links only know how to add a download (dlm-app v0.2.0), so this one names
+ * nothing to add: the app starts or comes to the front and adds nothing. Opening one particular task needs a link
+ * for it in the app.
+ */
+export const OPEN_APP_URL = 'dlm://open';
+
+/** The statuses a task can be paused in, and resumed from (the daemon's rules). */
+export const canPause = (status: string): boolean =>
+  status === 'running' || status === 'queued' || status === 'awaiting_link';
+export const canResume = (status: string): boolean => status === 'paused' || status === 'error';
 
 interface Frame {
   type: string;

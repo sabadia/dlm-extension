@@ -7,12 +7,14 @@ export function App({
   host,
   purpose,
   checksum,
+  mirrors,
   onChoose,
 }: {
   name: string;
   host: string;
   purpose: AskPurpose;
   checksum?: { algorithm: string; expected: string } | undefined;
+  mirrors?: string[] | undefined;
   onChoose: (choice: AskChoice) => void;
 }) {
   const hash = checksum
@@ -22,6 +24,9 @@ export function App({
     <main>
       <p>{name ? t('intercept.ask.prompt', { name, host }) : t('intercept.ask.gone')}</p>
       {hash ? <p>{hash}</p> : null}
+      {mirrors && mirrors.length > 0 ? (
+        <p>{t('intercept.mirrors', { hosts: mirrors.join(', ') })}</p>
+      ) : null}
       {name && purpose === 'checksum' ? (
         <>
           <button type="button" onClick={() => onChoose('dlm')}>
@@ -43,7 +48,7 @@ export function App({
           <button type="button" onClick={() => onChoose('always')}>
             {t('intercept.ask.always')}
           </button>
-          {checksum ? (
+          {checksum || (mirrors?.length ?? 0) > 0 ? (
             <button type="button" onClick={() => onChoose('omit')}>
               {t('intercept.checksum.omit')}
             </button>

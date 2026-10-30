@@ -63,7 +63,9 @@ export function matchObservation(
   now: number,
 ): Observation | undefined {
   const wanted = new Set(urls);
-  return list
+  // Newest first; when two are equally new (the clock has a resolution), the one added later.
+  return [...list]
+    .reverse()
     .filter(
       (item) =>
         now - item.at <= OBSERVATION_TTL_MS &&

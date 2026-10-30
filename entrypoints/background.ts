@@ -9,8 +9,41 @@ import {
 } from '../src/background/register';
 import type { MenuSpec } from '../src/lib/links/menus';
 import { detectBrowser } from '../src/lib/pairing/browser';
+import { TORRENT_LIMIT } from '../src/lib/links/service';
 import { originPattern } from '../src/lib/settings/url';
 import { browserArea } from '../src/lib/storage/area';
+
+/**
+ * Reads a file with the cookies of the default profile, at most `limit` bytes: a refusal (403, an HTML error page) or a
+ * file that is too large is an error, not something to upload.
+ */
+async function fetchLimited(url: string, limit: number): Promise<Uint8Array> {
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > limit) throw new Error('The file is too large.');
+  const reader = response.body?.getReader();
+  if (!reader) return new Uint8Array(await response.arrayBuffer());
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      throw new Error('The file is too large.');
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
 
 export default defineBackground(() => {
   // Listeners are registered here, synchronously, and nothing that matters is kept in memory
@@ -36,10 +69,30 @@ export default defineBackground(() => {
       downloads: {
         cancel: (id) => browser.downloads.cancel(id),
         erase: (query) => browser.downloads.erase(query),
-        download: (options) => browser.downloads.download(options),
+        download: (options) =>
+          browser.downloads.download({
+            url: options.url,
+            ...(options.filename ? { filename: options.filename } : {}),
+            ...(options.method ? { method: options.method } : {}),
+            ...(options.body !== undefined ? { body: options.body } : {}),
+            ...(options.headers ? { headers: options.headers } : {}),
+            // Only Firefox keeps a download in the private window or container it started in.
+            ...(firefox && options.incognito ? { incognito: true } : {}),
+            ...(firefox && options.cookieStoreId ? { cookieStoreId: options.cookieStoreId } : {}),
+          }),
       },
       cookies: {
         getAll: (query) => browser.cookies.getAll(query),
+        // Firefox tells webRequest the cookie store itself; Chrome needs the stores and their tabs.
+        ...(firefox
+          ? {}
+          : {
+              stores: async () =>
+                (await browser.cookies.getAllCookieStores()).map((store) => ({
+                  id: store.id,
+                  tabIds: store.tabIds,
+                })),
+            }),
       },
       notifications: {
         create: (id, options) =>
@@ -58,6 +111,7 @@ export default defineBackground(() => {
           const created = await browser.windows.create(info);
           return created?.id !== undefined ? { id: created.id } : {};
         },
+        remove: (id) => browser.windows.remove(id),
       },
       askUrl: (id) => browser.runtime.getURL(`/ask.html?id=${encodeURIComponent(id)}`),
       menus: {
@@ -73,13 +127,15 @@ export default defineBackground(() => {
               : {}),
           });
         },
+        update: async (id, change) => {
+          await browser.contextMenus.update(id, change);
+        },
         open: async (url) => {
           await browser.tabs.create({ url });
         },
       },
       linksUrl: (tabId) => browser.runtime.getURL(`/links.html?tab=${tabId}`),
-      fetchFile: async (url) =>
-        new Uint8Array(await (await fetch(url, { credentials: 'include' })).arrayBuffer()),
+      fetchFile: (url) => fetchLimited(url, TORRENT_LIMIT),
       fetchText: async (url) => {
         const response = await fetch(url, { credentials: 'include' });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -100,6 +156,8 @@ export default defineBackground(() => {
       media: {
         attach: (media) => attachMedia(browser as unknown as InterceptBrowser, media),
       },
+      tabs: { onRemoved: browser.tabs.onRemoved },
+      notifications: { onClicked: browser.notifications.onClicked },
       live: { onConnect: browser.runtime.onConnect },
       commands: {
         onCommand: browser.commands.onCommand,

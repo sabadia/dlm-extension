@@ -7,14 +7,14 @@ import type { SecretStore, SettingsStore } from '../settings/store';
 import type { KeyValueArea } from '../storage/area';
 import { StoredValue } from '../storage/state';
 import { HANDOFF_COUNT_KEY, parseHandoffCount } from '../intercept/count';
-import { MEDIA_BADGE_KEY } from '../media/service';
+import { MEDIA_TABS_KEY, tabCounts } from '../media/store';
 import { probe, resolveConnection, type ProbeClient, type ResolveDeps } from './resolve';
 import { badgeFor, STATE_TEXT, type ConnectionState } from './state';
 
 /** The toolbar button, as the browser offers it (`browser.action`). */
 export interface ActionApi {
-  setBadgeText(details: { text: string }): Promise<void> | void;
-  setBadgeBackgroundColor(details: { color: string }): Promise<void> | void;
+  setBadgeText(details: { text: string; tabId?: number }): Promise<void> | void;
+  setBadgeBackgroundColor(details: { color: string; tabId?: number }): Promise<void> | void;
   setTitle(details: { title: string }): Promise<void> | void;
 }
 
@@ -87,7 +87,10 @@ export class ConnectionService {
    * The address and token of one target, when this extension can call it. A remote target uses its saved address.
    * The local target uses the address from the last successful check, or asks the native host.
    */
-  async endpoint(targetId: string): Promise<{ baseUrl: string; token: string } | undefined> {
+  async endpoint(
+    targetId: string,
+    options: { discover?: boolean } = {},
+  ): Promise<{ baseUrl: string; token: string } | undefined> {
     const settings = await this.deps.settings.get();
     const target = settings.targets.find((item) => item.id === targetId);
     if (!target) return undefined;
@@ -98,6 +101,8 @@ export class ConnectionService {
     if (state.kind === 'connected' && state.targetId === target.id) {
       return { baseUrl: state.baseUrl, token };
     }
+    // A background look (the expired-link poll) must not start the native host every half minute.
+    if (options.discover === false) return undefined;
     try {
       const found = await this.deps.host.connect();
       if (found.state === 'found') return { baseUrl: found.baseUrl, token };
@@ -108,11 +113,13 @@ export class ConnectionService {
   }
 
   /** Every target that currently has an address and a token. */
-  async endpoints(): Promise<{ baseUrl: string; token: string }[]> {
+  async endpoints(
+    options: { discover?: boolean } = {},
+  ): Promise<{ baseUrl: string; token: string }[]> {
     const settings = await this.deps.settings.get();
     const out: { baseUrl: string; token: string }[] = [];
     for (const target of settings.targets) {
-      const endpoint = await this.endpoint(target.id);
+      const endpoint = await this.endpoint(target.id, options);
       if (endpoint) out.push(endpoint);
     }
     return out;
@@ -177,17 +184,50 @@ export class ConnectionService {
     await this.paint(await this.get(), settings?.preferences.badge ?? true);
   }
 
-  /** Puts the state on the toolbar button. Never throws: a missing action API must not break the check. */
+  /** Puts the state on the toolbar button: the default for every tab, and the media count of each tab that has any. */
   private async paint(state: ConnectionState, badgeEnabled: boolean): Promise<void> {
-    const media = parseHandoffCount(await this.deps.area.get(MEDIA_BADGE_KEY));
     const handoffs = parseHandoffCount(await this.deps.area.get(HANDOFF_COUNT_KEY));
-    const badge = badgeFor(state, badgeEnabled, media > 0 ? media : handoffs);
+    const badge = badgeFor(state, badgeEnabled, handoffs);
     try {
       await this.deps.action.setBadgeText({ text: badge.text });
       await this.deps.action.setBadgeBackgroundColor({ color: badge.color });
       await this.deps.action.setTitle({ title: `DLM: ${describeState(state)}` });
     } catch (e) {
       this.deps.log.warn('connection', 'could not update the toolbar button', { error: e });
+    }
+    // A tab with media shows its own count; the others keep the default. The counts are in storage, so a state
+    // change repaints every tab that has one.
+    const counts = tabCounts(await this.deps.area.get(MEDIA_TABS_KEY));
+    for (const [tabId, count] of counts)
+      await this.paintTabWith(tabId, count, state, badgeEnabled, handoffs);
+  }
+
+  /** The toolbar button of one tab: its media count, or the default when it has none. */
+  async paintTab(tabId: number, count: number): Promise<void> {
+    const settings = await this.deps.settings.get().catch(() => undefined);
+    const handoffs = parseHandoffCount(await this.deps.area.get(HANDOFF_COUNT_KEY));
+    await this.paintTabWith(
+      tabId,
+      count,
+      await this.get(),
+      settings?.preferences.badge ?? true,
+      handoffs,
+    );
+  }
+
+  private async paintTabWith(
+    tabId: number,
+    count: number,
+    state: ConnectionState,
+    badgeEnabled: boolean,
+    handoffs: number,
+  ): Promise<void> {
+    const badge = badgeFor(state, badgeEnabled, count > 0 ? count : handoffs);
+    try {
+      await this.deps.action.setBadgeText({ text: badge.text, tabId });
+      await this.deps.action.setBadgeBackgroundColor({ color: badge.color, tabId });
+    } catch {
+      // The tab is gone, or the browser has no per-tab badge: the default stays.
     }
   }
 }

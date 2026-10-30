@@ -1,7 +1,14 @@
 import type { KeyValueArea } from '../storage/area';
+import { adoptImported } from './import';
 import { migrateSettings, SettingsTooNewError } from './migrate';
 import { parseSettings } from './parse';
-import { defaultSettings, LOCAL_TARGET, type RemoteTarget, type Settings } from './schema';
+import {
+  defaultSettings,
+  LOCAL_TARGET,
+  type RemoteTarget,
+  type Settings,
+  type SettingsPatch,
+} from './schema';
 
 export const SETTINGS_KEY = 'settings';
 export const SECRETS_KEY = 'secrets';
@@ -34,6 +41,19 @@ export class SettingsStore {
     return result;
   }
 
+  /**
+   * Saves what the options page edited (rules, preferences, routes) on top of the current settings, so a server added
+   * or a target chosen meanwhile is not undone by a form that was loaded earlier.
+   */
+  save(patch: SettingsPatch): Promise<Settings> {
+    return this.update((current) => ({
+      ...current,
+      rules: patch.rules,
+      preferences: patch.preferences,
+      routes: patch.routes,
+    }));
+  }
+
   /** Settings as a file a person can keep: no tokens (they are not in the settings), pretty-printed. */
   async export(): Promise<string> {
     return JSON.stringify(await this.get(), null, 2);
@@ -41,10 +61,11 @@ export class SettingsStore {
 
   /**
    * Replaces the settings with those of an exported file. The file is migrated and validated; nothing is stored when it
-   * is not JSON or comes from a newer version. Tokens are not in the file, so remote targets need theirs entered again
-   * (`SecretStore.has` tells which).
+   * is not JSON or comes from a newer version. Tokens are not in the file, and a server whose address differs from the
+   * one already known gets a new id and no token (see {@link adoptImported}); the caller removes the tokens of servers
+   * that are gone (`SecretStore.keepOnly`).
    */
-  async import(text: string): Promise<Settings> {
+  async import(text: string, newId: () => string = () => crypto.randomUUID()): Promise<Settings> {
     let raw: unknown;
     try {
       raw = JSON.parse(text);
@@ -59,8 +80,8 @@ export class SettingsStore {
     } catch (e) {
       throw new SettingsImportError(e instanceof SettingsTooNewError ? 'too-new' : 'not-settings');
     }
-    const next = parseSettings(migrated);
-    return this.update(() => next);
+    const incoming = parseSettings(migrated);
+    return this.update((current) => adoptImported(current, incoming, newId));
   }
 }
 
@@ -95,6 +116,13 @@ export class SecretStore {
 
   set(targetId: string, token: string): Promise<void> {
     return this.change((all) => ({ ...all, [targetId]: token }));
+  }
+
+  /** Removes every token that is not for one of `ids`. */
+  keepOnly(ids: readonly string[]): Promise<void> {
+    return this.change((all) =>
+      Object.fromEntries(Object.entries(all).filter(([id]) => ids.includes(id))),
+    );
   }
 
   remove(targetId: string): Promise<void> {

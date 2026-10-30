@@ -19,10 +19,14 @@ export interface LinkFilter {
   minSizeBytes: number;
 }
 
-/** True when the pattern is not empty and is not a regular expression. */
+/** A pattern longer than this is refused: it is tested against every link, and a long one can take very long. */
+export const MAX_PATTERN = 200;
+
+/** True when the pattern is not empty and is not a usable regular expression (invalid, or too long). */
 export function patternRejected(pattern: string): boolean {
   const source = pattern.trim();
   if (source === '') return false;
+  if (source.length > MAX_PATTERN) return true;
   try {
     new RegExp(source);
     return false;
@@ -37,6 +41,7 @@ export function filterLinks(links: readonly PageLink[], filter: LinkFilter): Pag
   let pattern: RegExp | undefined;
   const source = filter.pattern.trim();
   if (source !== '') {
+    if (patternRejected(source)) return [];
     try {
       pattern = new RegExp(source, 'i');
     } catch {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { memoryArea } from '../storage/area';
 import { migrateSettings, SettingsTooNewError, type Migration } from './migrate';
+import { adoptImported } from './import';
 import { normalizeFileType, normalizeMimeType, normalizeSite, parseSettings } from './parse';
 import { defaultSettings } from './schema';
 import {
@@ -86,7 +87,12 @@ describe('parseSettings', () => {
       askFirst: false,
       privateWindows: true,
     });
-    expect(s.preferences).toEqual({ badge: true, notifications: false, mirrors: false });
+    expect(s.preferences).toEqual({
+      badge: true,
+      notifications: false,
+      mirrors: false,
+      refresh: true,
+    });
     expect(s.routes).toEqual([]);
   });
 
@@ -105,7 +111,7 @@ describe('parseSettings', () => {
       rules: { askFirst: true, excludedSites: ['example.test'] },
     });
     const settings = parseSettings(stored);
-    expect(settings.version).toBe(3);
+    expect(settings.version).toBe(4);
     expect(settings.rules.askFirst).toBe(true);
     expect(settings.rules.excludedSites).toEqual(['example.test']);
     expect(settings.rules.alwaysSites).toEqual([]);
@@ -203,8 +209,9 @@ describe('SettingsStore', () => {
     expect(text).toContain('https://a.test');
 
     const other = new SettingsStore(memoryArea());
-    const imported = await other.import(text);
-    expect(imported.targets.map((t) => t.id)).toEqual(['local', 'a']);
+    // A server this browser does not know yet comes in with a new id (and so without a token).
+    const imported = await other.import(text, () => 'minted');
+    expect(imported.targets.map((t) => t.id)).toEqual(['local', 'minted']);
     expect(await new SecretStore(memoryArea()).has('a')).toBe(false);
   });
 
@@ -231,6 +238,33 @@ describe('SecretStore', () => {
   });
 });
 
+describe('adoptImported', () => {
+  const known = parseSettings({
+    targets: [{ id: 'a', kind: 'remote', name: 'A', url: 'https://a.test' }],
+    activeTargetId: 'a',
+  });
+  const incoming = (url: string, routes = true) =>
+    parseSettings({
+      targets: [{ id: 'a', kind: 'remote', name: 'A', url }],
+      activeTargetId: 'a',
+      routes: routes ? [{ site: 'example.test', targetId: 'a' }] : [],
+    });
+
+  it('keeps a server whose address is the same', () => {
+    const next = adoptImported(known, incoming('https://a.test'), () => 'new');
+    expect(next.targets.map((t) => t.id)).toEqual(['local', 'a']);
+    expect(next.activeTargetId).toBe('a');
+    expect(next.routes).toHaveLength(1);
+  });
+
+  it('gives a server with another address a new id, no activity and no routes', () => {
+    const next = adoptImported(known, incoming('https://evil.test'), () => 'new');
+    expect(next.targets.map((t) => t.id)).toEqual(['local', 'new']);
+    expect(next.activeTargetId).toBe('local');
+    expect(next.routes).toEqual([]);
+  });
+});
+
 describe('originPattern', () => {
   it('has no port and no path', async () => {
     const { originPattern } = await import('./url');
@@ -238,5 +272,96 @@ describe('originPattern', () => {
     expect(originPattern('https://dlm.example.test:8443/prefix')).toBe(
       'https://dlm.example.test/*',
     );
+  });
+});
+
+describe('site names', () => {
+  it.each([
+    ['example.com.', 'example.com'],
+    ['*.Example.COM', 'example.com'],
+    ['https://www.example.com:8443/a?b#c', 'www.example.com'],
+    ['bücher.example', 'xn--bcher-kva.example'],
+    ['127.0.0.1', '127.0.0.1'],
+    ['localhost', 'localhost'],
+  ])('%s is %s', (typed, expected) => {
+    expect(normalizeSite(typed)).toBe(expected);
+  });
+
+  it.each(['com', '.', 'a b.test', 'exa$mple.test', '[::1]', ''])('refuses %j', (typed) => {
+    expect(normalizeSite(typed)).toBeUndefined();
+  });
+
+  it('matches a host with a trailing dot against a rule', async () => {
+    const { decide } = await import('../intercept/rules');
+    const rules = { ...defaultSettings().rules, excludedSites: ['example.com'] };
+    const decision = decide(rules, {
+      url: 'https://example.com./a.zip',
+      incognito: false,
+      altKey: false,
+      shiftKey: false,
+      own: false,
+    });
+    expect(decision).toEqual({ action: 'leave', reason: 'site' });
+  });
+});
+
+describe('settings written by earlier versions', () => {
+  const v2 = {
+    version: 2,
+    activeTargetId: 'local',
+    targets: [{ id: 'local', kind: 'local' }],
+    rules: {
+      intercept: false,
+      minSizeBytes: 2048,
+      excludedSites: ['a.test'],
+      alwaysSites: ['b.test'],
+    },
+    preferences: { badge: false, notifications: true },
+  };
+  const v3 = {
+    ...v2,
+    version: 3,
+    targets: [
+      { id: 'local', kind: 'local' },
+      { id: 'home', kind: 'remote', name: 'Home', url: 'https://dlm.example.test' },
+    ],
+    routes: [{ site: 'files.test', targetId: 'home' }],
+    preferences: { badge: false, notifications: true, mirrors: true },
+  };
+
+  it('reads version 2: keeps what was set, and fills in routes, mirrors and the expired-link switch', () => {
+    const s = parseSettings(migrateSettings(v2));
+    expect(s.version).toBe(4);
+    expect(s.rules).toMatchObject({
+      intercept: false,
+      minSizeBytes: 2048,
+      excludedSites: ['a.test'],
+      alwaysSites: ['b.test'],
+    });
+    expect(s.routes).toEqual([]);
+    expect(s.preferences).toEqual({
+      badge: false,
+      notifications: true,
+      mirrors: false,
+      refresh: true,
+    });
+  });
+
+  it('reads version 3: keeps routes and mirrors, and turns the expired-link switch on', () => {
+    const s = parseSettings(migrateSettings(v3));
+    expect(s.version).toBe(4);
+    expect(s.routes).toEqual([{ site: 'files.test', targetId: 'home' }]);
+    expect(s.preferences).toEqual({
+      badge: false,
+      notifications: true,
+      mirrors: true,
+      refresh: true,
+    });
+  });
+
+  it('reads version 1 data as well, through every step', () => {
+    const s = parseSettings(migrateSettings({ version: 1, rules: { askFirst: true } }));
+    expect(s.rules.askFirst).toBe(true);
+    expect(s.version).toBe(4);
   });
 });

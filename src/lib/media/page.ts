@@ -109,3 +109,56 @@ function walk(value: unknown, urls: string[]): void {
   if (typeof content === 'string') urls.push(content);
   for (const child of Object.values(record)) walk(child, urls);
 }
+
+const MAX_ITEMS = 200;
+const MAX_URL = 4096;
+const MAX_TEXT = 300;
+const MAX_JSON_LD = 20_000;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const text = (value: unknown, max: number): string | undefined =>
+  typeof value === 'string' ? value.slice(0, max) : undefined;
+
+function strings(value: unknown, max: number): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, MAX_ITEMS).flatMap((item) => {
+    const s = text(item, max);
+    return s === undefined ? [] : [s];
+  });
+}
+
+function elements(value: unknown): { src?: string | undefined; sources: string[] }[] {
+  if (!Array.isArray(value)) return [];
+  return value.slice(0, MAX_ITEMS).flatMap((item) => {
+    if (!isRecord(item)) return [];
+    const src = text(item.src, MAX_URL);
+    return [{ ...(src !== undefined ? { src } : {}), sources: strings(item.sources, MAX_URL) }];
+  });
+}
+
+/**
+ * Reads what a content script sent. The page can make its content script say anything, so every field is checked and
+ * capped here: the caller supplies the page address (from the sender), never the snapshot.
+ */
+export function parseSnapshot(value: unknown, pageUrl: string): PageSnapshot | undefined {
+  if (!isRecord(value)) return undefined;
+  const links = Array.isArray(value.links)
+    ? value.links.slice(0, MAX_ITEMS * 5).flatMap((link) => {
+        if (!isRecord(link)) return [];
+        const href = text(link.href, MAX_URL);
+        return href === undefined ? [] : [{ href, text: text(link.text, MAX_TEXT) ?? '' }];
+      })
+    : [];
+  return {
+    pageUrl,
+    protectedMedia: value.protectedMedia === true,
+    blobOrMse: value.blobOrMse === true,
+    videos: elements(value.videos),
+    audios: elements(value.audios),
+    links,
+    openGraph: strings(value.openGraph, MAX_URL),
+    jsonLd: strings(value.jsonLd, MAX_JSON_LD),
+  };
+}

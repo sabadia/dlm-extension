@@ -9,6 +9,8 @@ export interface SenderLike {
   id?: string | undefined;
   url?: string | undefined;
   tab?: unknown;
+  /** 0 for the top frame of a tab; another number for an iframe. */
+  frameId?: number | undefined;
 }
 
 /** The part of `browser.runtime` the bus uses, so that tests need no browser. */
@@ -42,6 +44,11 @@ export function senderKind(
   if (sender.url?.startsWith(base)) return 'extension-page';
   if (sender.tab !== undefined && sender.url !== undefined) return 'content-script';
   return 'foreign';
+}
+
+/** Whether the message came from the top frame of a tab (not an iframe of the page). */
+export function isTopFrame(sender: SenderLike): boolean {
+  return sender.frameId === 0;
 }
 
 export function isEnvelope(value: unknown): value is Envelope {
