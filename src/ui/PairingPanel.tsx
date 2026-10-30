@@ -38,20 +38,13 @@ export function PairingPanel(props: { onPaired?: () => void }) {
   };
 
   return (
-    <section aria-labelledby="pairing-title">
-      <h2 id="pairing-title">{t('pairing.title')}</h2>
+    <section class="inset stack" aria-labelledby="pairing-title">
+      <h3 id="pairing-title">{t('pairing.title')}</h3>
       {view.phase === 'idle' && <p>{t('pairing.intro')}</p>}
       {view.phase === 'pending' && (
         <div>
           <p>{t('pairing.code')}</p>
-          <p
-            aria-label={view.code}
-            style={{
-              fontSize: '1.6em',
-              letterSpacing: '0.15em',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
+          <p aria-label={view.code} class="pair-code">
             {view.code.length === 6 ? `${view.code.slice(0, 3)} ${view.code.slice(3)}` : view.code}
           </p>
           <p role="status">{t('pairing.waiting')}</p>
@@ -64,12 +57,12 @@ export function PairingPanel(props: { onPaired?: () => void }) {
         {view.phase === 'error' && t('pairing.error', { message: view.message })}
       </p>
       {view.phase === 'pending' ? (
-        <button type="button" onClick={() => ask('pairing.cancel')}>
+        <button type="button" class="btn" onClick={() => ask('pairing.cancel')}>
           {t('pairing.cancel')}
         </button>
       ) : (
         view.phase !== 'approved' && (
-          <button type="button" onClick={() => ask('pairing.start')}>
+          <button type="button" class="btn primary" onClick={() => ask('pairing.start')}>
             {t('pairing.start')}
           </button>
         )

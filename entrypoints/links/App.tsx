@@ -49,23 +49,31 @@ export function App({
   return (
     <main>
       <h1>{t('links.title')}</h1>
-      <label>
-        {t('links.extensions')}
+      <label class="field">
+        <span class="label">{t('links.extensions')}</span>
         <input
+          class="input"
           value={extensions}
           aria-describedby="links-extensions-hint"
           onInput={(event) => setExtensions(event.currentTarget.value)}
         />
-        <span id="links-extensions-hint">{t('links.extensionsHint')}</span>
+        <span class="help" id="links-extensions-hint">
+          {t('links.extensionsHint')}
+        </span>
       </label>
-      <label>
-        {t('links.pattern')}
-        <input value={pattern} onInput={(event) => setPattern(event.currentTarget.value)} />
+      <label class="field">
+        <span class="label">{t('links.pattern')}</span>
+        <input
+          class="input"
+          value={pattern}
+          onInput={(event) => setPattern(event.currentTarget.value)}
+        />
       </label>
       {badPattern ? <p>{t('links.patternBad')}</p> : null}
-      <label>
-        {t('links.size')}
+      <label class="field">
+        <span class="label">{t('links.size')}</span>
         <input
+          class="input"
           value={minSize}
           inputMode="numeric"
           onInput={(event) => setMinSize(event.currentTarget.value)}
@@ -74,6 +82,7 @@ export function App({
       <p>
         <button
           type="button"
+          class="btn"
           disabled={probing || shown.length === 0}
           onClick={() => {
             setProbing(true);
@@ -93,10 +102,14 @@ export function App({
         <span role="status">{checked}</span>
       </p>
       <p>
-        <button type="button" onClick={() => setPicked(new Set(shown.map((link) => link.url)))}>
+        <button
+          type="button"
+          class="btn small"
+          onClick={() => setPicked(new Set(shown.map((link) => link.url)))}
+        >
           {t('links.selectAll')}
         </button>{' '}
-        <button type="button" onClick={() => setPicked(new Set())}>
+        <button type="button" class="btn small" onClick={() => setPicked(new Set())}>
           {t('links.selectNone')}
         </button>
       </p>
@@ -106,6 +119,7 @@ export function App({
           <li key={link.url}>
             <label>
               <input
+                class="check"
                 type="checkbox"
                 checked={picked.has(link.url)}
                 onChange={() => toggle(link.url)}
@@ -117,6 +131,7 @@ export function App({
       </ul>
       <button
         type="button"
+        class="btn primary"
         onClick={() => {
           const urls = shown.filter((link) => picked.has(link.url)).map((link) => link.url);
           void onSend(urls).then((sent) =>

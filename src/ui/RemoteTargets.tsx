@@ -3,6 +3,7 @@ import { browser } from 'wxt/browser';
 import { sendMessage } from '../lib/bus/bus';
 import { t } from '../lib/i18n';
 import { warningsFor, type RemoteTestResult, type RemoteView } from '../lib/remote/service';
+import { Badge, Button, Card } from './kit';
 import { normalizeBaseUrl, originPattern } from '../lib/settings/url';
 
 /** The sentence for a failed test. */
@@ -82,20 +83,24 @@ export function RemoteTargets() {
   }
 
   return (
-    <section aria-labelledby="remote-title">
-      <h2 id="remote-title">{t('remote.title')}</h2>
-      <p>{t('remote.help')}</p>
-      <ul>
+    <Card id="servers" title={t('remote.title')} description={t('remote.help')}>
+      <ul class="targets">
         {targets.map((target) => (
-          <li key={target.id}>
-            <strong>{target.kind === 'local' ? t('remote.local') : target.name}</strong>
-            {target.url && <span> {target.url}</span>}
-            {target.kind === 'remote' && !target.hasToken && <span> ({t('remote.noToken')})</span>}
+          <li key={target.id} class="target">
+            <div class="grow">
+              <strong>{target.kind === 'local' ? t('remote.local') : target.name}</strong>
+              {target.url && <div class="small muted truncate">{target.url}</div>}
+              {target.kind === 'remote' && !target.hasToken && (
+                <div class="small">
+                  <Badge tone="warning">{t('remote.noToken')}</Badge>
+                </div>
+              )}
+            </div>
             {target.active ? (
-              <span> · {t('remote.active')}</span>
+              <Badge tone="success">{t('remote.active')}</Badge>
             ) : (
-              <button
-                type="button"
+              <Button
+                size="small"
                 onClick={() =>
                   void sendMessage(browser.runtime, 'remote.setActive', { id: target.id }).then(
                     load,
@@ -103,24 +108,31 @@ export function RemoteTargets() {
                 }
               >
                 {t('remote.makeActive')}
-              </button>
+              </Button>
             )}
             {target.kind === 'remote' && (
-              <button type="button" onClick={() => void remove(target)}>
+              <Button variant="ghost" size="small" onClick={() => void remove(target)}>
                 {t('remote.remove')}
-              </button>
+              </Button>
             )}
           </li>
         ))}
       </ul>
-      <form onSubmit={(e) => e.preventDefault()}>
-        <label>
-          {t('remote.name')}
-          <input value={name} onInput={(e) => setName(e.currentTarget.value)} autocomplete="off" />
-        </label>
-        <label>
-          {t('remote.url')}
+      <hr class="divider" />
+      <form class="stack" onSubmit={(e) => e.preventDefault()}>
+        <label class="field">
+          <span class="label">{t('remote.name')}</span>
           <input
+            class="input"
+            value={name}
+            onInput={(e) => setName(e.currentTarget.value)}
+            autocomplete="off"
+          />
+        </label>
+        <label class="field">
+          <span class="label">{t('remote.url')}</span>
+          <input
+            class="input"
             value={url}
             onInput={(e) => setUrl(e.currentTarget.value)}
             placeholder={t('remote.urlHint')}
@@ -128,27 +140,34 @@ export function RemoteTargets() {
             autocomplete="off"
           />
         </label>
-        <label>
-          {t('remote.token')}
+        <label class="field">
+          <span class="label">{t('remote.token')}</span>
           <input
+            class="input"
             type="password"
             value={token}
             onInput={(e) => setToken(e.currentTarget.value)}
             autocomplete="off"
           />
         </label>
-        {plainHttp && <p role="alert">{t('remote.warnPlainHttp')}</p>}
-        {normalized.ok && normalized.url.startsWith('https:') && <p>{t('remote.selfSigned')}</p>}
-        <button type="button" onClick={() => void test()}>
-          {t('remote.test')}
-        </button>
-        <button type="submit" onClick={() => void add()}>
-          {t('remote.add')}
-        </button>
+        {plainHttp && (
+          <p class="error" role="alert">
+            {t('remote.warnPlainHttp')}
+          </p>
+        )}
+        {normalized.ok && normalized.url.startsWith('https:') && (
+          <p class="help">{t('remote.selfSigned')}</p>
+        )}
+        <div class="row">
+          <Button onClick={() => void test()}>{t('remote.test')}</Button>
+          <Button variant="primary" type="submit" onClick={() => void add()}>
+            {t('remote.add')}
+          </Button>
+        </div>
         <p role="status" aria-live="polite">
           {note}
         </p>
       </form>
-    </section>
+    </Card>
   );
 }

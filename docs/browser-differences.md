@@ -31,3 +31,12 @@ chosen in the settings) is seen by the content script and keeps that download in
   there; this is a known limit.
 - A POST is handed over only when its body is small, text, and url-encoded or raw (not multipart), and the response looks
   like a download. The browser fallback restarts it as a POST (`downloads.download` with `method`, `body`, `headers`).
+
+## The Files panel
+
+| Topic         | Chrome                                                                                       | Firefox                                                                              |
+| ------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Surface       | `side_panel` with the `sidePanel` permission; `setPanelBehavior` opens it on a toolbar click | `sidebar_action`; the toolbar click runs `action.onClicked`, which opens the sidebar |
+| Popup instead | The setting clears the panel behaviour and sets the popup                                    | The setting sets the popup, and `action.onClicked` stops opening the sidebar         |
+| Shortcut      | `Alt+Shift+D` opens the panel                                                                | The same, opens the sidebar                                                          |
+| Following tab | One panel for the window, following the active tab                                           | The same                                                                             |

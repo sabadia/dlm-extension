@@ -115,7 +115,7 @@ connection check) and host access to the loopback addresses of the daemon (`http
 remote servers are optional host permissions, asked for one server at a time when the person adds it (E1.7). E2 adds
 `downloads`, `webRequest`, `cookies` and `notifications`, and host access to `http://*/*` and `https://*/*`, so a
 download's headers and cookies can be read on any site (no `ftp://`: neither browser downloads FTP any more). Firefox also declares `webRequestBlocking`
-so an attachment can be cancelled before a download entry appears. E3 adds `contextMenus` for the right-click menus.
+so an attachment can be cancelled before a download entry appears. E3 adds `contextMenus` for the right-click menus. E5b adds `sidePanel` (Chrome only; Firefox uses `sidebar_action`, which needs no permission) for the Files panel.
 The remaining permissions arrive with the features that need them.
 No remote code, no analytics, no data leaves the computer except to the user's own DLM server.
 
@@ -188,15 +188,15 @@ No remote code, no analytics, no data leaves the computer except to the user's o
 Added 2026-10-30 after the first hands-on use of the extension: the toolbar view was a plain, mixed list, file names came from
 the site instead of the page, files without a size or that were not downloads were listed, and the options were an unstyled form.
 Decisions of the same day: page-title naming applies to the Files panel, the menus and the all-links page only (a browser download
-DLM takes over keeps the site's name); the live download list is removed from the extension (the DLM app is where downloads are
+DLM takes over keeps the site's name; the all-links batch keeps the names of its links for now, a follow-up); the live download list is removed from the extension (the DLM app is where downloads are
 watched).
 
 - [x] E5b.1 Settings for the Files panel (#63) — Surface (side panel, default, or popup), naming (page title, default, or file name), follow redirects (on), sort (size, largest first). Settings version 5 with a migration.
 - [x] E5b.2 UI kit, theme and real icons (#64) — Reusable components, light, dark and high-contrast theme, inline icons, the app's icon set for the toolbar; no new runtime dependency.
 - [x] E5b.3 Files logic (#65) — Candidates (page media, network files, links that look like downloads), a check of each (HEAD with credentials, redirects followed, ranged GET when HEAD is refused) that keeps only valid files with a known size, title naming with collision handling, sort and filter, capture with DLM's browser, and a site's cookies sent to DLM.
 - [x] E5b.4 Side panel and popup surfaces (#66) — The toolbar button opens a side panel (Chrome `sidePanel`, Firefox `sidebar_action`); the popup is a setting; the live download list and its plumbing are removed.
-- [ ] E5b.5 Files view (#67) — Search, type chips, sort, rename, selection with a queue picker and add paused, per-file and per-page DLM's browser, send cookies, rescan, states.
-- [ ] E5b.6 Options redesign (#68) — Navigation, cards, switches and chip inputs, a Get started card, Servers cards.
+- [x] E5b.5 Files view (#67) — Search, type chips, sort, rename, selection with a queue picker and add paused, per-file and per-page DLM's browser, send cookies, rescan, states.
+- [x] E5b.6 Options redesign (#68) — Navigation, cards, switches and chip inputs, a Get started card, Servers cards.
 
 ### E6 Refresh and advanced
 

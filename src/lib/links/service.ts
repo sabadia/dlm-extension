@@ -1,6 +1,7 @@
 import type { CaptureCookie } from '../api/client';
 import { ApiError, NetworkError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
+import { fileExtension, sanitizeFileName } from '../files/naming';
 import { targetFor } from '../settings/routing';
 import { chunk } from './filter';
 import { t } from '../i18n';
@@ -22,6 +23,8 @@ export interface MenuClick {
   pageUrl?: string | undefined;
   checked?: boolean | undefined;
   tabId?: number | undefined;
+  /** The title of the tab, to name the file after the page. */
+  tabTitle?: string | undefined;
 }
 
 export interface MenuPort {
@@ -137,7 +140,12 @@ export class LinksService {
     }
     const url = targetUrl(action.context, click);
     if (!url) return;
-    await this.add(url, { queueId: action.queueId, paused: await this.paused.get() });
+    const name = await this.titleName(url, click.tabTitle);
+    await this.add(url, {
+      queueId: action.queueId,
+      paused: await this.paused.get(),
+      ...(name ? { name } : {}),
+    });
     this.deps.notify?.(t('links.sent', { ok: 1 }));
   }
 
@@ -244,7 +252,19 @@ export class LinksService {
     }
   }
 
-  private async add(url: string, options: { queueId?: string; paused: boolean }): Promise<void> {
+  /** The page title and the link's extension, when the settings name files after the page and the link has an extension. */
+  private async titleName(url: string, title: string | undefined): Promise<string | undefined> {
+    if (!title || !/^https?:/i.test(url)) return undefined;
+    if ((await this.deps.settings.get()).files.naming !== 'title') return undefined;
+    const stem = sanitizeFileName(title);
+    const ext = fileExtension({ url });
+    return stem && ext ? `${stem}.${ext}` : undefined;
+  }
+
+  private async add(
+    url: string,
+    options: { queueId?: string; paused: boolean; name?: string },
+  ): Promise<void> {
     const tasks = await this.client(url);
     if (!tasks) throw new Error(t('links.offline'));
     let queueId = options.queueId;
@@ -258,6 +278,7 @@ export class LinksService {
       url,
       paused: options.paused,
       ...(queueId ? { queueId } : {}),
+      ...(options.name ? { name: options.name } : {}),
     });
     this.deps.log.info('links', 'sent a link', { url: redactUrl(url) });
   }

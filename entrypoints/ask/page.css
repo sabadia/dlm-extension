@@ -1,0 +1,11 @@
+main {
+  display: grid;
+  gap: var(--space-3);
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+main .btn {
+  justify-content: center;
+}

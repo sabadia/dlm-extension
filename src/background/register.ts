@@ -246,7 +246,7 @@ export interface MenuBrowser {
           pageUrl?: string;
           checked?: boolean;
         },
-        tab?: { id?: number },
+        tab?: { id?: number; title?: string },
       ) => void,
     ): void;
   };
@@ -263,6 +263,7 @@ export function attachMenus(browser: MenuBrowser, links: LinksService): void {
       ...(info.pageUrl ? { pageUrl: info.pageUrl } : {}),
       ...(info.checked !== undefined ? { checked: info.checked } : {}),
       ...(tab?.id !== undefined ? { tabId: tab.id } : {}),
+      ...(tab?.title ? { tabTitle: tab.title } : {}),
     });
   });
 }

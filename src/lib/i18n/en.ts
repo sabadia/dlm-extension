@@ -4,6 +4,29 @@
  */
 export const en = {
   'options.title': 'DLM options',
+  'options.subtitle':
+    'Choose where downloads go, which ones DLM takes, and how the Files panel works.',
+  'options.nav.label': 'Settings sections',
+  'options.nav.start': 'Get started',
+  'options.nav.servers': 'Servers',
+  'options.nav.files': 'Files panel',
+  'options.nav.rules': 'When to take downloads',
+  'options.nav.routes': 'Sites and routing',
+  'options.nav.advanced': 'Advanced',
+  'options.files.title': 'Files panel',
+  'options.files.help':
+    'The toolbar button lists the files of the page you are on, with their sizes.',
+  'options.files.surface': 'Open the Files list as',
+  'options.files.surface.panel': 'Side panel',
+  'options.files.surface.popup': 'Popup',
+  'options.files.surfaceHelp':
+    'The side panel stays open while you browse. Firefox shows it as a sidebar.',
+  'options.files.redirects': 'Follow redirects to the real file',
+  'options.files.redirectsHelp':
+    'Links that forward to another address are checked, and sent, at their final address.',
+  'options.rulesHelp': 'Which browser downloads DLM takes over.',
+  'options.more': 'Notifications and extras',
+  'options.advanced': 'Advanced and diagnostics',
   'options.diagnostics.title': 'Diagnostics',
   'options.diagnostics.help':
     'Copies a report for a bug report: versions, connection state, settings and recent log lines. It contains no token, cookie or password.',
