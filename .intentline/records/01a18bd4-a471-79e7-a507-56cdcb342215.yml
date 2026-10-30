@@ -1,0 +1,26 @@
+schema_version: 1
+id: 01a18bd4-a471-79e7-a507-56cdcb342215
+status: draft
+created_at: '2026-10-30T08:02:11Z'
+updated_at: '2026-10-30T08:02:11Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: agent
+  name: null
+  tool: claude-code
+goal: 'E7.1: coverage thresholds on the pure logic, and tests for the client, routed batch sends and storage areas'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: vitest.config.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null
