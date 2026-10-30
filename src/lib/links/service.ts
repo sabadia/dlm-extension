@@ -184,7 +184,7 @@ export class LinksService {
     url: string;
     filename?: string;
     cookies?: CaptureCookie[];
-  }): Promise<'taken' | 'failed'> {
+  }): Promise<'taken' | 'duplicate' | 'failed'> {
     const tasks = await this.client(facts.url);
     if (!tasks) return 'failed';
     const paused = await this.paused.get();
@@ -205,6 +205,8 @@ export class LinksService {
       }
       return 'taken';
     } catch (error) {
+      // DLM already has it: not a failure, and not a reason to download the file in the browser.
+      if (error instanceof ApiError && error.status === 409) return 'duplicate';
       this.deps.log.warn('links', 'torrent was not accepted', { error, url: redactUrl(facts.url) });
       return 'failed';
     }

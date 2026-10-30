@@ -9,6 +9,8 @@ export interface DownloadFacts {
   url: string;
   /** The address after redirects, when the browser or webRequest knows it. */
   finalUrl?: string;
+  /** The page the download was started from. Site rules also apply to it (a CDN host alone says little). */
+  pageUrl?: string;
   /** Bytes, when known. Unknown is not treated as smaller than the minimum. */
   sizeBytes?: number;
   /** The file name the browser chose, or the last part of the address. */
@@ -102,7 +104,7 @@ export function typeAllowed(rules: Rules, facts: DownloadFacts, url: string): bo
 /**
  * What to do with one download. The first matching rule wins, and the order is fixed: our own downloads, addresses
  * the daemon cannot fetch, a method that is not GET or a small POST, the global switch, private windows, the bypass key, an excluded site,
- * a site set to always, then size, type and ask-first.
+ * a site set to always (the start address, the final address or the page), then size, type and ask-first.
  */
 export function decide(rules: Rules, facts: DownloadFacts): Decision {
   if (facts.own) return { action: 'leave', reason: 'own' };
@@ -123,8 +125,19 @@ export function decide(rules: Rules, facts: DownloadFacts): Decision {
   ) {
     return { action: 'leave', reason: 'bypass' };
   }
-  if (listed(host, rules.excludedSites)) return { action: 'leave', reason: 'site' };
-  if (listed(host, rules.alwaysSites)) return { action: 'take' };
+  // A site rule matches the address that was started, the one it ended at, or the page it was started from.
+  const hosts = [
+    ...new Set(
+      [
+        downloadHost(facts.url),
+        host,
+        facts.pageUrl ? downloadHost(facts.pageUrl) : undefined,
+      ].filter((value): value is string => value !== undefined),
+    ),
+  ];
+  if (hosts.some((candidate) => listed(candidate, rules.excludedSites)))
+    return { action: 'leave', reason: 'site' };
+  if (hosts.some((candidate) => listed(candidate, rules.alwaysSites))) return { action: 'take' };
   if (facts.sizeBytes !== undefined && facts.sizeBytes < rules.minSizeBytes) {
     return { action: 'leave', reason: 'size' };
   }

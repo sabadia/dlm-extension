@@ -203,3 +203,42 @@ describe('fileExtension', () => {
     expect(fileExtension('.', 'https://x.test/download')).toBeUndefined();
   });
 });
+
+describe('site rules and the page a download started on', () => {
+  const page = { pageUrl: 'https://www.pages.test/get' };
+
+  it.each<[string, Partial<Rules>, Partial<DownloadFacts>, Decision]>([
+    [
+      'excludes by the address that was started, even when it redirects elsewhere',
+      { excludedSites: ['start.test'] },
+      { url: 'https://start.test/go', finalUrl: 'https://cdn.other.test/a.zip' },
+      { action: 'leave', reason: 'site' },
+    ],
+    [
+      'excludes by the page',
+      { excludedSites: ['pages.test'] },
+      { ...page, finalUrl: 'https://cdn.other.test/a.zip' },
+      { action: 'leave', reason: 'site' },
+    ],
+    [
+      'takes always by the page, whatever the size',
+      { alwaysSites: ['pages.test'], minSizeBytes: 10_000_000 },
+      { ...page, finalUrl: 'https://cdn.other.test/a.zip' },
+      { action: 'take' },
+    ],
+    [
+      'keeps an excluded page excluded even when the CDN is on the always list',
+      { excludedSites: ['pages.test'], alwaysSites: ['cdn.other.test'] },
+      { ...page, finalUrl: 'https://cdn.other.test/a.zip' },
+      { action: 'leave', reason: 'site' },
+    ],
+    [
+      'does not mistake a name that merely ends the same for a subdomain',
+      { excludedSites: ['pages.test'] },
+      { pageUrl: 'https://evilpages.test/' },
+      { action: 'take' },
+    ],
+  ])('%s', (_name, ruleOverrides, factOverrides, expected) => {
+    expect(decide(rules(ruleOverrides), facts(factOverrides))).toEqual(expected);
+  });
+});

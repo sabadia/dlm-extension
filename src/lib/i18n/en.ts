@@ -73,7 +73,7 @@ export const en = {
   'pairing.error': 'Could not connect: {message}',
   'intercept.notify.title': 'DLM',
   'intercept.sent': 'Sent "{name}" to DLM.',
-  'intercept.duplicate': '"{name}" is already in DLM.',
+  'intercept.duplicate': '"{name}" is already in DLM. Click to add it again.',
   'intercept.failed': 'DLM could not take "{name}", so the browser is downloading it. {reason}',
   'intercept.reason.offline': 'DLM is not connected.',
   'intercept.reason.rejected': 'DLM did not accept it.',

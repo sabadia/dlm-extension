@@ -1,4 +1,5 @@
 import type { CaptureBody, CaptureCookie } from '../api/client';
+import { t } from '../i18n';
 import type { Checksum } from '../page/hints';
 
 /**
@@ -10,6 +11,7 @@ export const REQUEST_HEADER_ALLOW = [
   'accept',
   'accept-language',
   'authorization',
+  'content-type',
   'referer',
 ] as const;
 
@@ -68,6 +70,34 @@ export function filenameFromDisposition(value: string | undefined): string | und
 /** True when the response tells the browser to download rather than show the body. */
 export function isAttachment(value: string | undefined): boolean {
   return value !== undefined && /attachment/i.test(value);
+}
+
+const SHOWN_TYPES = [
+  /^text\//,
+  /^image\//,
+  /^audio\//,
+  /^video\//,
+  /^font\//,
+  /^application\/(json|javascript|ecmascript|xml|xhtml\+xml|pdf|ld\+json|manifest\+json|wasm)/,
+];
+
+/**
+ * Whether a response of this type is something a browser may turn into a download without being told to (an unknown or
+ * binary type), as opposed to a page, an image or a script it shows. Used to keep a POST body only for those.
+ */
+export function isDownloadType(mime: string | undefined): boolean {
+  const bare = mime?.split(';')[0]?.trim().toLowerCase();
+  if (!bare) return false;
+  return !SHOWN_TYPES.some((pattern) => pattern.test(bare));
+}
+
+/** True when both addresses have the same origin (scheme, host and port). Unparseable addresses are not the same. */
+export function sameOrigin(a: string, b: string): boolean {
+  try {
+    return new URL(a).origin === new URL(b).origin;
+  } catch {
+    return false;
+  }
 }
 
 /** A `Content-Length` in bytes, or undefined when it is missing or not a number. */
@@ -212,6 +242,6 @@ export function displayName(filename: string | undefined, url: string): string {
     const parsed = new URL(url);
     return basename(parsed.pathname) ?? parsed.hostname;
   } catch {
-    return 'download';
+    return t('downloads.unnamed');
   }
 }

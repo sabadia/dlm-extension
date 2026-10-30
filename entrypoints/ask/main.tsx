@@ -8,8 +8,12 @@ const root = document.getElementById('app');
 const id = new URLSearchParams(location.search).get('id') ?? '';
 
 async function choose(choice: AskChoice): Promise<void> {
-  await sendMessage(browser.runtime, 'ask.choose', { id, choice });
-  window.close();
+  try {
+    await sendMessage(browser.runtime, 'ask.choose', { id, choice });
+  } finally {
+    // Whatever happened, the prompt is over; closing it must not depend on the background answering.
+    window.close();
+  }
 }
 
 const view = id ? await sendMessage(browser.runtime, 'ask.get', { id }).catch(() => null) : null;
@@ -21,7 +25,7 @@ if (root) {
       purpose={view?.purpose ?? 'ask'}
       checksum={view?.checksum}
       onChoose={(choice) => {
-        void choose(choice);
+        void choose(choice).catch(() => undefined);
       }}
     />,
     root,

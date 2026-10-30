@@ -124,6 +124,12 @@ interface LivePort {
 /** Addresses the hand-off watches. `blob:` and `data:` are not among them. */
 export const INTERCEPT_URLS = ['http://*/*', 'https://*/*'] as const;
 
+/**
+ * Request types the hand-off watches: navigations (a link to a file) and `other` (`<a download>`, `downloads.download`).
+ * Images, scripts and XHR are never downloads, and watching them would run the listeners for every subresource.
+ */
+export const INTERCEPT_TYPES = ['main_frame', 'sub_frame', 'other'] as const;
+
 /** The listener shape `browser.webRequest` and `browser.downloads` share, narrowed to what E2 registers. */
 export interface InterceptBrowser {
   downloads: {
@@ -137,12 +143,15 @@ export interface InterceptBrowser {
   windows: {
     onRemoved: { addListener(listener: (windowId: number) => void): void };
   };
+  notifications: {
+    onClicked: { addListener(listener: (notificationId: string) => void): void };
+  };
 }
 
 interface WebListener {
   addListener(
     listener: (details: RawRequest) => void | Promise<{ cancel?: boolean } | void>,
-    filter: { urls: string[] },
+    filter: { urls: string[]; types?: string[] },
     extra: readonly string[],
   ): void;
 }
@@ -174,7 +183,12 @@ export interface RawRequest {
   cookieStoreId?: string | undefined;
   requestHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
   responseHeaders?: { name?: string | undefined; value?: string | undefined }[] | undefined;
-  requestBody?: { raw?: { bytes?: ArrayBuffer }[] | undefined } | undefined;
+  requestBody?:
+    | {
+        raw?: { bytes?: ArrayBuffer }[] | undefined;
+        formData?: Record<string, string[]> | undefined;
+      }
+    | undefined;
 }
 
 /** The context-menu click, narrowed to the fields the links service reads. */
@@ -237,38 +251,44 @@ export function attachIntercept(
   intercept: InterceptService,
   firefox: boolean,
 ): void {
+  const filter = { urls: [...INTERCEPT_URLS], types: [...INTERCEPT_TYPES] };
   browser.downloads.onCreated.addListener((item) => {
     void intercept.onCreated(toDownload(item));
   });
   browser.webRequest.onBeforeRequest.addListener(
     (details) => {
-      void intercept.onBeforeRequest(toRequest(details));
+      if (details.method === 'POST') intercept.onBeforeRequest(toRequest(details));
     },
-    { urls: [...INTERCEPT_URLS] },
+    filter,
     ['requestBody'],
   );
   browser.webRequest.onBeforeSendHeaders.addListener(
     (details) => {
-      void intercept.onBeforeSendHeaders(toRequest(details));
+      intercept.onBeforeSendHeaders(toRequest(details));
     },
-    { urls: [...INTERCEPT_URLS] },
-    ['requestHeaders'],
+    filter,
+    // Chrome hides `Referer` and a few other headers unless asked; Firefox has no such option and refuses it.
+    firefox ? ['requestHeaders'] : ['requestHeaders', 'extraHeaders'],
   );
   browser.webRequest.onHeadersReceived.addListener(
     (details) => intercept.onHeadersReceived(toRequest(details)),
-    { urls: [...INTERCEPT_URLS] },
+    filter,
     firefox ? ['blocking', 'responseHeaders'] : ['responseHeaders'],
   );
   browser.windows.onRemoved.addListener((windowId) => {
     void intercept.onWindowRemoved(windowId);
   });
+  browser.notifications.onClicked.addListener((id) => {
+    void intercept.onNotificationClicked(id);
+  });
 }
 
 function toDownload(item: RawDownload) {
+  // The browser reports 0 or -1 for a size it does not know (a chunked response): that is unknown, not an empty file.
   const size =
-    item.fileSize !== undefined && item.fileSize >= 0
+    item.fileSize !== undefined && item.fileSize > 0
       ? item.fileSize
-      : item.totalBytes !== undefined && item.totalBytes >= 0
+      : item.totalBytes !== undefined && item.totalBytes > 0
         ? item.totalBytes
         : undefined;
   return {
@@ -285,7 +305,7 @@ function toDownload(item: RawDownload) {
 }
 
 function toRequest(details: RawRequest): RequestEvent {
-  const postBody = postBodyFrom(details.requestBody?.raw);
+  const postBody = postBodyFrom(details.requestBody);
   return {
     requestId: details.requestId,
     url: details.url,
