@@ -55,7 +55,8 @@ export default defineConfig({
     // The daemon of this computer, plus every site a download can come from. Remote servers are still asked for one
     // by one on Firefox, where host access is not granted at install (onboarding asks for it).
     host_permissions: ['http://127.0.0.1/*', 'http://localhost/*', 'http://*/*', 'https://*/*'],
-    ...(browser === 'firefox' ? {} : { key: CHROME_PUBLIC_KEY }),
+    // The code needs AbortSignal.any and sidePanel.open (Chrome 116).
+    ...(browser === 'firefox' ? {} : { key: CHROME_PUBLIC_KEY, minimum_chrome_version: '116' }),
     ...(browser === 'firefox'
       ? {
           browser_specific_settings: {

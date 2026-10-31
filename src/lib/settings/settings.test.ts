@@ -395,3 +395,27 @@ describe('settings written by earlier versions', () => {
     });
   });
 });
+
+describe('SettingsStore.save with a base', () => {
+  it('keeps a change made elsewhere while the form was open', async () => {
+    const store = new SettingsStore(memoryArea());
+    const loaded = await store.get();
+    // The ask page adds a site while the options page is open.
+    await store.update((s) => ({ ...s, rules: { ...s.rules, alwaysSites: ['example.test'] } }));
+    // The form saves only what the person changed: the minimum size.
+    const saved = await store.save({
+      rules: { ...loaded.rules, minSizeBytes: 5 },
+      preferences: loaded.preferences,
+      routes: loaded.routes,
+      files: loaded.files,
+      base: {
+        rules: loaded.rules,
+        preferences: loaded.preferences,
+        routes: loaded.routes,
+        files: loaded.files,
+      },
+    });
+    expect(saved.rules.minSizeBytes).toBe(5);
+    expect(saved.rules.alwaysSites).toEqual(['example.test']);
+  });
+});

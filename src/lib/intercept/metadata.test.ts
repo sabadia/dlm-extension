@@ -159,3 +159,29 @@ describe('observations', () => {
     expect(readGesture(map, undefined, 2_000)).toEqual({ alt: false, shift: false });
   });
 });
+
+describe('Content-Disposition review fixes', () => {
+  it('reads a filename* with a language tag and a non-UTF-8 charset', () => {
+    expect(filenameFromDisposition("attachment; filename*=UTF-8'en'report.pdf")).toBe('report.pdf');
+    expect(filenameFromDisposition("attachment; filename*=iso-8859-1''%A3rates.txt")).toBe(
+      '£rates.txt',
+    );
+    expect(filenameFromDisposition("attachment; filename*=UTF-8''na%C3%AFve%20file.txt")).toBe(
+      'naïve file.txt',
+    );
+  });
+
+  it('falls back to the plain filename when the extended one cannot be read', () => {
+    expect(
+      filenameFromDisposition(
+        'attachment; filename*=unknown-charset\'\'x%ZZ; filename="plain.txt"',
+      ),
+    ).toBe('plain.txt');
+  });
+
+  it('counts only the disposition type, not a file name that contains the word', () => {
+    expect(isAttachment('attachment; filename="a.zip"')).toBe(true);
+    expect(isAttachment('Attachment')).toBe(true);
+    expect(isAttachment('inline; filename="attachment-guide.pdf"')).toBe(false);
+  });
+});

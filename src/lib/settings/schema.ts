@@ -101,6 +101,13 @@ export interface Settings {
 /** What the options page saves: the parts it edits. Targets and the active target are changed elsewhere. */
 export type SettingsPatch = Pick<Settings, 'rules' | 'preferences' | 'routes' | 'files'>;
 
+/**
+ * What a form saves: the edited groups, and the groups as the form loaded them. Only what differs from `base` is applied
+ * on top of the current settings, so a choice made elsewhere while the form was open ("always for this site", the
+ * shortcut that switches interception) is not undone by saving.
+ */
+export type SettingsSave = SettingsPatch & { base?: SettingsPatch | undefined };
+
 export const LOCAL_TARGET: LocalTarget = { id: 'local', kind: 'local' };
 
 /** 1 MB: smaller files stay in the browser (docs/PLAN.md, decisions). */

@@ -32,6 +32,12 @@ describe('draftFrom and settingsFrom', () => {
         preferences: settings.preferences,
         routes: [],
         files: settings.files,
+        base: {
+          rules: settings.rules,
+          preferences: settings.preferences,
+          routes: settings.routes,
+          files: settings.files,
+        },
       },
     });
   });

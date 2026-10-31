@@ -58,6 +58,8 @@ export interface Environment {
   windows?: WindowsPort;
   /** Address of the small ask window, including the pending id. */
   askUrl?: (id: string) => string;
+  /** The address of the page shown in a tab. */
+  tabUrl?: (tabId: number) => Promise<string | undefined>;
   /** Context menus (E3). */
   menus?: MenuPort;
   /** Address of the "all links" preview for one tab. */
@@ -143,6 +145,7 @@ export function createServices(env: Environment): Services {
                 ...(body.queueId ? { queueId: body.queueId } : {}),
                 ...(body.paused !== undefined ? { paused: body.paused } : {}),
                 ...(body.name ? { name: body.name } : {}),
+                ...(body.allowDuplicate ? { allowDuplicate: true } : {}),
               }
             : body,
         ),
@@ -240,8 +243,10 @@ export function createServices(env: Environment): Services {
           notifications: env.notifications,
           windows: env.windows,
           askUrl: env.askUrl,
+          ...(env.tabUrl ? { tabUrl: env.tabUrl } : {}),
           client: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
           refreshTarget: (pageUrl) => refresh.endpointFor(pageUrl),
+          refreshDone: (pageUrl) => refresh.done(pageUrl),
           ...(links ? { torrents: links } : {}),
         })
       : undefined;

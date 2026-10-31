@@ -89,7 +89,10 @@ export function App({
             void onProbe(shown.map((link) => link.url).slice(0, PROBE_LIMIT))
               .then((probed) => {
                 const next = { ...sizes };
-                for (const item of probed) if (item.size !== undefined) next[item.url] = item.size;
+                // The daemon reports -1 for a size it does not know: that is no size, so the link stays.
+                for (const item of probed) {
+                  if (item.size !== undefined && item.size >= 0) next[item.url] = item.size;
+                }
                 setSizes(next);
                 setChecked(t('links.sizesChecked', { count: probed.length }));
               })

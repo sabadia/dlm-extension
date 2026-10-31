@@ -96,7 +96,11 @@ export default defineContentScript({
         // it, the browser gets it after all.
         event.preventDefault();
         event.stopPropagation();
-        void sendMessage(browser.runtime, 'links.add', { url: href }).then(
+        void sendMessage(browser.runtime, 'links.add', {
+          url: href,
+          alt: event.altKey,
+          shift: event.shiftKey,
+        }).then(
           (accepted) => {
             if (!accepted) location.href = href;
           },

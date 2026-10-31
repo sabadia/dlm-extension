@@ -161,7 +161,7 @@ export class RefreshService {
       fresh = next.fresh;
       return next.seen;
     });
-    await this.remember(notices, now);
+    await this.remember(notices, answered, now);
     if (fresh.length === 0 || !settings.preferences.notifications) return;
     for (const notice of fresh) await this.notify(notice);
   }
@@ -183,6 +183,13 @@ export class RefreshService {
     } catch {
       return undefined;
     }
+  }
+
+  /** The waiting download was handed over: the page no longer forces captures while the server catches up. */
+  async done(pageUrl: string | undefined): Promise<void> {
+    const host = pageUrl ? downloadHost(pageUrl) : undefined;
+    if (!host) return;
+    await this.pending.update((list) => list.filter((item) => !hostCoveredBy(host, item.host)));
   }
 
   /** The person clicked a notification of an expired link: open its page. Returns true when the click was ours. */
@@ -226,16 +233,20 @@ export class RefreshService {
   }
 
   /** The pages that are waiting for a download, with the time they were last seen waiting. */
-  private async remember(notices: readonly ServerNotice[], now: number): Promise<void> {
+  private async remember(
+    notices: readonly ServerNotice[],
+    answered: ReadonlySet<string>,
+    now: number,
+  ): Promise<void> {
     const waiting = notices.flatMap((notice) => {
       const host = notice.pageUrl ? downloadHost(notice.pageUrl) : undefined;
       return host ? [{ host, server: notice.server, at: now }] : [];
     });
     await this.pending.update((list) => {
+      // A server that answered says exactly what it waits for now: what it no longer lists is done. One that did not
+      // answer keeps its entries until they expire.
       const kept = list.filter(
-        (item) =>
-          now - item.at <= PENDING_TTL_MS &&
-          !waiting.some((w) => w.host === item.host && w.server === item.server),
+        (item) => now - item.at <= PENDING_TTL_MS && !answered.has(item.server),
       );
       return [...kept, ...waiting].slice(-MAX_PENDING);
     });

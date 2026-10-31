@@ -159,19 +159,25 @@ export class ProbeCache {
     this.stored = new StoredValue(area, 'files.probe', parseCache);
   }
 
-  async get(url: string): Promise<ProbeResult | undefined> {
+  /**
+   * `scope` keeps what a private window learned (with its cookies, and where redirects led) apart from what a normal
+   * window learned: the two panels share this storage.
+   */
+  async get(url: string, scope = ''): Promise<ProbeResult | undefined> {
     const now = this.now();
+    const key = scope + url;
     return (await this.stored.get()).find(
-      (entry) => entry.url === url && now - entry.at <= CACHE_TTL_MS,
+      (entry) => entry.url === key && now - entry.at <= CACHE_TTL_MS,
     )?.result;
   }
 
-  async put(url: string, result: ProbeResult): Promise<void> {
+  async put(url: string, result: ProbeResult, scope = ''): Promise<void> {
     const now = this.now();
+    const key = scope + url;
     await this.stored.update((list) =>
       [
-        ...list.filter((entry) => entry.url !== url && now - entry.at <= CACHE_TTL_MS),
-        { url, result, at: now },
+        ...list.filter((entry) => entry.url !== key && now - entry.at <= CACHE_TTL_MS),
+        { url: key, result, at: now },
       ].slice(-CACHE_MAX),
     );
   }

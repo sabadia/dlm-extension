@@ -51,17 +51,37 @@ export function headerValue(
   return values.length > 0 ? values.join(', ') : undefined;
 }
 
-/** The file name from a `Content-Disposition` value, including the UTF-8 `filename*` form. */
+/** Decodes percent-escapes as bytes of `charset` (UTF-8, ISO-8859-1 or Windows-1252); undefined when that fails. */
+function decodeExtended(value: string, charset: string): string | undefined {
+  const label = charset.trim().toLowerCase() || 'utf-8';
+  try {
+    const bytes = Uint8Array.from(
+      value.replace(/%([0-9a-f]{2})/gi, (_all, hex: string) =>
+        String.fromCharCode(parseInt(hex, 16)),
+      ),
+      (ch) => ch.charCodeAt(0) & 0xff,
+    );
+    return new TextDecoder(label).decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The file name from a `Content-Disposition` value. The `filename*` form (RFC 8187: `charset'language'value`) comes
+ * first, in any charset the browser can decode; when it cannot be read, the plain `filename=` is used.
+ */
 export function filenameFromDisposition(value: string | undefined): string | undefined {
   if (!value) return undefined;
-  const extended = /filename\*\s*=\s*(?:UTF-8''|utf-8'')?([^;]+)/i.exec(value);
-  const extendedName = extended?.[1]?.trim().replace(/^"(.*)"$/, '$1');
-  if (extendedName) {
-    try {
-      return safeName(decodeURIComponent(extendedName));
-    } catch {
-      return safeName(extendedName);
-    }
+  const extended = /filename\*\s*=\s*([^;]+)/i.exec(value);
+  const raw = extended?.[1]?.trim().replace(/^"(.*)"$/, '$1');
+  if (raw) {
+    const parts = /^([^']*)'[^']*'(.*)$/.exec(raw);
+    const decoded = parts
+      ? decodeExtended(parts[2] ?? '', parts[1] ?? '')
+      : decodeExtended(raw, 'utf-8');
+    const name = safeName(decoded);
+    if (name) return name;
   }
   const plain = /filename\s*=\s*"([^"]+)"|filename\s*=\s*([^";]+)/i.exec(value);
   return safeName(plain?.[1] ?? plain?.[2]);
@@ -69,7 +89,8 @@ export function filenameFromDisposition(value: string | undefined): string | und
 
 /** True when the response tells the browser to download rather than show the body. */
 export function isAttachment(value: string | undefined): boolean {
-  return value !== undefined && /attachment/i.test(value);
+  // The disposition type is the first token; a file called "attachment-guide.pdf" is not an attachment.
+  return value !== undefined && /^\s*attachment\s*(?:;|$)/i.test(value);
 }
 
 const SHOWN_TYPES = [

@@ -1,7 +1,7 @@
 import type { CaptureBody, CaptureCookie } from '../api/client';
 import type { ConnectionService } from '../connection/service';
 import { t } from '../i18n';
-import { CookieReader, type CookiesPort } from '../intercept/cookies';
+import { CookieReader, fitCaptureLimits, type CookiesPort } from '../intercept/cookies';
 import { downloadHost } from '../intercept/rules';
 import type { Logger } from '../log/log';
 import { redactUrl } from '../log/redact';
@@ -275,7 +275,8 @@ export class MediaService {
         allowPrivate: settings.rules.privateWindows,
         host,
       });
-      if (cookies.length > 0) body.cookies = cookies;
+      const fitted = fitCaptureLimits(cookies);
+      if (fitted.length > 0) body.cookies = fitted;
     }
     return body;
   }

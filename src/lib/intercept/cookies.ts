@@ -14,6 +14,39 @@ export interface CookiesPort {
   stores?(): Promise<{ id: string; tabIds: number[] }[]>;
 }
 
+/** What the daemon accepts in one capture from an extension token; a larger one is refused whole (422). */
+export const MAX_CAPTURE_COOKIES = 200;
+export const MAX_COOKIE_BYTES = 8 * 1024;
+export const MAX_COOKIES_TOTAL = 256 * 1024;
+
+/**
+ * Cuts the cookies of a capture down to what the daemon takes: none over 8 KiB, at most 200, 256 KiB together. The
+ * most specific ones stay (a longer path, then a longer domain), because those are the ones that match fewer requests
+ * and so are the ones the download needs.
+ */
+export function fitCaptureLimits(cookies: readonly CaptureCookie[]): CaptureCookie[] {
+  const size = (cookie: CaptureCookie) => cookie.name.length + cookie.value.length;
+  const ranked = cookies
+    .filter((cookie) => size(cookie) <= MAX_COOKIE_BYTES)
+    .map((cookie, index) => ({ cookie, index }))
+    .sort(
+      (a, b) =>
+        (b.cookie.path?.length ?? 0) - (a.cookie.path?.length ?? 0) ||
+        b.cookie.domain.length - a.cookie.domain.length ||
+        a.index - b.index,
+    );
+  const kept: typeof ranked = [];
+  let total = 0;
+  for (const entry of ranked) {
+    const bytes =
+      size(entry.cookie) + entry.cookie.domain.length + (entry.cookie.path?.length ?? 0);
+    if (kept.length >= MAX_CAPTURE_COOKIES || total + bytes > MAX_COOKIES_TOTAL) continue;
+    total += bytes;
+    kept.push(entry);
+  }
+  return kept.sort((a, b) => a.index - b.index).map((entry) => entry.cookie);
+}
+
 export interface CookieRequest {
   /** The address the cookies are for (the download itself). */
   url: string;

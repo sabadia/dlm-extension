@@ -235,7 +235,8 @@ describe('LinksService', () => {
         cookies: [{ domain: 'files.example.test', name: 's', value: 'v' }],
       }),
     ).toBe('taken');
-    expect(torrents).toEqual([{ bytes: 2, name: 'a.torrent' }]);
+    // The torrent keeps its own name; the file's (`a.torrent`) is not what it contains.
+    expect(torrents).toEqual([{ bytes: 2 }]);
     expect(await service.addTorrent({ url: 'https://files.example.test/b.torrent' })).toBe('taken');
     expect(created.at(-1)).toMatchObject({ url: 'https://files.example.test/b.torrent' });
   });
@@ -250,6 +251,33 @@ describe('LinksService', () => {
       'https://a.test/1',
       'https://a.test/2',
     ]);
+  });
+
+  describe('addDirect', () => {
+    const page = 'https://example.test/page';
+    const withRules = (change: Partial<Settings['rules']>) => {
+      const base = defaultSettings();
+      return harness({ settings: { ...base, rules: { ...base.rules, ...change } } });
+    };
+
+    it('takes a magnet link by default', async () => {
+      const { service, created } = harness();
+      expect(await service.addDirect('magnet:?xt=urn:btih:abc', { pageUrl: page })).toBe(true);
+      expect(created).toHaveLength(1);
+    });
+
+    it.each([
+      ['the switch is off', { intercept: false }, {}],
+      ['a private window is not allowed', { privateWindows: false }, { incognito: true }],
+      ['the bypass key is held', { bypassKey: 'alt' as const }, { alt: true }],
+      ['the site is excluded', { excludedSites: ['example.test'] }, {}],
+    ])('hands the link back to the browser when %s', async (_why, rules, where) => {
+      const { service, created } = withRules(rules);
+      expect(await service.addDirect('magnet:?xt=urn:btih:abc', { pageUrl: page, ...where })).toBe(
+        false,
+      );
+      expect(created).toEqual([]);
+    });
   });
 });
 

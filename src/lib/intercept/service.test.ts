@@ -237,13 +237,24 @@ describe('InterceptService hand-off', () => {
     expect(duplicate.notes[0]?.message).toContain('already in DLM');
   });
 
-  it('falls back when DLM is not connected', async () => {
+  it('leaves the download alone in the browser when DLM is not connected', async () => {
     const harness = deps();
     harness.setConnection({ kind: 'app-not-running' });
     await harness.service.onCreated(item());
     expect(harness.captured).toEqual([]);
-    expect(harness.downloads.started).toHaveLength(1);
-    expect(harness.notes[0]?.message).toContain('not connected');
+    // Nothing was cancelled, so there is nothing to restart (and no Referer or one-time link is lost).
+    expect(harness.downloads.cancelled).toEqual([]);
+    expect(harness.downloads.started).toEqual([]);
+  });
+
+  it('gives the download back when DLM stops answering after the erase', async () => {
+    const harness = deps({
+      client: () => ({ capture: () => Promise.reject(new NetworkError('down')) }),
+    });
+    await harness.service.onCreated(item());
+    expect(harness.downloads.erased).toEqual([4]);
+    expect(harness.downloads.started).toEqual([{ url: ZIP, filename: 'archive.zip' }]);
+    expect(harness.notes[0]?.message).toContain('down');
   });
 
   it('uses the webRequest page when Firefox has no referrer, and cancels an attachment it captured', async () => {
@@ -449,9 +460,12 @@ describe('InterceptService review fixes', () => {
   });
 
   it('gives the download back to the browser when the hand-off throws after the erase', async () => {
+    let calls = 0;
     const harness = deps({
       client: () => {
-        throw new Error('unexpected');
+        // The first call is the reachability check before the erase.
+        if ((calls += 1) > 1) throw new Error('unexpected');
+        return { capture: () => Promise.resolve({ task: { id: 't1' } }) };
       },
     });
     await harness.service.onCreated(item());
@@ -643,6 +657,7 @@ describe('InterceptService review fixes', () => {
 
   it('restarts a private-window download in the same private window or container', async () => {
     const harness = deps({
+      firefox: true,
       client: () => ({ capture: () => Promise.reject(new NetworkError('down')) }),
     });
     harness.settingsState.current = {
@@ -657,8 +672,14 @@ describe('InterceptService review fixes', () => {
       incognito: true,
       cookieStoreId: 'firefox-private',
     });
+    // Not an attachment, so Firefox hands it over from the download item rather than in the request.
     await harness.service.onHeadersReceived(
-      response({ url: ZIP, incognito: true, cookieStoreId: 'firefox-private' }),
+      response({
+        url: ZIP,
+        incognito: true,
+        cookieStoreId: 'firefox-private',
+        responseHeaders: [{ name: 'Content-Type', value: 'application/zip' }],
+      }),
     );
     await harness.service.onCreated(item({ incognito: true }));
     expect(harness.downloads.started).toEqual([
@@ -855,6 +876,50 @@ describe('InterceptService torrents', () => {
     expect(harness.captured).toEqual([]);
   });
 
+  it('adds a duplicate torrent again as a torrent, not as a plain file', async () => {
+    const facts: { url: string; allowDuplicate?: boolean | undefined }[] = [];
+    const harness = deps({
+      torrents: {
+        addTorrent: (f) => {
+          facts.push(f);
+          return Promise.resolve(facts.length === 1 ? 'duplicate' : 'taken');
+        },
+      },
+    });
+    await harness.service.onCreated(file());
+    const note = harness.notes.find((n) => n.id.startsWith('dlm-duplicate'));
+    expect(await harness.service.onNotificationClicked(note?.id ?? '')).toBe(true);
+    expect(facts).toHaveLength(2);
+    expect(facts[1]).toMatchObject({ allowDuplicate: true });
+    expect(harness.captured).toEqual([]);
+  });
+
+  it('keeps a torrent a torrent on Firefox, whose default container has an id', async () => {
+    const { harness, calls } = torrent('taken');
+    harness.settingsState.current = {
+      ...harness.settingsState.current,
+      rules: { ...harness.settingsState.current.rules, askFirst: true },
+    };
+    harness.service.onBeforeSendHeaders({
+      requestId: 'f1',
+      url: 'https://files.example.test/a.torrent',
+      method: 'GET',
+      tabId: 3,
+      cookieStoreId: 'firefox-default',
+    });
+    await harness.service.onHeadersReceived(
+      response({
+        requestId: 'f1',
+        url: 'https://files.example.test/a.torrent',
+        cookieStoreId: 'firefox-default',
+      }),
+    );
+    await harness.service.onCreated(file());
+    await harness.service.choose('id-1', 'dlm');
+    expect(calls).toEqual(['https://files.example.test/a.torrent']);
+    expect(harness.captured).toEqual([]);
+  });
+
   it('says duplicate for a torrent DLM already has, and does not download it in the browser', async () => {
     const { harness } = torrent('duplicate');
     await harness.service.onCreated(file());
@@ -927,6 +992,46 @@ describe('InterceptService renewing an expired task', () => {
     expect(harness.windows).toEqual([]); // no ask-first prompt for a renewal
   });
 
+  it('does not force a private-window download, and tells the refresh service when one was handed over', async () => {
+    const done: (string | undefined)[] = [];
+    const harness = deps({
+      refreshTarget: () => Promise.resolve({ baseUrl: 'http://other:1', token: 'other-token' }),
+      refreshDone: (page) => {
+        done.push(page);
+        return Promise.resolve();
+      },
+    });
+    harness.settingsState.current = {
+      ...harness.settingsState.current,
+      rules: { ...harness.settingsState.current.rules, intercept: true, privateWindows: false },
+    };
+    harness.service.onBeforeSendHeaders({
+      requestId: 'p1',
+      url: ZIP,
+      method: 'GET',
+      tabId: 3,
+      incognito: true,
+      documentUrl: 'https://example.test/page',
+    });
+    await harness.service.onHeadersReceived(
+      response({ requestId: 'p1', url: ZIP, incognito: true }),
+    );
+    await harness.service.onCreated(item({ incognito: true }));
+    expect(harness.captured).toEqual([]);
+    expect(done).toEqual([]);
+
+    harness.service.onBeforeSendHeaders({
+      requestId: 'n1',
+      url: `${ZIP}?2`,
+      method: 'GET',
+      tabId: 3,
+      documentUrl: 'https://example.test/page',
+    });
+    await harness.service.onHeadersReceived(response({ requestId: 'n1', url: `${ZIP}?2` }));
+    await harness.service.onCreated(item({ id: 5, url: `${ZIP}?2`, finalUrl: `${ZIP}?2` }));
+    expect(done).toEqual(['https://example.test/page']);
+  });
+
   it('leaves a download of another page alone', async () => {
     const harness = deps({ refreshTarget: () => Promise.resolve(undefined) });
     harness.settingsState.current = {
@@ -935,5 +1040,148 @@ describe('InterceptService renewing an expired task', () => {
     };
     await harness.service.onCreated(item());
     expect(harness.captured).toEqual([]);
+  });
+});
+
+describe('InterceptService real browser events', () => {
+  // Chrome sends no documentUrl, and Firefox none for a top-level navigation: the page comes from the tab.
+  const bare = (over: Partial<RequestEvent> = {}): RequestEvent => {
+    const event: RequestEvent = response(over);
+    delete event.documentUrl;
+    return event;
+  };
+
+  it('knows the page from the tab when webRequest does not say', async () => {
+    const harness = deps({ tabUrl: () => Promise.resolve('https://example.test/page') });
+    harness.settingsState.current = {
+      ...harness.settingsState.current,
+      rules: { ...harness.settingsState.current.rules, excludedSites: ['example.test'] },
+    };
+    harness.service.onBeforeSendHeaders({ requestId: 'r1', url: ZIP, method: 'GET', tabId: 3 });
+    await harness.service.onHeadersReceived(bare({ url: ZIP }));
+    await harness.service.onCreated(item());
+    expect(harness.captured).toEqual([]);
+    expect(harness.downloads.cancelled).toEqual([]);
+  });
+
+  it('falls back to the initiator when the tab is gone', async () => {
+    const harness = deps({ tabUrl: () => Promise.reject(new Error('no tab')) });
+    harness.service.onBeforeSendHeaders({
+      requestId: 'r1',
+      url: ZIP,
+      method: 'GET',
+      tabId: 3,
+      initiator: 'https://example.test',
+    });
+    await harness.service.onHeadersReceived(bare({ url: ZIP, initiator: 'https://example.test' }));
+    await harness.service.onCreated(item());
+    expect(harness.captured).toMatchObject([{ pageUrl: 'https://example.test' }]);
+  });
+
+  it('keeps the clicked link across a redirect to a signed address', async () => {
+    const harness = deps();
+    const go = 'https://github.test/release.zip';
+    const signed = 'https://cdn.example.test/release.zip?sig=abc';
+    harness.service.onBeforeSendHeaders({ requestId: 'r1', url: go, method: 'GET', tabId: 3 });
+    expect(
+      await harness.service.onHeadersReceived(
+        bare({
+          url: go,
+          statusCode: 302,
+          responseHeaders: [{ name: 'Location', value: signed }],
+        }),
+      ),
+    ).toBeUndefined();
+    harness.service.onBeforeSendHeaders({ requestId: 'r1', url: signed, method: 'GET', tabId: 3 });
+    await harness.service.onHeadersReceived(bare({ url: signed, statusCode: 200 }));
+    await harness.service.onCreated(item({ url: go, finalUrl: signed }));
+    expect(harness.captured).toMatchObject([{ url: go, finalUrl: signed }]);
+  });
+
+  it('applies the site rules to the clicked link, not the address it redirects to', async () => {
+    const harness = deps();
+    harness.settingsState.current = {
+      ...harness.settingsState.current,
+      rules: { ...harness.settingsState.current.rules, excludedSites: ['github.test'] },
+    };
+    const go = 'https://github.test/release.zip';
+    const signed = 'https://cdn.example.test/release.zip';
+    harness.service.onBeforeSendHeaders({ requestId: 'r1', url: go, method: 'GET', tabId: 3 });
+    await harness.service.onHeadersReceived(
+      bare({ url: go, statusCode: 302, responseHeaders: [{ name: 'Location', value: signed }] }),
+    );
+    harness.service.onBeforeSendHeaders({ requestId: 'r1', url: signed, method: 'GET', tabId: 3 });
+    await harness.service.onHeadersReceived(bare({ url: signed }));
+    await harness.service.onCreated(item({ url: go, finalUrl: signed }));
+    expect(harness.captured).toEqual([]);
+  });
+
+  it('restarts from the clicked link, not the signed address', async () => {
+    const harness = deps({
+      client: () => ({ capture: () => Promise.reject(new NetworkError('down')) }),
+    });
+    const go = 'https://github.test/release.zip';
+    const signed = 'https://cdn.example.test/release.zip?sig=abc';
+    harness.service.onBeforeSendHeaders({ requestId: 'r1', url: go, method: 'GET', tabId: 3 });
+    await harness.service.onHeadersReceived(bare({ url: go, statusCode: 200 }));
+    await harness.service.onCreated(item({ url: go, finalUrl: signed }));
+    expect(harness.downloads.started[0]?.url).toBe(go);
+  });
+});
+
+describe('InterceptService when the browser cannot take the file back', () => {
+  const failing = () => ({
+    client: () => ({ capture: () => Promise.reject(new NetworkError('down')) }),
+  });
+
+  it('does not restart a private Chrome download in the normal profile', async () => {
+    const harness = deps(failing());
+    harness.settingsState.current = {
+      ...harness.settingsState.current,
+      rules: { ...harness.settingsState.current.rules, privateWindows: true },
+    };
+    harness.service.onBeforeSendHeaders({
+      requestId: 'r1',
+      url: ZIP,
+      method: 'GET',
+      tabId: 3,
+      incognito: true,
+    });
+    await harness.service.onHeadersReceived(response({ url: ZIP, incognito: true }));
+    await harness.service.onCreated(item({ incognito: true }));
+    expect(harness.downloads.started).toEqual([]);
+    expect(harness.notes.at(-1)?.message).toContain('private window');
+  });
+
+  it('retries without a file name the browser refuses, and says so when it still fails', async () => {
+    const attempts: DownloadOptions[] = [];
+    const harness = deps({
+      ...failing(),
+      downloads: {
+        cancel: () => Promise.resolve(),
+        erase: (query) => Promise.resolve([query.id]),
+        download: (options) => {
+          attempts.push(options);
+          return Promise.reject(new Error('Invalid filename'));
+        },
+      },
+    });
+    await harness.service.onCreated(item({ filename: 'C:\\x\\Report: Q3?.pdf' }));
+    expect(attempts.map((o) => o.filename)).toEqual(['Report_ Q3_.pdf', undefined]);
+    expect(harness.notes.at(-1)?.message).toContain('open the link once more');
+  });
+
+  it('settles an ask-first prompt nobody answered when the next one opens', async () => {
+    const harness = deps();
+    harness.settingsState.current = {
+      ...harness.settingsState.current,
+      rules: { ...harness.settingsState.current.rules, askFirst: true },
+    };
+    await harness.service.onCreated(item({ id: 4 }));
+    harness.clock.now += 3 * 60_000;
+    await harness.service.onCreated(item({ id: 5, url: `${ZIP}?2`, finalUrl: `${ZIP}?2` }));
+    // The first prompt went back to the browser instead of vanishing with its file.
+    expect(harness.downloads.started.map((o) => o.url)).toEqual([ZIP]);
+    expect(harness.removed).toContain(20);
   });
 });

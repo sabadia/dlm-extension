@@ -9,6 +9,13 @@ import { isDirectScheme } from '../lib/links/classify';
 import { parseSnapshot } from '../lib/media/page';
 import type { Services } from './services';
 
+function tabFieldOf(sender: SenderLike, field: 'url' | 'incognito'): unknown {
+  const tab = sender.tab;
+  return typeof tab === 'object' && tab !== null && field in tab
+    ? (tab as Record<string, unknown>)[field]
+    : undefined;
+}
+
 function tabIdOf(sender: SenderLike): number | undefined {
   const tab = sender.tab;
   if (typeof tab !== 'object' || tab === null || !('id' in tab)) return undefined;
@@ -80,7 +87,11 @@ export function createHandlers(services: Services): Handlers {
     },
     'connection.refresh': {
       handle: async () => {
+        const before = await services.connection.get();
         const state = await services.connection.refresh();
+        // The menus list the queues of DLM: build them again when DLM has just become reachable.
+        if (state.kind === 'connected' && before.kind !== 'connected')
+          void services.links?.install();
         return { state, text: describeState(state) };
       },
     },
@@ -90,7 +101,11 @@ export function createHandlers(services: Services): Handlers {
       handle: async () => {
         const view = await services.pairing.poll();
         // A new token changes the connection state; do not wait for the next scheduled check.
-        if (view.phase === 'approved') void services.connection.refresh();
+        if (view.phase === 'approved') {
+          void services.connection.refresh().then((state) => {
+            if (state.kind === 'connected') void services.links?.install();
+          });
+        }
         return view;
       },
     },
@@ -162,7 +177,17 @@ export function createHandlers(services: Services): Handlers {
         if (!isDirectScheme(input.url)) return false;
         const tabId = tabIdOf(sender);
         if (tabId === undefined || !allowAdd(tabId)) return false;
-        return (await services.links?.addDirect(input.url)) ?? false;
+        return (
+          (await services.links?.addDirect(input.url, {
+            pageUrl:
+              typeof tabFieldOf(sender, 'url') === 'string'
+                ? (tabFieldOf(sender, 'url') as string)
+                : sender.url,
+            incognito: tabFieldOf(sender, 'incognito') === true,
+            alt: input.alt === true,
+            shift: input.shift === true,
+          })) ?? false
+        );
       },
     },
     'links.send': {

@@ -12,7 +12,7 @@ Chrome (and the Chromium browsers that use its build) and Firefox share one hand
 | Cookies                   | `cookies.getAll` for the download's address, then again with `partitionKey.topLevelSite` set to the page origin (CHIPS). A browser without partition keys ignores the second call | The same call, plus `storeId` from the request (containers and private windows)                                                                                                                                                                                    |
 | Private windows           | Off unless the setting allows them. No cookies are read when it is off                                                                                                            | The same                                                                                                                                                                                                                                                           |
 
-Both browsers leave `blob:` and `data:` addresses, and anything that is not GET, in the browser. Holding Alt (or the key
+Both browsers leave `blob:` and `data:` addresses in the browser, and so anything that is neither a GET nor a small, replayable POST (see below). Holding Alt (or the key
 chosen in the settings) is seen by the content script and keeps that download in the browser.
 
 ## What the hand-off watches, and what it keeps

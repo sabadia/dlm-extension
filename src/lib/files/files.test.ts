@@ -6,7 +6,7 @@ import { applyView, countKinds, entryFor, formatSize, needsCheck, nameFacts } fr
 import { nameFromDisposition } from './disposition';
 import { fileKindOf, kindFromMime, looksLikeDownload } from './kinds';
 import { assignNames, extensionOf, nameFromLink, nameFromUrl, sanitizeFileName } from './naming';
-import { ProbeCache, probeFile, runPool, type FetchFn } from './probe';
+import { ProbeCache, probeFile, runPool, type FetchFn, type ProbeResult } from './probe';
 
 const response = (
   status: number,
@@ -463,5 +463,15 @@ describe('names that read differently from what they are', () => {
   it('drops right-to-left overrides and zero-width characters', () => {
     expect(sanitizeFileName('invoice\u202Efdp.exe')).toBe('invoicefdp.exe');
     expect(sanitizeFileName('re\u200Bport')).toBe('report');
+  });
+});
+
+describe('ProbeCache scopes', () => {
+  it('keeps what a private window learned apart from a normal window', async () => {
+    const cache = new ProbeCache(memoryArea());
+    const result = { ok: true, size: 1 } as unknown as ProbeResult;
+    await cache.put('https://x.test/a', result, 'private:');
+    expect(await cache.get('https://x.test/a')).toBeUndefined();
+    expect(await cache.get('https://x.test/a', 'private:')).toEqual(result);
   });
 });

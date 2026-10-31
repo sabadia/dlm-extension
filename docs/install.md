@@ -31,8 +31,8 @@ To update, download the new zip, replace the folder's contents and press the rel
 
 ## Pair with the app
 
-1. In the DLM app open **Manage, Access** and choose **Install for this browser** (this lets the browser start the app's
-   helper; it needs nothing from you again).
+1. In the DLM app open **Manage, Access**, tick your browser under the browser helper and press **Install** (this lets
+   the browser start the app's helper; it needs nothing from you again).
 2. Open the extension's options (right-click the button, Options). **Get started** walks through the rest: it shows a
    six-digit code; check it matches the one in the app and press **Allow**.
 3. Press **Send a test download**. A task appears in the app: you are set.

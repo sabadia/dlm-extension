@@ -163,7 +163,14 @@ describe('RulesForm', () => {
     const root = await mount(api);
     await click(button(root, 'Save'));
     await settle();
-    expect(Object.keys(saved[0] ?? {}).sort()).toEqual(['files', 'preferences', 'routes', 'rules']);
+    // `base` is the settings as the form loaded them, so that only what the person changed is applied.
+    expect(Object.keys(saved[0] ?? {}).sort()).toEqual([
+      'base',
+      'files',
+      'preferences',
+      'routes',
+      'rules',
+    ]);
   });
 
   it('says why a save failed, and keeps what was typed', async () => {

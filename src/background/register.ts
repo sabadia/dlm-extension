@@ -1,5 +1,5 @@
 import { listen, type RuntimeLike } from '../lib/bus/bus';
-import { contentLength, headerValue } from '../lib/intercept/metadata';
+import { contentLength, headerValue, isAttachment } from '../lib/intercept/metadata';
 import { responseSize } from '../lib/media/classify';
 import { postBodyFrom } from '../lib/intercept/post';
 import type { InterceptService, RequestEvent } from '../lib/intercept/service';
@@ -8,6 +8,7 @@ import type { MediaService } from '../lib/media/service';
 import { REFRESH_PERIOD_MINUTES } from '../lib/refresh/watch';
 import { t } from '../lib/i18n';
 import { createHandlers } from './handlers';
+import type { Surface } from '../lib/settings/schema';
 import { applySurface, onActionClicked, openSurface } from './surface';
 import { createServices, type Environment } from './services';
 
@@ -23,6 +24,15 @@ export function registerBackground(
   lifecycle: Lifecycle,
 ): void {
   const services = createServices(env);
+  // The surface the settings choose, as far as this worker knows (see the open-files shortcut).
+  let knownSurface: Surface | undefined;
+  const applyChosen = services.applySurface;
+  if (applyChosen) {
+    services.applySurface = (chosen) => {
+      knownSurface = chosen;
+      return applyChosen(chosen);
+    };
+  }
   listen(runtime, createHandlers(services), (type, error) => {
     services.log.warn('bus', `handler ${type} failed`, { error });
   });
@@ -48,7 +58,16 @@ export function registerBackground(
     if (details?.reason === 'install') lifecycle.commands?.openOptions();
   });
   lifecycle.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === CHECK_ALARM) check('alarm');
+    if (alarm.name === CHECK_ALARM) {
+      // A pairing the person approves after closing the options page is picked up here; the daemon revokes a token
+      // nobody read within five minutes.
+      void services.pairing
+        .poll()
+        .catch(() => undefined)
+        .finally(() => check('alarm'));
+      // A prompt nobody answered is settled here, not only when the worker happens to start.
+      void services.intercept?.sweep();
+    }
     if (alarm.name === REFRESH_ALARM) void services.refresh.scan();
   });
   // Alarms can be lost with the browser session: make sure ours exists whenever the background loads.
@@ -70,9 +89,14 @@ export function registerBackground(
   });
   // Where the toolbar button opens the files: applied at every load, because the browser forgets the popup choice.
   const surface = env.surface;
+  // The choice is kept here once known, so the shortcut can open the panel at once: both browsers only open one while
+  // the key press is still being handled, and a storage read in between can be too late.
   if (surface) {
     void services.settings.get().then(
-      (settings) => applySurface(surface, settings.files.surface),
+      (settings) => {
+        knownSurface = settings.files.surface;
+        return applySurface(surface, settings.files.surface);
+      },
       (error: unknown) =>
         services.log.warn('surface', 'could not set the toolbar button', { error }),
     );
@@ -107,9 +131,16 @@ export function registerBackground(
     }
     if (command === 'open-options') void lifecycle.commands?.openOptions();
     if (command === 'open-files' && surface) {
-      void services.settings
-        .get()
-        .then((settings) => openSurface(surface, settings.files.surface, tab?.id));
+      const failed = (error: unknown) =>
+        services.log.warn('commands', 'could not open the files', { error });
+      if (knownSurface) {
+        void openSurface(surface, knownSurface, tab?.id).catch(failed);
+      } else {
+        void services.settings
+          .get()
+          .then((settings) => openSurface(surface, settings.files.surface, tab?.id))
+          .catch(failed);
+      }
     }
   });
 }
@@ -278,7 +309,15 @@ export function attachMedia(browser: InterceptBrowser, media: MediaService): voi
     (details) => {
       const request = toRequest(details);
       if (details.type === 'main_frame') {
-        void media.navigated(request.tabId, request.url);
+        // A link that answers with a download (or with nothing) does not leave the page: its media stays.
+        const status = details.statusCode ?? 200;
+        const leaves =
+          status >= 200 &&
+          status < 300 &&
+          status !== 204 &&
+          status !== 205 &&
+          !isAttachment(headerValue(request.responseHeaders, 'content-disposition'));
+        if (leaves) void media.navigated(request.tabId, request.url);
         return;
       }
       const mime = headerValue(request.responseHeaders, 'content-type');
@@ -362,6 +401,7 @@ function toRequest(details: RawRequest): RequestEvent {
     url: details.url,
     method: details.method,
     tabId: details.tabId,
+    ...(details.statusCode !== undefined ? { statusCode: details.statusCode } : {}),
     ...(details.documentUrl ? { documentUrl: details.documentUrl } : {}),
     ...(details.initiator || details.originUrl
       ? { initiator: details.initiator ?? details.originUrl }
@@ -385,6 +425,10 @@ function ensureOne(
   periodInMinutes: number,
 ): Promise<void> {
   return Promise.resolve(alarms.get(name)).then(async (existing) => {
-    if (!existing) await alarms.create(name, { periodInMinutes });
+    // An alarm left by an older version with another period is made again.
+    const period = (existing as { periodInMinutes?: number } | undefined)?.periodInMinutes;
+    if (!existing || (period !== undefined && period !== periodInMinutes)) {
+      await alarms.create(name, { periodInMinutes });
+    }
   });
 }

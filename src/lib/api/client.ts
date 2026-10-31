@@ -114,13 +114,14 @@ export class DlmClient {
    */
   async addTorrentFile(
     bytes: Uint8Array,
-    query: { queueId?: string; name?: string; paused?: boolean } = {},
+    query: { queueId?: string; name?: string; paused?: boolean; allowDuplicate?: boolean } = {},
     signal?: AbortSignal,
   ): Promise<Task> {
     const params = new URLSearchParams();
     if (query.queueId) params.set('queueId', query.queueId);
     if (query.name) params.set('name', query.name);
     if (query.paused) params.set('paused', 'true');
+    if (query.allowDuplicate) params.set('allowDuplicate', 'true');
     const qs = params.toString();
     const res = await this.send('POST', `/v1/tasks/torrent${qs ? `?${qs}` : ''}`, {
       headers: { Accept: 'application/json', 'Content-Type': 'application/x-bittorrent' },
@@ -199,6 +200,8 @@ export class DlmClient {
       signal: opts.signal,
       auth: opts.auth ?? true,
     });
+    // 204 and 205 have no body (DELETE /v1/limits/override): that is not an error.
+    if (res.status === 204 || res.status === 205) return undefined as T;
     return (await res.json()) as T;
   }
 

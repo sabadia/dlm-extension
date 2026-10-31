@@ -8,7 +8,7 @@ import {
   type FormErrors,
   type FormField,
 } from '../../src/lib/settings/form';
-import type { Settings, SettingsPatch } from '../../src/lib/settings/schema';
+import type { Settings, SettingsSave } from '../../src/lib/settings/schema';
 import { normalizeFileType, normalizeMimeType, normalizeSite } from '../../src/lib/settings/parse';
 import { Button, Card, ChipInput, IconButton, Segmented, Switch } from '../../src/ui/kit';
 import { saveTextFile } from '../../src/ui/save-file';
@@ -16,7 +16,7 @@ import { saveTextFile } from '../../src/ui/save-file';
 /** What the form needs from the background. The options page passes the real one; a test passes a fake. */
 export interface SettingsApi {
   load(): Promise<{ settings: Settings; targets: { id: string; name: string }[] }>;
-  save(patch: SettingsPatch): Promise<Settings>;
+  save(patch: SettingsSave): Promise<Settings>;
   exportText(): Promise<string>;
   importText(text: string): Promise<Settings>;
 }

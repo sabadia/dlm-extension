@@ -44,6 +44,28 @@ export interface Gesture {
 
 const MAX_OBSERVATIONS = 50;
 
+/**
+ * The most POST body text kept in storage at once. `storage.session` holds about 10 MB for everything, and a failed
+ * write there loses claims and prompts too, so the oldest bodies go first.
+ */
+export const MAX_STORED_BODY_CHARS = 1_000_000;
+
+/** Drops the bodies of the oldest observations until the rest fit; the observations themselves stay. */
+export function capStoredBodies(
+  list: readonly Observation[],
+  limit = MAX_STORED_BODY_CHARS,
+): Observation[] {
+  let total = 0;
+  const out = [...list];
+  for (let i = out.length - 1; i >= 0; i -= 1) {
+    const item = out[i];
+    if (item?.postBody === undefined) continue;
+    total += item.postBody.length;
+    if (total > limit) out[i] = { ...item, postBody: undefined };
+  }
+  return out;
+}
+
 /** Adds `next` and drops observations that are too old or the previous record of the same request. */
 export function rememberObservation(
   list: readonly Observation[],
@@ -53,7 +75,7 @@ export function rememberObservation(
   const kept = list.filter(
     (item) => now - item.at <= OBSERVATION_TTL_MS && item.requestId !== next.requestId,
   );
-  return [...kept, next].slice(-MAX_OBSERVATIONS);
+  return capStoredBodies([...kept, next].slice(-MAX_OBSERVATIONS));
 }
 
 /** The newest observation whose address is one of `urls`. */
