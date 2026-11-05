@@ -1,5 +1,7 @@
 # Browser differences
 
+Safari is covered in [safari.md](safari.md): it has no `downloads` API, so it cannot take over the browser's own downloads.
+
 Chrome (and the Chromium browsers that use its build) and Firefox share one hand-off. What differs is isolated in
 `attachIntercept` (`src/background/register.ts`) and in the Firefox branch of `InterceptService.onHeadersReceived`.
 

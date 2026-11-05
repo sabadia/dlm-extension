@@ -3,7 +3,7 @@ import { RingLog } from '../log/log';
 import { NativeHost, type NativeRuntime } from '../native/host';
 import { SecretStore } from '../settings/store';
 import { memoryArea } from '../storage/area';
-import { detectBrowser } from './browser';
+import { daemonBrowserName, detectBrowser } from './browser';
 import { PairingService } from './service';
 
 const TOKEN = 'dlmt_AbCdEf0123456789xyz';
@@ -196,8 +196,19 @@ describe('detectBrowser', () => {
       false,
       'chromium',
     ],
+    [
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
+      false,
+      'safari',
+    ],
     ['curl/8', false, 'other'],
   ])('%s', (ua, brave, expected) => {
     expect(detectBrowser(ua, brave)).toBe(expected);
+  });
+
+  it('sends Safari to the daemon as another browser, and the rest as they are', () => {
+    expect(daemonBrowserName('safari')).toBe('other');
+    expect(daemonBrowserName('firefox')).toBe('firefox');
+    expect(daemonBrowserName('chrome')).toBe('chrome');
   });
 });

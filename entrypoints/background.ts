@@ -7,7 +7,9 @@ import {
   type InterceptBrowser,
   type MenuBrowser,
 } from '../src/background/register';
+import type { InterceptService } from '../src/lib/intercept/service';
 import type { MenuSpec } from '../src/lib/links/menus';
+import type { MediaService } from '../src/lib/media/service';
 import { detectBrowser } from '../src/lib/pairing/browser';
 import { TORRENT_LIMIT } from '../src/lib/links/service';
 import { originPattern } from '../src/lib/settings/url';
@@ -67,6 +69,10 @@ export default defineBackground(() => {
   // (docs/CONVENTIONS.md, "Extension rules").
   const brave = 'brave' in navigator;
   const firefox = detectBrowser(navigator.userAgent, brave) === 'firefox';
+  // Safari has no downloads API, so the browser's own downloads cannot be taken over, and its notifications and
+  // web-request support differ: what it lacks is left out instead of breaking the background.
+  const safari = detectBrowser(navigator.userAgent, brave) === 'safari';
+  const hasDownloads = typeof browser.downloads !== 'undefined';
   const extensionOrigin = new URL(browser.runtime.getURL('/')).origin;
   // The tokens are in `storage.local`, which content scripts can read unless the extension says otherwise: no
   // content script of ours reads it, and a page's script cannot, but the access level is closed all the same.
@@ -186,21 +192,32 @@ export default defineBackground(() => {
       onStartup: browser.runtime.onStartup,
       onInstalled: browser.runtime.onInstalled,
       alarms: browser.alarms,
-      intercept: {
-        attach: (intercept) =>
-          attachIntercept(browser as unknown as InterceptBrowser, intercept, firefox),
-      },
+      ...(safari || !hasDownloads
+        ? {}
+        : {
+            intercept: {
+              attach: (intercept: InterceptService) =>
+                attachIntercept(browser as unknown as InterceptBrowser, intercept, firefox),
+            },
+          }),
       menus: {
         attach: (links) => attachMenus(browser.contextMenus as unknown as MenuBrowser, links),
       },
-      media: {
-        attach: (media) => attachMedia(browser as unknown as InterceptBrowser, media),
-      },
+      ...(typeof browser.webRequest === 'undefined'
+        ? {}
+        : {
+            media: {
+              attach: (media: MediaService) =>
+                attachMedia(browser as unknown as InterceptBrowser, media),
+            },
+          }),
       action: { onClicked: browser.action.onClicked },
       tabs: { onRemoved: browser.tabs.onRemoved },
-      notifications: { onClicked: browser.notifications.onClicked },
+      ...(typeof browser.notifications === 'undefined'
+        ? {}
+        : { notifications: { onClicked: browser.notifications.onClicked } }),
       commands: {
-        onCommand: browser.commands.onCommand,
+        onCommand: browser.commands?.onCommand ?? { addListener: () => undefined },
         openOptions: () => {
           void browser.runtime.openOptionsPage();
         },

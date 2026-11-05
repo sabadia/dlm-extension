@@ -17,6 +17,16 @@ export default defineConfig({
   srcDir: '.',
   manifestVersion: 3,
   vite: () => ({ plugins: [preact()] }),
+  hooks: {
+    'build:manifestGenerated': (wxt, manifest) => {
+      if (wxt.config.browser !== 'safari') return;
+      // Safari has no side panel, and keeps a background page of scripts (an event page) where Chrome runs a service
+      // worker: the page is what lets it see web requests (docs/safari.md).
+      delete (manifest as { side_panel?: unknown }).side_panel;
+      manifest.permissions = (manifest.permissions ?? []).filter((p) => p !== 'sidePanel');
+      (manifest as { background?: unknown }).background = { scripts: ['background.js'] };
+    },
+  },
   manifest: ({ browser }) => ({
     name: 'DLM',
     // Manifest strings come from public/_locales/<language>/messages.json (the browser translates them); the pages
@@ -26,14 +36,14 @@ export default defineConfig({
     // The permission set grows with the features (docs/PLAN.md, "Permissions"). E2 adds downloads, webRequest,
     // cookies and notifications, and host access to every site so a download's headers and cookies can be read.
     // Firefox also gets webRequestBlocking so an attachment can be cancelled before a download entry appears.
+    // Safari has no `downloads` or `notifications`: asking for them only draws warnings (docs/safari.md).
     permissions: [
       'storage',
       'nativeMessaging',
       'alarms',
-      'downloads',
+      ...(browser === 'safari' ? [] : ['downloads' as const, 'notifications' as const]),
       'webRequest',
       'cookies',
-      'notifications',
       'contextMenus',
       ...(browser === 'firefox' ? ['webRequestBlocking' as const] : []),
     ],
@@ -56,7 +66,10 @@ export default defineConfig({
     // by one on Firefox, where host access is not granted at install (onboarding asks for it).
     host_permissions: ['http://127.0.0.1/*', 'http://localhost/*', 'http://*/*', 'https://*/*'],
     // The code needs AbortSignal.any and sidePanel.open (Chrome 116).
-    ...(browser === 'firefox' ? {} : { key: CHROME_PUBLIC_KEY, minimum_chrome_version: '116' }),
+    // Chromium browsers only: Firefox has its own id, and Safari takes its identity from the app that carries it.
+    ...(browser === 'firefox' || browser === 'safari'
+      ? {}
+      : { key: CHROME_PUBLIC_KEY, minimum_chrome_version: '116' }),
     ...(browser === 'firefox'
       ? {
           browser_specific_settings: {

@@ -15,7 +15,7 @@ import { RefreshService } from '../lib/refresh/service';
 import { RingLog } from '../lib/log/log';
 import { RemoteService } from '../lib/remote/service';
 import { NativeHost, type NativeRuntime } from '../lib/native/host';
-import { detectBrowser } from '../lib/pairing/browser';
+import { daemonBrowserName, detectBrowser } from '../lib/pairing/browser';
 import { HintStore } from '../lib/page/store';
 import { PairingService } from '../lib/pairing/service';
 import { SecretStore, SettingsStore } from '../lib/settings/store';
@@ -107,7 +107,7 @@ export function createServices(env: Environment): Services {
     host,
     secrets,
     area: env.session,
-    browser: detectBrowser(env.userAgent, env.brave ?? false),
+    browser: daemonBrowserName(detectBrowser(env.userAgent, env.brave ?? false)),
     version: env.version,
     log,
   });

@@ -86,3 +86,14 @@ supported.
 - [ ] Uninstall removes the extension and leaves nothing in the browser (the app keeps its tasks).
 - [ ] Windows: the native host works with a user name that has spaces or non-Latin letters; Linux: from a Flatpak or Snap
       browser, note whether the app can install the host, and what the extension tells the person when it cannot.
+
+## Safari (macOS)
+
+Build and enable it with `tools/safari-convert.sh` (docs/safari.md).
+
+- The toolbar popup opens and shows the Files list for a page with a video or a file link.
+- Right-click a link, "Download with DLM" sends it; the task appears in the app.
+- A `magnet:` link and a `.torrent` link are captured.
+- A normal download (a link to a zip) stays in Safari; nothing breaks and nothing is cancelled.
+- With DLM not running, the popup says so instead of failing silently.
+- Safari > Settings > Extensions shows no warning about permissions DLM does not need.
