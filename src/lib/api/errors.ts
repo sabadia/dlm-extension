@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { redactText } from '../log/redact';
 
 /** What the daemon sends for an error (RFC 9457 problem details), reduced to what the extension uses. */
@@ -49,11 +50,22 @@ export async function problemFrom(res: Response): Promise<ApiError> {
     // not JSON: the status line has to do
   }
   const retry = Number(res.headers.get('Retry-After'));
-  const message = body.detail ?? body.title ?? `HTTP ${res.status}`;
+  let message = body.detail ?? body.title ?? `HTTP ${res.status}`;
+  // The daemon only takes requests from the browser extensions it knows (Chrome and Firefox reach it from an address
+  // it recognises; Safari's is different for every install, so the person adds it). Say which address.
+  if (res.status === 403 && /cross-origin request rejected/i.test(message)) {
+    message = t('error.originRefused', { origin: extensionOrigin() });
+  }
   return new ApiError(
     res.status,
     body.code,
     message,
     Number.isFinite(retry) && retry > 0 ? retry : undefined,
   );
+}
+
+/** The address this extension's pages and background run from, such as `safari-web-extension://<uuid>`. */
+export function extensionOrigin(): string {
+  const origin = (globalThis as { location?: { origin?: string } }).location?.origin;
+  return origin && origin !== 'null' ? origin : '(its extension address)';
 }

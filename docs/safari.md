@@ -58,6 +58,13 @@ step works today with a pasted token. What is left, and needs the Apple tooling 
    daemon. The daemon refuses cross-site POSTs (`internal/api/middleware.go`); if Safari sends `cross-site`, the daemon
    must accept an extension-scope Bearer token whatever the origin.
 
+The spike's first answer is in: Safari sends its requests as `Sec-Fetch-Site: cross-site` from
+`safari-web-extension://<uuid>`, and the daemon refuses any state-changing request from an origin that is not in
+`server.allowed_origins` ("cross-origin request rejected"), token or not. The extension now says so, with its own
+address, and the install guide has the person add it once. This is deliberate: the guard keeps web pages and other
+extensions from using a token. An automatic way (the app adding the origin when it approves the extension) comes with
+the pairing handler below.
+
 Until that handler exists, a Safari user connects with a pasted token (install guide). Named tokens are full-access or
 read-only; the restricted `extension` token that the other browsers get is issued only by pairing. So **Safari holds a
 full-access token** for now, which is why the guide says to give it a token of its own. Closing that gap (the handler
