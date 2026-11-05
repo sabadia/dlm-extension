@@ -1,4 +1,5 @@
 import type { MediaKind } from './classify';
+import type { VideoSite } from './sites';
 
 /** One row of a tab's media list. */
 export interface MediaRow {
@@ -6,6 +7,8 @@ export interface MediaRow {
   kind: MediaKind;
   name: string;
   source: 'network' | 'page';
+  /** Set for the page of a video on a site the daemon downloads itself: the row is the page, not a file. */
+  site?: VideoSite | undefined;
   mime?: string | undefined;
   sizeBytes?: number | undefined;
 }
@@ -120,6 +123,7 @@ function parseRow(raw: unknown): MediaRow[] {
       source: record.source,
       ...(typeof record.mime === 'string' ? { mime: record.mime } : {}),
       ...(typeof record.sizeBytes === 'number' ? { sizeBytes: record.sizeBytes } : {}),
+      ...(record.site === 'youtube' ? { site: record.site } : {}),
     },
   ];
 }

@@ -12,6 +12,7 @@ import { StoredValue } from '../storage/state';
 import { canonicalUrl, classifyNetwork, type MediaKind } from './classify';
 import { mediaFromPage, type PageMedia, type PageSnapshot } from './page';
 import { parseDash, parseHls, type Variant } from './playlist';
+import { videoPageOf, videoTitle, type VideoSite } from './sites';
 import {
   addNetwork,
   emptyTab,
@@ -30,6 +31,8 @@ export interface MediaView {
   mime?: string | undefined;
   sizeBytes?: number | undefined;
   duplicate?: string | undefined;
+  /** Set when the row is the page of a video the daemon downloads itself, see sites.ts. */
+  site?: VideoSite | undefined;
 }
 
 export interface TabView {
@@ -84,6 +87,10 @@ interface Tasks {
     cookies: CaptureCookie[],
   ): Promise<{ imported: number; skipped: number; rejected: number }>;
   resolve(url: string): Promise<{ name: string; size: number; duplicate?: string }>;
+  /** The qualities the daemon can download a video page in (yt-dlp), best first. */
+  pageFormats(
+    url: string,
+  ): Promise<{ id: string; label: string; kind: 'video' | 'audio'; bandwidth?: number }[]>;
 }
 
 export interface MediaDeps {
@@ -175,6 +182,17 @@ export class MediaService {
   /** The content script's scan of the top document of a tab. */
   async scan(tabId: number, snapshot: PageSnapshot): Promise<void> {
     const rows: MediaRow[] = mediaFromPage(snapshot).map((item) => pageRow(item));
+    // The page of a video on a site like YouTube is the thing to download, and it is not in the page's markup.
+    const video = videoPageOf(snapshot.pageUrl);
+    if (video) {
+      rows.push({
+        url: video.url,
+        kind: 'video',
+        name: videoTitle(video.site, snapshot.title) || video.id,
+        source: 'page',
+        site: video.site,
+      });
+    }
     const now = this.now();
     await this.change(tabId, (tab) =>
       replacePage(
@@ -202,8 +220,33 @@ export class MediaService {
     };
   }
 
+  /**
+   * Qualities of a video page, from the daemon (it asks yt-dlp what the video is offered in). `hint` is the daemon's id
+   * of the format, which is what a download of that quality is sent with.
+   */
+  async pageQualities(url: string): Promise<Variant[]> {
+    const tasks = await this.client(url);
+    if (!tasks) return [];
+    try {
+      const formats = await tasks.pageFormats(url);
+      return formats.map((format) => ({
+        url,
+        quality: format.label,
+        hint: format.id,
+        ...(format.bandwidth ? { bandwidth: format.bandwidth } : {}),
+      }));
+    } catch (error) {
+      this.deps.log.debug('media', 'the qualities of a page could not be read', {
+        error,
+        url: redactUrl(url),
+      });
+      return [];
+    }
+  }
+
   /** Qualities of a master playlist or MPD. A media playlist has none. */
   async variants(url: string): Promise<Variant[]> {
+    if (videoPageOf(url)) return this.pageQualities(url);
     if (!this.deps.fetchText) return [];
     try {
       const text = await this.deps.fetchText(url);
@@ -251,6 +294,10 @@ export class MediaService {
     if (request.paused) body.paused = true;
     if (request.resolverKind === 'ytdlp' || request.resolverKind === 'browser') {
       body.resolverKind = request.resolverKind;
+      // A chosen quality of a video page is the daemon's own id of that format.
+      if (request.resolverKind === 'ytdlp' && request.quality) {
+        body.mediaCandidates = [{ url: request.url, kind: 'video', variant: request.quality }];
+      }
     } else if (request.kind) {
       // Whatever its name, an HLS or DASH address is a stream, and a chosen quality travels with it.
       body.mediaCandidates = [
@@ -399,5 +446,6 @@ function viewOf(row: MediaRow): MediaView {
     name: row.name,
     ...(row.mime ? { mime: row.mime } : {}),
     ...(row.sizeBytes !== undefined ? { sizeBytes: row.sizeBytes } : {}),
+    ...(row.site ? { site: row.site } : {}),
   };
 }

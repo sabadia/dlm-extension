@@ -86,6 +86,9 @@ export default defineContentScript({
     };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
     else start();
+    // A single-page site (YouTube) moves to another video without loading a page: its own event, and the history, say so.
+    document.addEventListener('yt-navigate-finish', () => scan());
+    window.addEventListener('popstate', () => scan());
 
     window.addEventListener(
       'click',

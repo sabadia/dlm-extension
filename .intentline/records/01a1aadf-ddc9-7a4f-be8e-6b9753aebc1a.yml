@@ -1,0 +1,74 @@
+schema_version: 1
+id: 01a1aadf-ddc9-7a4f-be8e-6b9753aebc1a
+status: draft
+created_at: '2026-11-05T08:42:40Z'
+updated_at: '2026-11-05T08:42:40Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: human
+  name: null
+  tool: null
+goal: 'Add YouTube support: list a YouTube video page as one video, hand it to the daemon''s yt-dlp with a quality picker from the daemon''s formats, and stop listing YouTube''s unusable player requests'
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: README.md
+  start_line: null
+  end_line: null
+- path: docs/video-sites.md
+  start_line: null
+  end_line: null
+- path: entrypoints/page.content.ts
+  start_line: null
+  end_line: null
+- path: spec/used-operations.json
+  start_line: null
+  end_line: null
+- path: src/background/services.ts
+  start_line: null
+  end_line: null
+- path: src/lib/files/entries.ts
+  start_line: null
+  end_line: null
+- path: src/lib/files/files.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/i18n/en.ts
+  start_line: null
+  end_line: null
+- path: src/lib/media/classify.ts
+  start_line: null
+  end_line: null
+- path: src/lib/media/media.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/media/service.ts
+  start_line: null
+  end_line: null
+- path: src/lib/media/sites.test.ts
+  start_line: null
+  end_line: null
+- path: src/lib/media/sites.ts
+  start_line: null
+  end_line: null
+- path: src/lib/media/store.ts
+  start_line: null
+  end_line: null
+- path: src/ui/files/FileRow.tsx
+  start_line: null
+  end_line: null
+- path: src/ui/files/FilesView.tsx
+  start_line: null
+  end_line: null
+- path: src/ui/files/use-files.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

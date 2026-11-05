@@ -475,3 +475,26 @@ describe('ProbeCache scopes', () => {
     expect(await cache.get('https://x.test/a', 'private:')).toEqual(result);
   });
 });
+
+describe('the page of a video on a site the daemon downloads', () => {
+  const row = {
+    url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    kind: 'video' as const,
+    name: 'Never Gonna Give You Up',
+    site: 'youtube' as const,
+  };
+
+  it('is a valid entry that needs no check and has no size or file name', () => {
+    const { entry, state } = entryFor(row, undefined, true);
+    expect(state).toBe('valid');
+    expect(entry).toMatchObject({
+      kind: 'video',
+      site: 'youtube',
+      title: 'Never Gonna Give You Up',
+      host: 'www.youtube.com',
+      sizeBytes: undefined,
+      stream: undefined,
+    });
+    expect(needsCheck(row, undefined)).toBe(false);
+  });
+});

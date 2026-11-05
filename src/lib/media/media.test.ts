@@ -223,6 +223,16 @@ describe('MediaService', () => {
           return Promise.resolve({ imported: cookies.length, skipped: 0, rejected: 0 });
         },
         resolve: () => Promise.resolve({ name: 'Clip', size: 10, duplicate: 'Old' }),
+        pageFormats: () =>
+          Promise.resolve([
+            {
+              id: 'bv*[height<=1080]+ba',
+              label: '1080p',
+              kind: 'video' as const,
+              bandwidth: 5_000_000,
+            },
+            { id: 'ba', label: 'audio only (m4a)', kind: 'audio' as const },
+          ]),
       }),
       ...(over.cookies
         ? {
@@ -398,6 +408,7 @@ describe('MediaService', () => {
         listQueues: () => Promise.resolve([]),
         importCookies: () => Promise.reject(new Error('x')),
         resolve: () => Promise.reject(new Error('x')),
+        pageFormats: () => Promise.reject(new Error('x')),
       }),
     });
     expect((await offline.download({ url: 'https://a.test/x.mp4' })).ok).toBe(false);
@@ -455,5 +466,105 @@ describe('MediaService', () => {
     });
     expect(result).toMatchObject({ ok: false });
     expect(imported).toEqual([]);
+  });
+
+  describe('YouTube', () => {
+    const watch = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL1&t=9';
+    const page = (over = {}) =>
+      snapshot({
+        pageUrl: watch,
+        title: '(2) Never Gonna Give You Up - YouTube',
+        videos: [{ src: 'blob:https://www.youtube.com/abc', sources: [] }],
+        blobOrMse: true,
+        ...over,
+      });
+
+    it('lists the video page itself, named after the video, with the playlist and time left out', async () => {
+      const { service } = setup();
+      await service.scan(3, page());
+      const view = await service.forTab(3);
+      expect(view.items).toEqual([
+        {
+          url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          kind: 'video',
+          name: 'Never Gonna Give You Up',
+          site: 'youtube',
+        },
+      ]);
+    });
+
+    it('follows the page when YouTube moves to another video without loading a page', async () => {
+      const { service } = setup();
+      await service.scan(3, page());
+      await service.scan(
+        3,
+        page({ pageUrl: 'https://www.youtube.com/shorts/aaaaaaaaaaa', title: 'Short - YouTube' }),
+      );
+      expect((await service.forTab(3)).items.map((row) => row.url)).toEqual([
+        'https://www.youtube.com/watch?v=aaaaaaaaaaa',
+      ]);
+      await service.scan(
+        3,
+        page({
+          pageUrl: 'https://www.youtube.com/feed/subscriptions',
+          title: 'Subscriptions - YouTube',
+        }),
+      );
+      expect((await service.forTab(3)).items).toEqual([]);
+    });
+
+    it('does not list the pieces the player fetches', async () => {
+      const { service } = setup();
+      await service.observe({
+        url: 'https://rr3---sn-abc.googlevideo.com/videoplayback?expire=1&mime=video%2Fmp4&range=0-999',
+        tabId: 3,
+        mime: 'video/mp4',
+        sizeBytes: 50_000_000,
+      });
+      expect((await service.forTab(3)).items).toEqual([]);
+    });
+
+    it('sends the page to yt-dlp, with the chosen format as the hint', async () => {
+      const { service, captured } = setup();
+      await service.download({
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        pageUrl: watch,
+        resolverKind: 'ytdlp',
+        quality: 'bv*[height<=1080]+ba',
+      });
+      expect(captured[0]).toMatchObject({
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        resolverKind: 'ytdlp',
+        mediaCandidates: [
+          {
+            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            kind: 'video',
+            variant: 'bv*[height<=1080]+ba',
+          },
+        ],
+      });
+      await service.download({
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        resolverKind: 'ytdlp',
+      });
+      expect(captured[1]).not.toHaveProperty('mediaCandidates');
+    });
+
+    it('offers the qualities the daemon lists for a video page', async () => {
+      const { service } = setup();
+      expect(await service.variants('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toEqual([
+        {
+          url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          quality: '1080p',
+          hint: 'bv*[height<=1080]+ba',
+          bandwidth: 5_000_000,
+        },
+        {
+          url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          quality: 'audio only (m4a)',
+          hint: 'ba',
+        },
+      ]);
+    });
   });
 });

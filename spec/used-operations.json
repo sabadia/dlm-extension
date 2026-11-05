@@ -45,7 +45,7 @@
     "reads": []
   },
   "resolve-task": {
-    "reads": ["name", "resource", "duplicateOf"]
+    "reads": ["name", "resource", "duplicateOf", "formats"]
   },
   "stream-events": {
     "reads": []

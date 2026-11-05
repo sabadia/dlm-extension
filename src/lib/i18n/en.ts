@@ -285,6 +285,7 @@ export const en = {
   'files.pageCookies': "Send this site's cookies to DLM",
   'files.pageBrowser': "Open this page in DLM's browser",
   'files.pageYtdlp': 'Download this page with yt-dlp',
+  'files.site.youtube': 'YouTube',
   'files.pageSettings': 'Settings',
   'files.protected': 'This page plays protected (DRM) media. DLM cannot download it.',
   'files.cookiesTitle': "Send this site's cookies to DLM?",

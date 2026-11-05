@@ -177,6 +177,18 @@ export function createServices(env: Environment): Services {
             rejected: result.errors?.length ?? 0,
           };
         },
+        pageFormats: async (url) => {
+          // A video page is looked at by yt-dlp, which lists the qualities the video has.
+          const result = await client.resolve({
+            source: { currentUrl: url, resolverKind: 'ytdlp' },
+          });
+          return (result.formats ?? []).map((format) => ({
+            id: format.id,
+            label: format.label,
+            kind: format.kind,
+            ...(format.bandwidth ? { bandwidth: format.bandwidth } : {}),
+          }));
+        },
         resolve: async (url) => {
           const result = await client.resolve({ url });
           return {
