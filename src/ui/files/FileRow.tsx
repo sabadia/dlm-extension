@@ -64,7 +64,7 @@ export function FileRow({
   };
 
   const meta = [
-    entry.stream ? undefined : formatSize(entry.sizeBytes),
+    entry.stream || entry.site ? undefined : formatSize(entry.sizeBytes),
     entry.ext?.toUpperCase(),
     entry.host,
   ]
@@ -112,6 +112,7 @@ export function FileRow({
           </button>
         )}
         <div class="meta small muted truncate" title={meta}>
+          {entry.site ? <Badge tone="accent">{t('files.site.youtube')}</Badge> : null}
           {entry.stream ? <Badge tone="accent">{kindLabel('stream')}</Badge> : null} {meta}
         </div>
         {qualities !== undefined ? (
@@ -153,7 +154,7 @@ export function FileRow({
             disabled: !canDownload,
             onSelect: onDownloadInBrowser,
           },
-          ...(entry.stream
+          ...(entry.stream || entry.site
             ? [
                 {
                   label: t('files.menuQuality'),

@@ -20,6 +20,10 @@ export interface FileEntry {
   stream: 'hls' | 'dash' | undefined;
   /** The name the server gave. */
   serverName: string | undefined;
+  /** Set for the page of a video the daemon downloads itself (YouTube): the row is the page, there is no file to check. */
+  site: 'youtube' | undefined;
+  /** The title of that video: the name the file gets from the daemon. */
+  title: string | undefined;
 }
 
 export type ProbeState = 'pending' | 'valid' | 'invalid';
@@ -41,6 +45,24 @@ export function entryFor(
   probe: ProbeResult | undefined,
   followRedirects: boolean,
 ): { entry: FileEntry; state: ProbeState } {
+  if (row.site) {
+    // The page of a video: nothing to check, no size to know before the daemon looks at it.
+    const entry: FileEntry = {
+      id: row.url,
+      url: row.url,
+      finalUrl: row.url,
+      host: hostOf(row.url),
+      kind: 'video',
+      ext: undefined,
+      mime: undefined,
+      sizeBytes: undefined,
+      stream: undefined,
+      serverName: undefined,
+      site: row.site,
+      title: row.name,
+    };
+    return { entry, state: 'valid' };
+  }
   const stream = row.kind === 'hls' || row.kind === 'dash' ? row.kind : undefined;
   const known = row.sizeBytes !== undefined && row.sizeBytes > 0 ? row.sizeBytes : undefined;
   const checked = probe?.ok ? probe : undefined;
@@ -60,6 +82,8 @@ export function entryFor(
     sizeBytes,
     stream,
     serverName,
+    site: undefined,
+    title: undefined,
   };
   // A stream has no size and is not checked: the page or the network offered it as media. Any other file is valid once
   // its size is known, from the network or from a check; a check that failed makes it invalid.
@@ -75,7 +99,7 @@ export function entryFor(
 
 /** A file is worth checking when it is not a stream, has no size from the network and has not been checked. */
 export function needsCheck(row: MediaView, probe: ProbeResult | undefined): boolean {
-  if (probe || row.kind === 'hls' || row.kind === 'dash') return false;
+  if (probe || row.site || row.kind === 'hls' || row.kind === 'dash') return false;
   return !(row.sizeBytes !== undefined && row.sizeBytes > 0);
 }
 

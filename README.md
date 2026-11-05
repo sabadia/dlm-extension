@@ -14,6 +14,7 @@ Works with Chrome and Chromium-based browsers (Edge, Brave, Opera, Vivaldi) and 
 - **Takes over downloads.** Downloads that start in the browser go to DLM instead, unless the file is small, the site
   is excluded, or you hold Alt.
 - **Finds media and files** on any page and lets you download them with DLM, with a quality choice for streams.
+- **Knows YouTube.** A YouTube video page (watch, Shorts, live, `youtu.be`) is listed as one video; DLM downloads it with yt-dlp, and you pick the quality from what the video offers. See [docs/video-sites.md](docs/video-sites.md).
 - **Handles magnet and torrent links** without the browser's "open external app" prompt.
 - **Passes what DLM needs:** cookies for that site only, the page address, the referrer, and a fresh link when an old
   one expired.

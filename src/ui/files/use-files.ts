@@ -143,10 +143,16 @@ export function useFiles(api: FilesApi): FilesState {
   const naming = settings?.files.naming ?? 'title';
   const names = useMemo(() => {
     const assigned = assignNames(entries.map(nameFacts), view.title || tab?.title || '', naming);
+    // A video page is named after the video, whatever the naming setting says about files.
+    for (const entry of entries) if (entry.site && entry.title) assigned.set(entry.id, entry.title);
     for (const [id, name] of Object.entries(renames)) if (assigned.has(id)) assigned.set(id, name);
     return assigned;
   }, [
-    entries.map((entry) => `${entry.id}|${entry.finalUrl}|${entry.serverName ?? ''}`).join('\n'),
+    entries
+      .map(
+        (entry) => `${entry.id}|${entry.finalUrl}|${entry.serverName ?? ''}|${entry.title ?? ''}`,
+      )
+      .join('\n'),
     view.title,
     tab?.title,
     naming,

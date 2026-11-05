@@ -3,6 +3,8 @@
  * owns them and are not listed on their own. Ads, trackers and tiny files are left out.
  */
 
+import { isPlayerStream } from './sites';
+
 export type MediaKind = 'hls' | 'dash' | 'video' | 'audio' | 'file';
 
 export interface NetworkHit {
@@ -56,6 +58,8 @@ export function isTracker(url: string): boolean {
  */
 export function classifyNetwork(hit: NetworkHit): Classified | undefined {
   if (isTracker(hit.url)) return undefined;
+  // A video site's player fetches signed pieces; the page is the download (see sites.ts).
+  if (isPlayerStream(hit.url)) return undefined;
   const ext = extensionOf(hit.url);
   const mime = bareMime(hit.mime);
   const kind = kindOf(ext, mime);

@@ -77,10 +77,12 @@ export function FilesView({ api }: { api: FilesApi }) {
 
   const request = (entry: FileEntry, extra: { quality?: string; browser?: boolean } = {}) => ({
     url: entry.url,
-    ...(settings?.files.followRedirects !== false && entry.finalUrl !== entry.url
+    // The page of a video is downloaded by the daemon (yt-dlp), which names the file after the video itself.
+    ...(entry.site ? { resolverKind: 'ytdlp' as const } : {}),
+    ...(!entry.site && settings?.files.followRedirects !== false && entry.finalUrl !== entry.url
       ? { finalUrl: entry.finalUrl }
       : {}),
-    name: names.get(entry.id) ?? entry.url,
+    ...(entry.site ? {} : { name: names.get(entry.id) ?? entry.url }),
     ...(entry.sizeBytes !== undefined ? { sizeBytes: entry.sizeBytes } : {}),
     ...(entry.mime ? { mime: entry.mime } : {}),
     ...(entry.stream ? { kind: entry.stream } : {}),
