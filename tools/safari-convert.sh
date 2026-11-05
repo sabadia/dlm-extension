@@ -18,6 +18,16 @@ xcrun safari-web-extension-converter .output/safari-mv3 \
   --bundle-identifier io.github.sabadia.dlm.safari \
   --macos-only --no-open --no-prompt --force
 
+# The converter derives the app's bundle id from its name, so it does not share the prefix the extension's has (Xcode
+# then refuses to embed it), and it targets the newest macOS of the Xcode that ran it. Safari web extensions with a
+# background script page need macOS 14 or later.
+pbx="$out/DLM Safari/DLM Safari.xcodeproj/project.pbxproj"
+sed -i.bak \
+  -e 's/PRODUCT_BUNDLE_IDENTIFIER = "io.github.sabadia.dlm.DLM-Safari";/PRODUCT_BUNDLE_IDENTIFIER = io.github.sabadia.dlm.safari;/' \
+  -e 's/MACOSX_DEPLOYMENT_TARGET = [0-9.]*;/MACOSX_DEPLOYMENT_TARGET = 14.0;/' \
+  "$pbx"
+rm -f "$pbx.bak"
+
 cat <<MSG
 
 Done. Next:

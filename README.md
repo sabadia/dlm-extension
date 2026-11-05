@@ -2,17 +2,26 @@
 
 Send downloads, videos, magnet links and torrents from your browser to [DLM](https://github.com/sabadia/dlm-app).
 
-Works with Chrome and Chromium-based browsers (Edge, Brave, Opera, Vivaldi) and Firefox.
+Works with Chrome and Chromium-based browsers (Edge, Brave, Opera, Vivaldi), Firefox and, with a smaller feature set,
+Safari on macOS.
 
-> **Status:** planning and bootstrap. Nothing is released yet. The plan is [docs/PLAN.md](docs/PLAN.md); progress is on
-> the [project board](https://github.com/orgs/sabadia/projects/5).
+| Browser                             | Download                              | Notes                                                                                                   |
+| ----------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Firefox                             | `dlm-extension-<version>-firefox.xpi` | Signed by Mozilla; installs without developer settings                                                  |
+| Chrome, Edge, Brave, Opera, Vivaldi | `dlm-extension-<version>-chrome.zip`  | Loaded unpacked (not in a store yet)                                                                    |
+| Safari (macOS 14 or later)          | `dlm-extension-<version>-safari.zip`  | Not notarized: needs Safari's "Allow Unsigned Extensions". Cannot take over the browser's own downloads |
 
-## What it will do
+Get them from the [latest release](https://github.com/sabadia/dlm-extension/releases/latest) and follow the
+[install guide](docs/install.md). The plan is [docs/PLAN.md](docs/PLAN.md); progress is on the
+[project board](https://github.com/orgs/sabadia/projects/5).
+
+## What it does
 
 - **Pairs with DLM.** Finds the DLM app on your computer and asks you to approve it in the app (or connects to a
   remote `dlm` server with a URL and token).
 - **Takes over downloads.** Downloads that start in the browser go to DLM instead, unless the file is small, the site
-  is excluded, or you hold Alt.
+  is excluded, or you hold Alt. (Not in Safari, which gives extensions no way to see or cancel a download: use
+  **Send to DLM** there. See [docs/safari.md](docs/safari.md).)
 - **Finds media and files** on any page and lets you download them with DLM, with a quality choice for streams.
 - **Knows YouTube.** A YouTube video page (watch, Shorts, live, `youtu.be`) is listed as one video; DLM downloads it with yt-dlp, and you pick the quality from what the video offers. See [docs/video-sites.md](docs/video-sites.md).
 - **Handles magnet and torrent links** without the browser's "open external app" prompt.
@@ -26,9 +35,10 @@ Works with Chrome and Chromium-based browsers (Edge, Brave, Opera, Vivaldi) and 
 corepack enable && pnpm install --frozen-lockfile
 pnpm dev            # Chrome, with hot reload
 pnpm dev:firefox
+pnpm build:safari   # .output/safari-mv3; tools/safari-convert.sh turns it into an Xcode project (macOS, docs/safari.md)
 pnpm test           # unit tests (pnpm test:coverage adds the coverage thresholds)
 pnpm e2e            # end-to-end tests in Chromium and Firefox against a real `dlm` (set DLM=/path/to/dlm)
-pnpm build          # both browsers into .output/
+pnpm build          # Chrome into .output/ (pnpm build:firefox and build:safari for the others)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
