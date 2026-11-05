@@ -4,6 +4,17 @@ Safari runs the same code as the other browsers (`pnpm build:safari`, output `.o
 extension can only ship inside a macOS app, so the build is converted and embedded (below). What Safari cannot do is
 left out by the build and by the background script instead of failing.
 
+## Download
+
+The release has two Safari files, built by the macOS job of the release workflow (`tools/safari-package.sh`):
+
+- `dlm-extension-<version>-safari.zip`: `DLM Safari.app` with the extension inside, universal (Apple silicon and
+  Intel), ad-hoc signed, not notarized. Install steps are in the [install guide](install.md#safari-macos).
+- `dlm-extension-<version>-safari-xcode-project.zip`: the Xcode project, to build and sign with your own Apple ID.
+
+They are not signed with a paid Apple Developer ID, which is the only way to run without "Allow Unsigned Extensions".
+A notarized build inside the DLM app is the plan.
+
 ## What works, what does not
 
 | Feature                                 | Safari                                                                                                             |
@@ -46,5 +57,11 @@ step works today with a pasted token. What is left, and needs the Apple tooling 
 3. Spike (`docs/spikes/safari.md` once run): which `Sec-Fetch-Site` Safari sends from an extension to the loopback
    daemon. The daemon refuses cross-site POSTs (`internal/api/middleware.go`); if Safari sends `cross-site`, the daemon
    must accept an extension-scope Bearer token whatever the origin.
+
+Until that handler exists, a Safari user connects with a pasted token (install guide). Named tokens are full-access or
+read-only; the restricted `extension` token that the other browsers get is issued only by pairing. So **Safari holds a
+full-access token** for now, which is why the guide says to give it a token of its own. Closing that gap (the handler
+above, or letting the daemon issue the extension token to a paired app on request) is the first thing to do after the
+spike.
 
 The browser name sent to the daemon is `other` until the daemon knows `safari` (`daemonBrowserName`).

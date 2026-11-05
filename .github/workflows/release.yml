@@ -1,7 +1,7 @@
 name: Release
 
-# A tag v1.2.3 builds the Chrome and Firefox packages, adds checksums, an SBOM and a provenance attestation,
-# and publishes a GitHub release. Pull requests that change packaging run the same build as a dry run.
+# A tag v1.2.3 builds the Chrome and Firefox packages and the two Safari downloads (a macOS job), adds checksums, an
+# SBOM and a provenance attestation, and publishes a GitHub release. Pull requests that change packaging run the same build as a dry run.
 on:
   push:
     tags: ['v*']
@@ -87,10 +87,24 @@ jobs:
           name: release
           path: release/*
 
+  safari:
+    name: package (Safari)
+    needs: [package]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Build the Safari app and the Xcode project
+        run: tools/safari-package.sh "${{ needs.package.outputs.version }}" release-safari
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: release-safari
+          path: release-safari/*
+
   publish:
     name: publish the release
     if: needs.package.outputs.publish == 'true'
-    needs: [package]
+    needs: [package, safari]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -99,8 +113,14 @@ jobs:
     steps:
       - uses: actions/download-artifact@v8.0.2
         with:
-          name: release
+          pattern: release*
+          merge-multiple: true
           path: release
+      - name: Checksums of everything, Safari included
+        run: |
+          cd release
+          rm -f SHA256SUMS
+          sha256sum * > SHA256SUMS
       - name: Provenance attestation
         uses: actions/attest-build-provenance@v4.2.2
         with:
