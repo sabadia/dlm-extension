@@ -1,0 +1,59 @@
+schema_version: 1
+id: 01a1abc5-a5f7-7953-af9c-362571bbb761
+status: draft
+created_at: '2026-11-05T12:53:39Z'
+updated_at: '2026-11-05T12:53:39Z'
+affirmed_at: null
+affirmed_by: null
+author:
+  kind: human
+  name: null
+  tool: null
+goal: Add a Safari build of the extension with a reduced scope (no download takeover), safe against Safari's missing APIs, plus tooling and docs to convert and embed it
+constraints: []
+rejected: []
+assumptions: []
+falsifier: ''
+evidence: []
+links:
+- path: docs/PLAN.md
+  start_line: null
+  end_line: null
+- path: docs/browser-differences.md
+  start_line: null
+  end_line: null
+- path: docs/manual-tests.md
+  start_line: null
+  end_line: null
+- path: docs/safari.md
+  start_line: null
+  end_line: null
+- path: entrypoints/background.ts
+  start_line: null
+  end_line: null
+- path: package.json
+  start_line: null
+  end_line: null
+- path: src/background/services.ts
+  start_line: null
+  end_line: null
+- path: src/lib/pairing/browser.ts
+  start_line: null
+  end_line: null
+- path: src/lib/pairing/pairing.test.ts
+  start_line: null
+  end_line: null
+- path: src/ui/files/FilesView.tsx
+  start_line: null
+  end_line: null
+- path: tools/safari-convert.sh
+  start_line: null
+  end_line: null
+- path: wxt.config.ts
+  start_line: null
+  end_line: null
+adr: null
+risks: []
+source:
+  kind: flags
+  ref: null

@@ -1,6 +1,13 @@
 /** The names the daemon accepts for a pairing's browser. */
 export type BrowserName =
-  'chrome' | 'chromium' | 'edge' | 'brave' | 'opera' | 'vivaldi' | 'firefox' | 'other';
+  'chrome' | 'chromium' | 'edge' | 'brave' | 'opera' | 'vivaldi' | 'firefox' | 'safari' | 'other';
+
+/**
+ * The names of the browsers the daemon knows. Safari is not one of them (yet): it is sent as `other`.
+ */
+export function daemonBrowserName(name: BrowserName): Exclude<BrowserName, 'safari'> {
+  return name === 'safari' ? 'other' : name;
+}
 
 /**
  * Tells the browser from its user agent. Brave does not say so in it: pass `braveFlag` (`navigator.brave` exists).
@@ -14,5 +21,7 @@ export function detectBrowser(userAgent: string, braveFlag = false): BrowserName
   if (/Vivaldi\//.test(userAgent)) return 'vivaldi';
   if (/Chromium\//.test(userAgent)) return 'chromium';
   if (/Chrome\//.test(userAgent)) return 'chrome';
+  // Safari names its version and itself, and none of the Chromium names above.
+  if (/Version\/[\d.]+.*Safari\//.test(userAgent)) return 'safari';
   return 'other';
 }

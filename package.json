@@ -1,6 +1,6 @@
 {
   "name": "dlm-extension",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Browser extension for DLM",
   "license": "Apache-2.0",
@@ -14,8 +14,10 @@
     "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
     "build:firefox": "wxt build -b firefox",
+    "build:safari": "wxt build -b safari",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
+    "zip:safari": "wxt zip -b safari",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:ext": "web-ext lint --source-dir .output/firefox-mv3",

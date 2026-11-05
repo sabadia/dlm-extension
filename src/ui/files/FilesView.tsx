@@ -26,7 +26,8 @@ import { canSee, useFiles } from './use-files';
 
 const KINDS: FileKind[] = ['video', 'audio', 'archive', 'document', 'app', 'stream', 'other'];
 const SORTS: FileSort[] = ['size-desc', 'size-asc', 'name', 'type'];
-const REASON_NOT_CONNECTED = new Set(['connected']);
+/** The connection kind that needs no set-up notice: everything else shows one. */
+const CONNECTED = 'connected';
 
 const message = (error: unknown): string =>
   error instanceof Error ? error.message : t('error.failed');
@@ -61,7 +62,7 @@ export function FilesView({ api }: { api: FilesApi }) {
   const { tab, settings, entries, names } = files;
   const sort = settings?.files.sort ?? 'size-desc';
   const naming = settings?.files.naming ?? 'title';
-  const connected = connection ? REASON_NOT_CONNECTED.has(connection.kind) : false;
+  const connected = connection?.kind === CONNECTED;
   const shown = applyView(entries, names, { query, kind, sort });
   const counts = countKinds(entries);
   const picked = entries.filter((entry) => selected.has(entry.id));
@@ -327,7 +328,7 @@ export function FilesView({ api }: { api: FilesApi }) {
             ) : shown.length === 0 ? (
               <EmptyState
                 icon="file"
-                title={entries.length === 0 ? t('files.empty') : t('files.empty')}
+                title={t('files.empty')}
               >
                 {entries.length === 0 ? t('files.emptyHelp') : undefined}
               </EmptyState>

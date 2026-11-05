@@ -32,7 +32,7 @@ Made by the author of the plan:
 
 - **WXT + TypeScript (strict) + Preact**, Manifest V3 on both browsers (Chrome service worker, Firefox event page),
   pnpm, Vitest, Playwright. Daemon types generated from the pinned OpenAPI.
-- Safari and mobile browsers are out of scope. Edge, Brave, Opera and Vivaldi use the Chrome build.
+- Mobile browsers are out of scope. Safari on macOS is supported with a reduced scope (docs/safari.md); Edge, Brave, Opera and Vivaldi use the Chrome build.
 
 ## Facts the design rests on
 
