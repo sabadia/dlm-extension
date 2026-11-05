@@ -326,10 +326,7 @@ export function FilesView({ api }: { api: FilesApi }) {
                 ))}
               </div>
             ) : shown.length === 0 ? (
-              <EmptyState
-                icon="file"
-                title={t('files.empty')}
-              >
+              <EmptyState icon="file" title={t('files.empty')}>
                 {entries.length === 0 ? t('files.emptyHelp') : undefined}
               </EmptyState>
             ) : (
