@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
 import { browser } from 'wxt/browser';
+import { extensionOrigin } from '../lib/api/errors';
 import { sendMessage } from '../lib/bus/bus';
+import { detectBrowser } from '../lib/pairing/browser';
 import { t } from '../lib/i18n';
 import { warningsFor, type RemoteTestResult, type RemoteView } from '../lib/remote/service';
 import { Badge, Button, Card } from './kit';
@@ -84,6 +86,9 @@ export function RemoteTargets() {
 
   return (
     <Card id="servers" title={t('remote.title')} description={t('remote.help')}>
+      {detectBrowser(navigator.userAgent) === 'safari' && (
+        <p class="small muted">{t('remote.origin', { origin: extensionOrigin() })}</p>
+      )}
       <ul class="targets">
         {targets.map((target) => (
           <li key={target.id} class="target">

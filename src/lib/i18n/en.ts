@@ -57,6 +57,10 @@ export const en = {
   'remote.help':
     'Send downloads to DLM on another computer. Use https:// where you can; the token is stored in this browser only.',
   'remote.local': 'DLM on this computer',
+  'remote.origin':
+    'This extension\'s address is {origin}. If DLM refuses requests from this browser ("cross-origin request rejected"), add it under Manage, Daemon, Allowed origins in the DLM app, save, and restart DLM.',
+  'error.originRefused':
+    "DLM refused requests from this browser's address, {origin}. In the DLM app open Manage, Daemon, add that address under Allowed origins, save, and restart DLM.",
   'remote.active': 'Active',
   'remote.makeActive': 'Use this one',
   'remote.remove': 'Remove',

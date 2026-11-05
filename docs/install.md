@@ -66,7 +66,13 @@ in the toolbar popup. More in [safari.md](safari.md).
      `127.0.0.1:17171`) under **Manage, Daemon** and restart the daemon from there.
    - In Safari open the extension's options (the DLM button, then **Options**), find **DLM servers**, enter the address
      and token, press **Test**, then **Add server** and **Use this one**.
-6. Press **Send a test download** in the options: a task appears in the app.
+6. Press **Send a test download** in the options. The first time, DLM will most likely answer **"DLM refused requests
+   from this browser's address"**: Chrome and Firefox reach DLM from an address it already knows, but Safari's is
+   different on every Mac (it looks like `safari-web-extension://3F9A8B2C-…`), so you tell DLM to trust it once:
+   - Copy the address from that message (it is also shown at the top of the **DLM servers** card).
+   - In the DLM app open **Manage, Daemon**, add it as a line under **Allowed origins**, press **Save**, then
+     **Restart now**. (It must be a full address; `*` is not accepted.)
+   - Press **Send a test download** again: a task appears in the app.
 
 To update, replace the app in `/Applications` with the new one and repeat steps 2 and 3.
 
