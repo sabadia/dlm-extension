@@ -162,6 +162,32 @@ describe('RefreshService', () => {
     expect(await refresh.endpointFor('https://files.example.test/')).toBeUndefined();
   });
 
+  it('names the task a download renews: the only one waiting, or the one with its file name or size', async () => {
+    const page = 'https://files.example.test/setup';
+    const one = build();
+    await one.refresh.scan();
+    expect((await one.refresh.endpointFor(page))?.taskId).toBe('t1');
+
+    const many = build({
+      servers: [
+        {
+          baseUrl: 'http://127.0.0.1:1',
+          tasks: [
+            { ...task('a'), name: 'alpha.zip', size: 111 },
+            { ...task('b'), name: 'beta.zip', size: 222 },
+          ],
+        },
+      ],
+    });
+    await many.refresh.scan();
+    expect((await many.refresh.endpointFor(page, { filename: 'BETA.zip' }))?.taskId).toBe('b');
+    expect((await many.refresh.endpointFor(page, { sizeBytes: 111 }))?.taskId).toBe('a');
+    // Nothing tells them apart: the server is still named, the task is left to the daemon's own matching.
+    const unknown = await many.refresh.endpointFor(page, { filename: 'other.bin' });
+    expect(unknown?.baseUrl).toBe('http://127.0.0.1:1');
+    expect(unknown?.taskId).toBeUndefined();
+  });
+
   it('stops naming a server once it no longer lists the task, but keeps one that did not answer', async () => {
     const { refresh, servers } = build();
     const server = servers[0] as Server;

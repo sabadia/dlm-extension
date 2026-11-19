@@ -257,7 +257,7 @@ export function createServices(env: Environment): Services {
           askUrl: env.askUrl,
           ...(env.tabUrl ? { tabUrl: env.tabUrl } : {}),
           client: (baseUrl, token) => new DlmClient({ baseUrl, token, log }),
-          refreshTarget: (pageUrl) => refresh.endpointFor(pageUrl),
+          refreshTarget: (pageUrl, hint) => refresh.endpointFor(pageUrl, hint),
           refreshDone: (pageUrl) => refresh.done(pageUrl),
           ...(links ? { torrents: links } : {}),
         })

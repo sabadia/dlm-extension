@@ -60,6 +60,10 @@ interface Pending {
   host: string;
   server: string;
   at: number;
+  /** The waiting task, to renew it by name when its file is downloaded (empty for entries of an older version). */
+  taskId?: string | undefined;
+  name?: string | undefined;
+  size?: number | undefined;
 }
 
 function parseSeen(raw: unknown): SeenNotice[] {
@@ -82,11 +86,34 @@ function parsePending(raw: unknown): Pending[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((item: unknown) => {
     if (typeof item !== 'object' || item === null) return [];
-    const { host, server, at } = item as { host?: unknown; server?: unknown; at?: unknown };
+    const { host, server, at, taskId, name, size } = item as Record<string, unknown>;
     return typeof host === 'string' && typeof server === 'string' && typeof at === 'number'
-      ? [{ host, server, at }]
+      ? [
+          {
+            host,
+            server,
+            at,
+            ...(typeof taskId === 'string' ? { taskId } : {}),
+            ...(typeof name === 'string' ? { name } : {}),
+            ...(typeof size === 'number' ? { size } : {}),
+          },
+        ]
       : [];
   });
+}
+
+/** Whether a download with this file name or size could be the file a waiting task is for. */
+function matches(
+  item: Pending,
+  filename: string | undefined,
+  sizeBytes: number | undefined,
+): boolean {
+  if (item.size !== undefined && sizeBytes !== undefined && item.size === sizeBytes) return true;
+  return (
+    item.name !== undefined &&
+    filename !== undefined &&
+    item.name.toLowerCase() === filename.toLowerCase()
+  );
 }
 
 /** A short stable id for a string (a notification id must not carry a whole address). */
@@ -170,16 +197,30 @@ export class RefreshService {
    * The server that is waiting for a download from `pageUrl`, when one is: the hand-off sends that download there, and
    * takes it even when the rules would leave it in the browser (the person is renewing a task).
    */
-  async endpointFor(pageUrl: string | undefined): Promise<RefreshEndpoint | undefined> {
+  async endpointFor(
+    pageUrl: string | undefined,
+    hint: { filename?: string | undefined; sizeBytes?: number | undefined } = {},
+  ): Promise<(RefreshEndpoint & { taskId?: string | undefined }) | undefined> {
     const host = pageUrl ? downloadHost(pageUrl) : undefined;
     if (!host) return undefined;
     const now = this.now();
-    const waiting = (await this.pending.get()).find(
+    const candidates = (await this.pending.get()).filter(
       (item) => now - item.at <= PENDING_TTL_MS && hostCoveredBy(host, item.host),
     );
+    const waiting = candidates[0];
     if (!waiting) return undefined;
+    // Name the task this download renews when that can be told: the only one waiting on the page, or the one whose
+    // file name or size the download has. With several waiting and none matching, the daemon decides by the file.
+    const matching =
+      candidates.length === 1
+        ? candidates
+        : candidates.filter((item) => matches(item, hint.filename, hint.sizeBytes));
+    const named = matching.length === 1 ? matching[0] : undefined;
+    const chosen = named ?? waiting;
     try {
-      return (await this.deps.endpoints()).find((endpoint) => endpoint.baseUrl === waiting.server);
+      const endpoint = (await this.deps.endpoints()).find((e) => e.baseUrl === chosen.server);
+      if (!endpoint) return undefined;
+      return named?.taskId ? { ...endpoint, taskId: named.taskId } : endpoint;
     } catch {
       return undefined;
     }
@@ -240,7 +281,18 @@ export class RefreshService {
   ): Promise<void> {
     const waiting = notices.flatMap((notice) => {
       const host = notice.pageUrl ? downloadHost(notice.pageUrl) : undefined;
-      return host ? [{ host, server: notice.server, at: now }] : [];
+      return host
+        ? [
+            {
+              host,
+              server: notice.server,
+              at: now,
+              taskId: notice.id,
+              name: notice.name,
+              ...(notice.size !== undefined ? { size: notice.size } : {}),
+            },
+          ]
+        : [];
     });
     await this.pending.update((list) => {
       // A server that answered says exactly what it waits for now: what it no longer lists is done. One that did not

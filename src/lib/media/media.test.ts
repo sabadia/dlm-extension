@@ -550,6 +550,26 @@ describe('MediaService', () => {
       expect(captured[1]).not.toHaveProperty('mediaCandidates');
     });
 
+    it('sends one address for one video, however the page address is written', async () => {
+      const { service, captured } = setup();
+      for (const address of [
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123&t=30s',
+        'https://youtu.be/dQw4w9WgXcQ?si=abc',
+        'https://www.youtube.com/shorts/dQw4w9WgXcQ',
+      ]) {
+        await service.download({ url: address, pageUrl: address, resolverKind: 'ytdlp' });
+      }
+      expect(captured.map((body) => (body as { url: string }).url)).toEqual([
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      ]);
+      // The page the person is on stays as it is: it is where a renewed link would be looked for.
+      expect(captured[0]).toMatchObject({
+        pageUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL123&t=30s',
+      });
+    });
+
     it('offers the qualities the daemon lists for a video page', async () => {
       const { service } = setup();
       expect(await service.variants('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toEqual([

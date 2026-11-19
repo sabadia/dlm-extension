@@ -30,6 +30,10 @@ export default defineContentScript({
     let protectedMedia = false;
     let reportedProtected = false;
 
+    // Set below, for the top frame only. An iframe returns before it, and its `encrypted` listener must not reach a
+    // `const` that was never initialised (a ReferenceError that lost the report of protected media).
+    let scan: () => void = () => undefined;
+
     const reportProtected = () => {
       protectedMedia = true;
       if (!top && !reportedProtected) {
@@ -66,7 +70,7 @@ export default defineContentScript({
       return true;
     });
 
-    const scan = throttled(() => {
+    scan = throttled(() => {
       void sendMessage(browser.runtime, 'media.scan', {
         snapshot: pageSnapshot(document, location.href, { protectedMedia }),
       }).catch(() => undefined);

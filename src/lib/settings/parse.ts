@@ -6,6 +6,7 @@ import {
   type DomainRoute,
   type FilesPrefs,
   type Preferences,
+  type QueuePrefs,
   type RemoteTarget,
   type Rules,
   type Settings,
@@ -110,6 +111,25 @@ function parsePreferences(raw: unknown): Preferences {
   };
 }
 
+function parseQueues(raw: unknown, targets: readonly Target[]): QueuePrefs {
+  const out: Record<string, string> = {};
+  const known = new Set(targets.map((target) => target.id));
+  if (isObj(raw) && isObj(raw.defaultQueues)) {
+    for (const [targetId, queue] of Object.entries(raw.defaultQueues)) {
+      // A queue id is short text; anything else is damaged data. The queue itself may be gone from the server, which
+      // only the server can say (a capture that names it retries without it).
+      if (
+        known.has(targetId) &&
+        typeof queue === 'string' &&
+        queue.trim() !== '' &&
+        queue.length <= 200
+      )
+        out[targetId] = queue.trim();
+    }
+  }
+  return { defaultQueues: out };
+}
+
 function parseFiles(raw: unknown): FilesPrefs {
   const d = defaultSettings().files;
   if (!isObj(raw)) return d;
@@ -187,5 +207,6 @@ export function parseSettings(raw: unknown): Settings {
     rules: parseRules(raw.rules),
     preferences: parsePreferences(raw.preferences),
     files: parseFiles(raw.files),
+    queues: parseQueues(raw.queues, targets),
   };
 }

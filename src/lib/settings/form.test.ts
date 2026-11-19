@@ -32,14 +32,32 @@ describe('draftFrom and settingsFrom', () => {
         preferences: settings.preferences,
         routes: [],
         files: settings.files,
+        queues: settings.queues,
         base: {
           rules: settings.rules,
           preferences: settings.preferences,
           routes: settings.routes,
           files: settings.files,
+          queues: settings.queues,
         },
       },
     });
+  });
+
+  it('saves the default queue under the active target, and the main queue as none', () => {
+    const settings = defaultSettings();
+    const pick = (defaultQueue: string, from = settings) => {
+      const result = settingsFrom({ ...draftFrom(from), defaultQueue }, from, ['local']);
+      if (!result.ok) throw new Error('expected a patch');
+      return result.patch.queues;
+    };
+    expect(pick('q-7')).toEqual({ defaultQueues: { local: 'q-7' } });
+    expect(pick('main')).toEqual({ defaultQueues: {} });
+    expect(pick('')).toEqual({ defaultQueues: {} });
+    const chosen = { ...settings, queues: { defaultQueues: { local: 'q-7', other: 'q-9' } } };
+    expect(draftFrom(chosen).defaultQueue).toBe('q-7');
+    // Choosing the main queue again clears only this target's entry.
+    expect(pick('', chosen)).toEqual({ defaultQueues: { other: 'q-9' } });
   });
 
   it('parses what was typed: several lines, commas, case, a scheme and a dot', () => {

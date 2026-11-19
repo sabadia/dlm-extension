@@ -111,7 +111,7 @@ describe('parseSettings', () => {
       rules: { askFirst: true, excludedSites: ['example.test'] },
     });
     const settings = parseSettings(stored);
-    expect(settings.version).toBe(5);
+    expect(settings.version).toBe(6);
     expect(settings.rules.askFirst).toBe(true);
     expect(settings.rules.excludedSites).toEqual(['example.test']);
     expect(settings.rules.alwaysSites).toEqual([]);
@@ -189,11 +189,30 @@ describe('SettingsStore', () => {
     expect(withoutTarget(s, 'local')).toBe(s);
   });
 
-  it('refuses settings of a newer version and keeps working on damaged ones', async () => {
-    const newer = new SettingsStore(memoryArea({ [SETTINGS_KEY]: { version: 9 } }));
-    await expect(newer.get()).rejects.toBeInstanceOf(SettingsTooNewError);
+  it('reads settings of a newer version as the defaults but never overwrites them, and keeps working on damaged ones', async () => {
+    const area = memoryArea({ [SETTINGS_KEY]: { version: 9, rules: { intercept: false } } });
+    const newer = new SettingsStore(area);
+    // The extension keeps working (a downgrade must not break every download)...
+    expect(await newer.get()).toEqual(defaultSettings());
+    // ...but what a newer version wrote is not replaced by a change made from the defaults.
+    await expect(newer.update((c) => c)).rejects.toBeInstanceOf(SettingsTooNewError);
+    expect(await area.get(SETTINGS_KEY)).toEqual({ version: 9, rules: { intercept: false } });
     const damaged = new SettingsStore(memoryArea({ [SETTINGS_KEY]: { targets: 7, rules: 'x' } }));
     expect(await damaged.get()).toEqual(defaultSettings());
+  });
+
+  it('saves nothing from a patch that is missing groups, instead of throwing', async () => {
+    const store = new SettingsStore(memoryArea());
+    const before = await store.get();
+    const broken = { rules: before.rules } as unknown as Parameters<SettingsStore['save']>[0];
+    await expect(store.save(broken)).resolves.toEqual(before);
+    const nonsense = {
+      rules: 7,
+      preferences: null,
+      routes: 'x',
+      files: [],
+    } as unknown as Parameters<SettingsStore['save']>[0];
+    await expect(store.save(nonsense)).resolves.toEqual(before);
   });
 
   it('exports without secrets and imports what it exported', async () => {
@@ -331,7 +350,7 @@ describe('settings written by earlier versions', () => {
 
   it('reads version 2: keeps what was set, and fills in routes, mirrors and the expired-link switch', () => {
     const s = parseSettings(migrateSettings(v2));
-    expect(s.version).toBe(5);
+    expect(s.version).toBe(6);
     expect(s.rules).toMatchObject({
       intercept: false,
       minSizeBytes: 2048,
@@ -349,7 +368,7 @@ describe('settings written by earlier versions', () => {
 
   it('reads version 3: keeps routes and mirrors, and turns the expired-link switch on', () => {
     const s = parseSettings(migrateSettings(v3));
-    expect(s.version).toBe(5);
+    expect(s.version).toBe(6);
     expect(s.routes).toEqual([{ site: 'files.test', targetId: 'home' }]);
     expect(s.preferences).toEqual({
       badge: false,
@@ -362,7 +381,7 @@ describe('settings written by earlier versions', () => {
   it('reads version 1 data as well, through every step', () => {
     const s = parseSettings(migrateSettings({ version: 1, rules: { askFirst: true } }));
     expect(s.rules.askFirst).toBe(true);
-    expect(s.version).toBe(5);
+    expect(s.version).toBe(6);
   });
 
   it('reads version 4: keeps everything and fills in the Files panel settings', () => {
@@ -372,7 +391,7 @@ describe('settings written by earlier versions', () => {
       preferences: { badge: true, notifications: true, mirrors: false, refresh: false },
     };
     const s = parseSettings(migrateSettings(v4));
-    expect(s.version).toBe(5);
+    expect(s.version).toBe(6);
     expect(s.preferences.refresh).toBe(false);
     expect(s.files).toEqual({
       surface: 'panel',
@@ -380,6 +399,28 @@ describe('settings written by earlier versions', () => {
       followRedirects: true,
       sort: 'size-desc',
     });
+  });
+
+  it('reads version 5 and fills in the default queue (none: the main queue)', () => {
+    const s = parseSettings(migrateSettings({ version: 5, files: { surface: 'popup' } }));
+    expect(s.version).toBe(6);
+    expect(s.queues).toEqual({ defaultQueues: {} });
+    expect(s.files.surface).toBe('popup');
+  });
+
+  it('keeps the default queue of known targets only, and repairs what is damaged', () => {
+    const s = parseSettings({
+      version: 6,
+      targets: [{ id: 'r1', kind: 'remote', name: 'NAS', url: 'https://nas.example.test' }],
+      queues: {
+        defaultQueues: { local: 'q-1', r1: '  q-2 ', gone: 'q-3', other: 7, '': 'x' },
+      },
+    });
+    expect(s.queues.defaultQueues).toEqual({ local: 'q-1', r1: 'q-2' });
+    expect(parseSettings({ version: 6, queues: 'nonsense' }).queues).toEqual({ defaultQueues: {} });
+    expect(
+      parseSettings({ version: 6, queues: { defaultQueues: { local: 'x'.repeat(500) } } }).queues,
+    ).toEqual({ defaultQueues: {} });
   });
 
   it('repairs Files panel settings field by field', () => {

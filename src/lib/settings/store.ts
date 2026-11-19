@@ -22,8 +22,23 @@ export class SettingsStore {
 
   constructor(private readonly area: KeyValueArea) {}
 
-  /** The settings. Damaged data reads as the defaults; settings from a newer version throw `SettingsTooNewError`. */
+  /**
+   * The settings. Damaged data reads as the defaults. Settings written by a newer version (after a downgrade) also read
+   * as the defaults, so that the extension still works, but they are left in the storage untouched: every way of
+   * changing them ({@link update}, {@link save}, {@link import}) refuses with `SettingsTooNewError` instead of
+   * replacing them.
+   */
   async get(): Promise<Settings> {
+    try {
+      return await this.read();
+    } catch (error) {
+      if (error instanceof SettingsTooNewError) return defaultSettings();
+      throw error;
+    }
+  }
+
+  /** The stored settings; throws `SettingsTooNewError` for those of a newer version. */
+  private async read(): Promise<Settings> {
     const stored = await this.area.get(SETTINGS_KEY);
     if (stored === undefined) return defaultSettings();
     return parseSettings(migrateSettings(stored));
@@ -32,7 +47,7 @@ export class SettingsStore {
   /** Applies `change` to the current settings and saves the result (after parsing it again, so it is always valid). */
   update(change: (current: Settings) => Settings): Promise<Settings> {
     const run = async (): Promise<Settings> => {
-      const next = parseSettings(change(await this.get()));
+      const next = parseSettings(change(await this.read()));
       await this.area.set(SETTINGS_KEY, next);
       return next;
     };
@@ -51,8 +66,15 @@ export class SettingsStore {
       ...current,
       rules: mergeEdits(current.rules, patch.rules, base?.rules),
       preferences: mergeEdits(current.preferences, patch.preferences, base?.preferences),
-      routes: same(patch.routes, base?.routes) && base ? current.routes : patch.routes,
+      routes: !Array.isArray(patch.routes)
+        ? current.routes
+        : same(patch.routes, base?.routes) && base
+          ? current.routes
+          : patch.routes,
       files: mergeEdits(current.files, patch.files, base?.files),
+      queues: patch.queues
+        ? mergeEdits(current.queues, patch.queues, base?.queues)
+        : current.queues,
     }));
   }
 
@@ -166,7 +188,9 @@ function same(a: unknown, b: unknown): boolean {
 
 /** `current` with the fields of `edited` that differ from `base`; all of `edited` when there is no base. */
 function mergeEdits<T extends object>(current: T, edited: T, base: T | undefined): T {
-  if (!base) return edited;
+  // A message from an extension page is untrusted in shape: a group that is missing or not an object changes nothing.
+  if (typeof edited !== 'object' || edited === null || Array.isArray(edited)) return current;
+  if (typeof base !== 'object' || base === null) return edited;
   const out: Record<string, unknown> = { ...(current as Record<string, unknown>) };
   for (const [key, value] of Object.entries(edited as Record<string, unknown>)) {
     if (!same(value, (base as Record<string, unknown>)[key])) out[key] = value;

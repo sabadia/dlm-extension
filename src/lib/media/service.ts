@@ -1,11 +1,12 @@
 import type { CaptureBody, CaptureCookie } from '../api/client';
+import { ApiError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
 import { t } from '../i18n';
 import { CookieReader, fitCaptureLimits, type CookiesPort } from '../intercept/cookies';
 import { downloadHost } from '../intercept/rules';
 import type { Logger } from '../log/log';
 import { redactUrl } from '../log/redact';
-import { targetFor } from '../settings/routing';
+import { defaultQueueFor, targetFor } from '../settings/routing';
 import type { SecretStore, SettingsStore } from '../settings/store';
 import type { KeyValueArea } from '../storage/area';
 import { StoredValue } from '../storage/state';
@@ -272,13 +273,21 @@ export class MediaService {
       return { ok: true };
     } catch (error) {
       this.deps.log.warn('media', 'could not send media', { error, url: redactUrl(request.url) });
+      if (error instanceof ApiError && error.status === 409) {
+        return { ok: false, error: t('media.alreadyInDlm') };
+      }
       return { ok: false, error: t('intercept.reason.rejected') };
     }
   }
 
   private async captureBody(request: DownloadRequest): Promise<CaptureBody> {
+    // One video is one address: `watch?v=X&list=…&t=30s` from the page action and `watch?v=X` from a row of the list
+    // are the same download. Sent as they came they are two tasks that fight over one set of files (and a `list=`
+    // address makes yt-dlp fetch a whole playlist).
+    const video = request.resolverKind === 'ytdlp' ? videoPageOf(request.url) : undefined;
+    const address = video?.url ?? request.url;
     const body: CaptureBody = {
-      url: request.url,
+      url: address,
       cookieScope: 'task',
       userAgent: this.deps.userAgent,
     };
@@ -290,13 +299,21 @@ export class MediaService {
     if (request.finalUrl && request.finalUrl !== request.url) body.finalUrl = request.finalUrl;
     if (request.sizeBytes !== undefined) body.size = request.sizeBytes;
     if (request.mime) body.mime = request.mime;
-    if (request.queueId) body.queueId = request.queueId;
+    // The queue picked in the Files panel belongs to the active target, so it is used only for a download that goes
+    // there; otherwise the default queue of the target the download is routed to.
+    const settings = await this.deps.settings.get();
+    const target = targetFor(settings, request.url);
+    if (request.queueId && target === settings.activeTargetId) body.queueId = request.queueId;
+    else {
+      const queue = defaultQueueFor(settings, target);
+      if (queue) body.queueId = queue;
+    }
     if (request.paused) body.paused = true;
     if (request.resolverKind === 'ytdlp' || request.resolverKind === 'browser') {
       body.resolverKind = request.resolverKind;
       // A chosen quality of a video page is the daemon's own id of that format.
       if (request.resolverKind === 'ytdlp' && request.quality) {
-        body.mediaCandidates = [{ url: request.url, kind: 'video', variant: request.quality }];
+        body.mediaCandidates = [{ url: address, kind: 'video', variant: request.quality }];
       }
     } else if (request.kind) {
       // Whatever its name, an HLS or DASH address is a stream, and a chosen quality travels with it.

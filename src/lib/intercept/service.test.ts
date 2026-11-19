@@ -237,6 +237,94 @@ describe('InterceptService hand-off', () => {
     expect(duplicate.notes[0]?.message).toContain('already in DLM');
   });
 
+  describe('renewing a waiting download', () => {
+    const waiting = {
+      refreshTarget: () =>
+        Promise.resolve({ baseUrl: 'http://other:1', token: 'tok', taskId: 'task-9' }),
+    };
+
+    it('names the task it renews and says the link was renewed', async () => {
+      const sent: unknown[] = [];
+      const harness = deps({
+        ...waiting,
+        client: () => ({
+          capture: (body) => {
+            sent.push(body);
+            return Promise.resolve({ task: { id: 'task-9' }, refreshed: true });
+          },
+        }),
+      });
+      await harness.service.onCreated(item());
+      expect(sent).toEqual([expect.objectContaining({ refreshTaskId: 'task-9' })]);
+      expect(harness.notes[0]?.message).toContain('Renewed the link');
+    });
+
+    it('leaves the file to the browser when it is not the one the task waits for', async () => {
+      const harness = deps({
+        ...waiting,
+        client: () => ({
+          capture: () =>
+            Promise.reject(new ApiError(409, 'refresh.capture_mismatch', 'not that file')),
+        }),
+      });
+      await harness.service.onCreated(item());
+      expect(harness.downloads.started).toEqual([{ url: ZIP, filename: 'archive.zip' }]);
+      expect(harness.notes[0]?.message).toContain('not the download DLM is waiting for');
+    });
+  });
+
+  describe('default queue', () => {
+    const withQueue = (queue: string) => ({
+      settings: {
+        get: () => {
+          const settings = defaultSettings();
+          settings.queues = { defaultQueues: { local: queue } };
+          return Promise.resolve(settings);
+        },
+        update: () => Promise.resolve(defaultSettings()),
+      },
+    });
+
+    it('adds the download to the queue chosen in the options', async () => {
+      const sent: unknown[] = [];
+      const harness = deps({
+        ...withQueue('q-7'),
+        client: () => ({
+          capture: (body) => {
+            sent.push(body);
+            return Promise.resolve({ task: { id: 't1' } });
+          },
+        }),
+      });
+      await harness.service.onCreated(item());
+      expect(sent).toEqual([expect.objectContaining({ url: ZIP, queueId: 'q-7' })]);
+    });
+
+    it('names no queue when none was chosen (the daemon uses the main queue)', async () => {
+      const harness = deps();
+      await harness.service.onCreated(item());
+      expect(harness.captured[0]).not.toHaveProperty('queueId');
+    });
+
+    it('sends the download again without the queue when the queue is gone, not to the browser', async () => {
+      const sent: { queueId?: string }[] = [];
+      const harness = deps({
+        ...withQueue('deleted'),
+        client: () => ({
+          capture: (body) => {
+            sent.push(body);
+            return body.queueId
+              ? Promise.reject(new ApiError(404, 'queue.not_found', 'no such queue'))
+              : Promise.resolve({ task: { id: 't1' } });
+          },
+        }),
+      });
+      await harness.service.onCreated(item());
+      expect(sent.map((body) => body.queueId)).toEqual(['deleted', undefined]);
+      expect(harness.downloads.started).toEqual([]);
+    });
+  });
+
   it('leaves the download alone in the browser when DLM is not connected', async () => {
     const harness = deps();
     harness.setConnection({ kind: 'app-not-running' });

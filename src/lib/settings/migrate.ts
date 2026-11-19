@@ -16,12 +16,15 @@ export type Migration = (old: Record<string, unknown>) => Record<string, unknown
  * Version 4 adds the expired-link switch (`preferences.refresh`, on). Parsing fills it in.
  *
  * Version 5 adds the Files panel settings (`files`: surface, naming, redirects, sort). Parsing fills them in.
+ *
+ * Version 6 adds the default queue (`queues.defaultQueues`, none: the main queue). Parsing fills it in.
  */
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: (old) => old,
   2: (old) => old,
   3: (old) => old,
   4: (old) => old,
+  5: (old) => old,
 };
 
 export class SettingsTooNewError extends Error {

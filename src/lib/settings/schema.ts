@@ -5,7 +5,7 @@
  */
 
 /** The version of the stored shape. Raise it together with a migration in `migrate.ts`. */
-export const SETTINGS_VERSION = 5;
+export const SETTINGS_VERSION = 6;
 
 /** Downloads from one site go to this target instead of the default. */
 export interface DomainRoute {
@@ -86,6 +86,15 @@ export interface FilesPrefs {
   sort: FileSort;
 }
 
+/** Which queue of DLM downloads are added to. */
+export interface QueuePrefs {
+  /**
+   * The queue downloads go to, by target id (a queue id belongs to one server). A target without an entry uses the
+   * main queue, which is also what the daemon does when no queue is named.
+   */
+  defaultQueues: Record<string, string>;
+}
+
 export interface Settings {
   version: typeof SETTINGS_VERSION;
   /** The target downloads go to when no site rule says otherwise. */
@@ -96,10 +105,14 @@ export interface Settings {
   rules: Rules;
   preferences: Preferences;
   files: FilesPrefs;
+  queues: QueuePrefs;
 }
 
 /** What the options page saves: the parts it edits. Targets and the active target are changed elsewhere. */
-export type SettingsPatch = Pick<Settings, 'rules' | 'preferences' | 'routes' | 'files'>;
+export type SettingsPatch = Pick<Settings, 'rules' | 'preferences' | 'routes' | 'files'> & {
+  /** Left out by the parts of the extension that do not edit the queue, which then keep what is stored. */
+  queues?: QueuePrefs | undefined;
+};
 
 /**
  * What a form saves: the edited groups, and the groups as the form loaded them. Only what differs from `base` is applied
@@ -132,5 +145,6 @@ export function defaultSettings(): Settings {
     },
     preferences: { badge: true, notifications: true, mirrors: false, refresh: true },
     files: { surface: 'panel', naming: 'title', followRedirects: true, sort: 'size-desc' },
+    queues: { defaultQueues: {} },
   };
 }
