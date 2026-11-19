@@ -15,7 +15,12 @@ import { saveTextFile } from '../../src/ui/save-file';
 
 /** What the form needs from the background. The options page passes the real one; a test passes a fake. */
 export interface SettingsApi {
-  load(): Promise<{ settings: Settings; targets: { id: string; name: string }[] }>;
+  load(): Promise<{
+    settings: Settings;
+    targets: { id: string; name: string }[];
+    /** The queues of the default target; empty when DLM cannot be reached. */
+    queues?: { id: string; name: string }[];
+  }>;
   save(patch: SettingsSave): Promise<Settings>;
   exportText(): Promise<string>;
   importText(text: string): Promise<Settings>;
@@ -35,6 +40,7 @@ export function RulesForm({
   const [loaded, setLoaded] = useState<{
     settings: Settings;
     targets: { id: string; name: string }[];
+    queues?: { id: string; name: string }[];
   }>();
   const [draft, setDraft] = useState<FormDraft>();
   const [errors, setErrors] = useState<FormErrors>({});
@@ -251,6 +257,29 @@ export function RulesForm({
               <option value="shift">{t('options.bypass.shift')}</option>
               <option value="none">{t('options.bypass.none')}</option>
             </select>
+          </label>
+          <label class="field">
+            <span class="label">{t('options.defaultQueue')}</span>
+            <select
+              class="select"
+              value={draft.defaultQueue}
+              onChange={(event) => edit({ defaultQueue: event.currentTarget.value })}
+            >
+              <option value="">{t('options.defaultQueue.main')}</option>
+              {[...(loaded.queues ?? [])]
+                .filter((queue) => queue.id !== 'main')
+                .map((queue) => (
+                  <option key={queue.id} value={queue.id}>
+                    {queue.name}
+                  </option>
+                ))}
+              {/* A queue that is set but not listed (DLM is off, or the queue is gone) stays selectable. */}
+              {draft.defaultQueue !== '' &&
+              !(loaded.queues ?? []).some((queue) => queue.id === draft.defaultQueue) ? (
+                <option value={draft.defaultQueue}>{draft.defaultQueue}</option>
+              ) : null}
+            </select>
+            <span class="help">{t('options.defaultQueue.help')}</span>
           </label>
           {toggle('askFirst', t('options.askFirst'))}
           {toggle('privateWindows', t('options.private'))}

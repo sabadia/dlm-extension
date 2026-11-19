@@ -3,7 +3,7 @@ import { ApiError, NetworkError } from '../api/errors';
 import type { ConnectionService } from '../connection/service';
 import { fileExtension, sanitizeFileName } from '../files/naming';
 import { downloadHost, siteListed } from '../intercept/rules';
-import { targetFor } from '../settings/routing';
+import { defaultQueueFor, targetFor } from '../settings/routing';
 import { chunk } from './filter';
 import { t } from '../i18n';
 import type { Logger } from '../log/log';
@@ -293,10 +293,11 @@ export class LinksService {
     const tasks = await this.client(url);
     if (!tasks) throw new Error(t('links.offline'));
     let queueId = options.queueId;
-    if (this.deps.connection.endpoint) {
-      const settings = await this.deps.settings.get();
-      if (targetFor(settings, url) !== settings.activeTargetId) queueId = undefined;
-    }
+    const settings = await this.deps.settings.get();
+    const target = targetFor(settings, url);
+    // A queue chosen from the menu belongs to the active server; a link routed elsewhere gets that server's default.
+    if (this.deps.connection.endpoint && target !== settings.activeTargetId) queueId = undefined;
+    queueId ??= defaultQueueFor(settings, target);
     // A checksum or mirror list a page printed is reviewed before it is sent (the ask page, when a download is
     // intercepted); a link the person chose from a menu or the links page is sent as it is.
     await tasks.create({

@@ -15,3 +15,12 @@ export function targetFor(settings: Settings, url: string): string {
   matches.sort((a, b) => b.site.length - a.site.length);
   return matches[0]?.targetId ?? settings.activeTargetId;
 }
+
+/**
+ * The queue downloads for `targetId` are added to, or undefined for the main queue (what the daemon uses when no
+ * queue is named, so nothing is sent for it).
+ */
+export function defaultQueueFor(settings: Settings, targetId: string): string | undefined {
+  const queue = settings.queues.defaultQueues[targetId];
+  return queue && queue !== 'main' ? queue : undefined;
+}

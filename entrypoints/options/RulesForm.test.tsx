@@ -168,6 +168,7 @@ describe('RulesForm', () => {
       'base',
       'files',
       'preferences',
+      'queues',
       'routes',
       'rules',
     ]);

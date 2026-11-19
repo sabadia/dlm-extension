@@ -43,16 +43,17 @@ export function registerBackground(
       const before = await services.connection.get();
       const after = await services.connection.refresh();
       // The menus list the queues of DLM: build them again when DLM becomes reachable.
-      if (after.kind === 'connected' && before.kind !== 'connected') void services.links?.install();
+      if (after.kind === 'connected' && before.kind !== 'connected')
+        quietly(services.links?.install());
     })();
   };
   lifecycle.onStartup.addListener(() => {
-    void services.links?.install();
+    quietly(services.links?.install());
     check('startup');
   });
   lifecycle.onInstalled.addListener((details) => {
     ensureAlarm(lifecycle.alarms);
-    void services.links?.install();
+    quietly(services.links?.install());
     check('installed');
     // A new installation opens the setup; an update does not.
     if (details?.reason === 'install') lifecycle.commands?.openOptions();
@@ -66,15 +67,15 @@ export function registerBackground(
         .catch(() => undefined)
         .finally(() => check('alarm'));
       // A prompt nobody answered is settled here, not only when the worker happens to start.
-      void services.intercept?.sweep();
+      quietly(services.intercept?.sweep());
     }
-    if (alarm.name === REFRESH_ALARM) void services.refresh.scan();
+    if (alarm.name === REFRESH_ALARM) quietly(services.refresh.scan());
   });
   // Alarms can be lost with the browser session: make sure ours exists whenever the background loads.
   ensureAlarm(lifecycle.alarms);
   if (services.intercept && lifecycle.intercept) {
     lifecycle.intercept.attach(services.intercept);
-    void services.intercept.sweep();
+    quietly(services.intercept.sweep());
   }
   // The menus are built when the extension is installed or the browser starts, not each time the worker wakes.
   if (services.links && lifecycle.menus) lifecycle.menus.attach(services.links);
@@ -102,11 +103,11 @@ export function registerBackground(
     );
     // With no popup the button sends this event (Firefox: open the sidebar, which must happen in this call).
     lifecycle.action?.onClicked.addListener((tab) => {
-      void onActionClicked(surface, tab?.id);
+      quietly(onActionClicked(surface, tab?.id));
     });
   }
   lifecycle.tabs?.onRemoved.addListener((tabId) => {
-    void services.media?.closed(tabId);
+    quietly(services.media?.closed(tabId));
   });
   lifecycle.commands?.onCommand.addListener((command, tab) => {
     if (command === 'toggle-intercept') {
@@ -129,7 +130,7 @@ export function registerBackground(
           services.log.warn('commands', 'could not toggle interception', { error });
         });
     }
-    if (command === 'open-options') void lifecycle.commands?.openOptions();
+    if (command === 'open-options') quietly(lifecycle.commands?.openOptions());
     if (command === 'open-files' && surface) {
       const failed = (error: unknown) =>
         services.log.warn('commands', 'could not open the files', { error });
@@ -317,7 +318,7 @@ export function attachMedia(browser: InterceptBrowser, media: MediaService): voi
           status !== 204 &&
           status !== 205 &&
           !isAttachment(headerValue(request.responseHeaders, 'content-disposition'));
-        if (leaves) void media.navigated(request.tabId, request.url);
+        if (leaves) quietly(media.navigated(request.tabId, request.url));
         return;
       }
       const mime = headerValue(request.responseHeaders, 'content-type');
@@ -326,12 +327,14 @@ export function attachMedia(browser: InterceptBrowser, media: MediaService): voi
         contentLength: contentLength(headerValue(request.responseHeaders, 'content-length')),
         contentRange: headerValue(request.responseHeaders, 'content-range'),
       });
-      void media.observe({
-        url: request.url,
-        tabId: request.tabId,
-        ...(mime ? { mime } : {}),
-        ...(sizeBytes !== undefined ? { sizeBytes } : {}),
-      });
+      quietly(
+        media.observe({
+          url: request.url,
+          tabId: request.tabId,
+          ...(mime ? { mime } : {}),
+          ...(sizeBytes !== undefined ? { sizeBytes } : {}),
+        }),
+      );
     },
     { urls: [...INTERCEPT_URLS] },
     ['responseHeaders'],
@@ -346,7 +349,7 @@ export function attachIntercept(
 ): void {
   const filter = { urls: [...INTERCEPT_URLS], types: [...INTERCEPT_TYPES] };
   browser.downloads.onCreated.addListener((item) => {
-    void intercept.onCreated(toDownload(item));
+    quietly(intercept.onCreated(toDownload(item)));
   });
   browser.webRequest.onBeforeRequest.addListener(
     (details) => {
@@ -369,7 +372,7 @@ export function attachIntercept(
     firefox ? ['blocking', 'responseHeaders'] : ['responseHeaders'],
   );
   browser.windows.onRemoved.addListener((windowId) => {
-    void intercept.onWindowRemoved(windowId);
+    quietly(intercept.onWindowRemoved(windowId));
   });
 }
 
@@ -415,8 +418,8 @@ function toRequest(details: RawRequest): RequestEvent {
 }
 
 function ensureAlarm(alarms: Lifecycle['alarms']): void {
-  void ensureOne(alarms, CHECK_ALARM, 1);
-  void ensureOne(alarms, REFRESH_ALARM, REFRESH_PERIOD_MINUTES);
+  quietly(ensureOne(alarms, CHECK_ALARM, 1));
+  quietly(ensureOne(alarms, REFRESH_ALARM, REFRESH_PERIOD_MINUTES));
 }
 
 function ensureOne(
@@ -431,4 +434,13 @@ function ensureOne(
       await alarms.create(name, { periodInMinutes });
     }
   });
+}
+
+/**
+ * Lets a task started by an event handler fail without an unhandled rejection: nobody awaits it, so a refusal (the
+ * daemon is down, a tab is gone) would only be an error in the console of the worker. The failure belongs to the
+ * service, which logs what matters.
+ */
+function quietly(work: Promise<unknown> | void | undefined): void {
+  if (work) void work.catch(() => undefined);
 }

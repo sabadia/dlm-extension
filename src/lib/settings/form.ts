@@ -23,6 +23,8 @@ export interface FormDraft {
   refresh: boolean;
   routes: { site: string; targetId: string }[];
   files: Settings['files'];
+  /** The queue of the active target downloads go to; empty means the main queue. */
+  defaultQueue: string;
 }
 
 export type FormField =
@@ -49,6 +51,7 @@ export function draftFrom(settings: Settings): FormDraft {
     refresh: preferences.refresh,
     routes: settings.routes.map((route) => ({ ...route })),
     files: { ...settings.files },
+    defaultQueue: settings.queues.defaultQueues[settings.activeTargetId] ?? '',
   };
 }
 
@@ -131,12 +134,23 @@ export function settingsFrom(
       },
       routes,
       files: { ...current.files, ...draft.files },
+      queues: { defaultQueues: withQueue(current, draft.defaultQueue) },
       base: {
         rules: current.rules,
         preferences: current.preferences,
         routes: current.routes,
         files: current.files,
+        queues: current.queues,
       },
     },
   };
+}
+
+/** The default queues with the active target's set to `queue` (empty or `main`: none, the daemon's own default). */
+function withQueue(current: Settings, queue: string): Record<string, string> {
+  const out = { ...current.queues.defaultQueues };
+  const wanted = queue.trim();
+  if (wanted === '' || wanted === 'main') delete out[current.activeTargetId];
+  else out[current.activeTargetId] = wanted;
+  return out;
 }

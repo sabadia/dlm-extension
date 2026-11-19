@@ -12,6 +12,8 @@ export interface WaitingTask {
   id: string;
   status: string;
   name?: string | undefined;
+  /** Bytes, when known (-1 or absent: not). */
+  size?: number | undefined;
   source?:
     | {
         pageUrl?: string | undefined;
@@ -24,6 +26,8 @@ export interface WaitingTask {
 export interface RefreshNotice {
   id: string;
   name: string;
+  /** Bytes, when known. */
+  size?: number | undefined;
   pageUrl?: string | undefined;
 }
 
@@ -55,7 +59,12 @@ export function refreshNotices(tasks: readonly WaitingTask[]): RefreshNotice[] {
     if (task.status !== 'awaiting_link' || task.id === '') continue;
     const pageUrl = storedPage(task.source);
     const name = task.name?.trim() || t('downloads.unnamed');
-    notices.push(pageUrl ? { id: task.id, name, pageUrl } : { id: task.id, name });
+    const base = {
+      id: task.id,
+      name,
+      ...(task.size !== undefined && task.size > 0 ? { size: task.size } : {}),
+    };
+    notices.push(pageUrl ? { ...base, pageUrl } : base);
   }
   return notices;
 }

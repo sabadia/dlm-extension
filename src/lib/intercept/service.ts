@@ -34,7 +34,7 @@ import {
 } from './observations';
 import { isTorrent } from '../links/classify';
 import type { HintStore } from '../page/store';
-import { targetFor } from '../settings/routing';
+import { defaultQueueFor, targetFor } from '../settings/routing';
 import { CookieReader, fitCaptureLimits, type CookiesPort } from './cookies';
 import { decodeBase64Text, isMultipart } from './post';
 import { decide, downloadHost, type DownloadFacts } from './rules';
@@ -399,7 +399,9 @@ export interface InterceptDeps {
    */
   refreshTarget?: (
     pageUrl: string | undefined,
-  ) => Promise<{ baseUrl: string; token: string } | undefined>;
+    /** What the browser is downloading, to tell which of several waiting tasks it renews. */
+    hint?: { filename?: string | undefined; sizeBytes?: number | undefined },
+  ) => Promise<{ baseUrl: string; token: string; taskId?: string | undefined } | undefined>;
   /** A download for the waiting server was handed over; the page stops forcing captures. */
   refreshDone?: (pageUrl: string | undefined) => Promise<void>;
   now?: () => number;
@@ -420,7 +422,7 @@ interface Prepared {
   /** False in a private window or a container: a torrent fetched by the extension would use the wrong cookies. */
   defaultStore: boolean;
   /** Set when an expired task of one server is waiting for exactly this download. */
-  endpoint?: { baseUrl: string; token: string } | undefined;
+  endpoint?: { baseUrl: string; token: string; taskId?: string | undefined } | undefined;
 }
 
 function originOf(url: string | undefined): string | undefined {
@@ -885,7 +887,10 @@ export class InterceptService {
       decision.action === 'leave' &&
       ['own', 'scheme', 'method', 'private', 'bypass'].includes(decision.reason)
         ? undefined
-        : await this.deps.refreshTarget?.(page);
+        : await this.deps.refreshTarget?.(page, {
+            ...(filename ? { filename } : {}),
+            ...(size !== undefined ? { sizeBytes: size } : {}),
+          });
     if (endpoint) decision = { action: 'take' };
     // The referrer is what the browser sent. The page address is its own field; it is not made into a referrer.
     const referrer = item?.referrer || observed?.requestHeaders.referer;
@@ -1083,7 +1088,7 @@ export class InterceptService {
   private async send(
     body: CaptureBody,
     name: string,
-    endpoint?: { baseUrl: string; token: string },
+    endpoint?: { baseUrl: string; token: string; taskId?: string | undefined },
   ): Promise<SendResult> {
     const routed = endpoint
       ? this.deps.client(endpoint.baseUrl, endpoint.token)
@@ -1092,12 +1097,33 @@ export class InterceptService {
       await this.notify('intercept.failed', name, t('intercept.reason.offline'));
       return 'failed';
     }
+    // Downloads go to the queue the person chose in the options (none: the main queue). A queue that is gone from the
+    // server (404) is not a reason to lose the download: it is sent again without it.
+    const queue = await this.defaultQueue(body, endpoint);
     try {
-      await routed.capture(body);
+      // A capture that renews one named task never creates another: the daemon refuses a file that is not that task's.
+      const named = endpoint?.taskId ? { ...body, refreshTaskId: endpoint.taskId } : body;
+      let output: Awaited<ReturnType<CaptureClient['capture']>>;
+      try {
+        output = await routed.capture(queue ? { ...named, queueId: queue } : named);
+      } catch (error) {
+        if (!queue || !(error instanceof ApiError) || error.status !== 404) throw error;
+        this.deps.log.warn('intercept', 'the default queue is gone; using the main queue', {
+          queue,
+        });
+        output = await routed.capture(named);
+      }
       await this.bump();
-      await this.notify('intercept.sent', name);
+      // Say what happened: the link of a waiting download was renewed, or a new download was added.
+      const renewed = (output as { refreshed?: boolean } | undefined)?.refreshed === true;
+      await this.notify(renewed ? 'intercept.renewed' : 'intercept.sent', name);
       return 'taken';
     } catch (error) {
+      if (error instanceof ApiError && error.code === 'refresh.capture_mismatch') {
+        // The waiting download is not this file: it keeps waiting, and the browser downloads what was asked for.
+        await this.notify('intercept.failed', name, t('intercept.reason.notTheWaitingFile'));
+        return 'failed';
+      }
       if (error instanceof ApiError && error.status === 409) {
         await this.bump();
         await this.notifyDuplicate(body, name);
@@ -1162,6 +1188,20 @@ export class InterceptService {
   }
 
   /** The client for the target this address routes to, or the active connection when routing is not wired. */
+  /** The default queue for a capture, unless it names one itself or renews a waiting task (no task is created). */
+  private async defaultQueue(
+    body: CaptureBody,
+    endpoint: { baseUrl: string; token: string } | undefined,
+  ): Promise<string | undefined> {
+    if (endpoint || body.queueId) return undefined;
+    try {
+      const settings = await this.deps.settings.get();
+      return defaultQueueFor(settings, targetFor(settings, body.url ?? ''));
+    } catch {
+      return undefined; // unreadable settings must not stop a download
+    }
+  }
+
   private async routedClient(url: string): Promise<CaptureClient | undefined> {
     if (this.deps.connection.endpoint) {
       const settings = await this.deps.settings.get();
@@ -1243,7 +1283,7 @@ export class InterceptService {
   }
 
   private async notify(
-    key: 'intercept.sent' | 'intercept.duplicate' | 'intercept.failed',
+    key: 'intercept.sent' | 'intercept.renewed' | 'intercept.duplicate' | 'intercept.failed',
     name: string,
     reason?: string,
     notificationId = 'dlm-intercept',
